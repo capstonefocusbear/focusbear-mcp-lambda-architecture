@@ -70,7 +70,7 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { BullQueues, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 import { DeviceService } from '../../../device/services/device/device.service';
@@ -127,6 +127,10 @@ describe('UserService', () => {
         },
         {
           provide: getQueueToken(BullQueues.REVENUE_CAT_STATUS),
+          useValue: QueueMock,
+        },
+        {
+          provide: getQueueToken(BullQueues.STRIPE_CUSTOMER),
           useValue: QueueMock,
         },
         CompletedActivitySequenceService,
@@ -229,15 +233,13 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned with stripe id', async () => {
-      const stripeCustomerId = randomUUID();
+    it('positive: if user exist in Auth0 but is new for the DB, trial access should be granted and default settings assigned', async () => {
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
 
       await userService.syncUserAccount(syncAccountDto);
@@ -245,10 +247,27 @@ describe('UserService', () => {
       expect(UserRepositoryMock.create).toHaveBeenCalledWith(
         expect.objectContaining({
           auth0_id: syncAccountDto.auth0_id,
-          stripe_customer_id: stripeCustomerId,
+          stripe_customer_id: null, // Will be set by background job
         }),
       );
-      expect(StripeServiceMock.registerNewCustomer).toHaveBeenCalledWith(auth0UserDummy.email, 'MacOS');
+      expect(QueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.CREATE_STRIPE_CUSTOMER,
+        {
+          user_id: userDummy.id,
+          email: auth0UserDummy.email,
+          operating_system: 'MacOS',
+        },
+        {
+          jobId: `create-stripe-customer:${userDummy.id}`,
+          removeOnComplete: true,
+          removeOnFail: false,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
       expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
       expect(RevenueCatServiceMock.getOrCreateSubscriber).toHaveBeenCalledWith(userDummy.id);
@@ -263,7 +282,7 @@ describe('UserService', () => {
       UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
+      StripeServiceMock.getStripeCustomerId.mockResolvedValue(stripeCustomerId);
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
       // mock 2 users to exist in auth0 with same email
       const dummyAuth0Response = [auth0UserDummy, auth0UserDummy];
@@ -285,7 +304,6 @@ describe('UserService', () => {
     });
 
     it('does not overwrite username for existing users on sync', async () => {
-      const stripeCustomerId = randomUUID();
       const existing = { ...userDummy, username: 'Zoë' };
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(existing);
@@ -293,24 +311,53 @@ describe('UserService', () => {
       UserRepositoryMock.update.mockResolvedValueOnce(existing);
       DeviceRepositoryMock.orm.find.mockResolvedValue([]);
       DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('iOS');
-      StripeServiceMock.registerNewCustomer.mockResolvedValue({ id: stripeCustomerId });
       RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
       RevenueCatServiceMock.checkSubscriptionStatus.mockResolvedValueOnce({ status: 'active' });
 
       await userService.syncUserAccount(syncAccountDto);
 
-      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
-        existing.id,
+      // Should not queue Stripe job for users who already have stripe_customer_id
+      expect(QueueMock.add).not.toHaveBeenCalledWith(BullWorkers.CREATE_STRIPE_CUSTOMER, expect.anything());
+      expect(UserRepositoryMock.update).not.toHaveBeenCalled();
+    });
+
+    it('positive: new user gets Stripe customer created via background job', async () => {
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+
+      await userService.syncUserAccount(syncAccountDto);
+
+      expect(UserRepositoryMock.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          stripe_customer_id: stripeCustomerId,
+          auth0_id: syncAccountDto.auth0_id,
+          stripe_customer_id: null, // Will be set by background job
         }),
       );
-      expect(UserRepositoryMock.update).not.toHaveBeenCalledWith(
-        existing.id,
-        expect.objectContaining({
-          username: expect.anything(),
-        }),
+      expect(QueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.CREATE_STRIPE_CUSTOMER,
+        {
+          user_id: userDummy.id,
+          email: auth0UserDummy.email,
+          operating_system: 'MacOS',
+        },
+        {
+          jobId: `create-stripe-customer:${userDummy.id}`,
+          removeOnComplete: true,
+          removeOnFail: false,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
       );
+      expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
   });
 
@@ -1114,7 +1161,7 @@ describe('UserService', () => {
     it('positive: should call function to update user metadata', async () => {
       const userWithoutMetadata = { ...userDummy, metadata: undefined };
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
-      const profileImageDummy = { url: 'www.image.com', file_path: '/folder/sub-folder' };
+      const profileImageDummy = 'www.image.com';
       const descriptionDummy = 'Random text here';
 
       await userService.updateMetadata(
@@ -1125,7 +1172,7 @@ describe('UserService', () => {
       expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
         userDummy.id,
         expect.objectContaining({
-          metadata: { profile_image: profileImageDummy.url, description: descriptionDummy },
+          metadata: { profile_image: profileImageDummy, description: descriptionDummy },
           updated_at: expect.toBeDateString(),
           has_received_inactivity_warning: false,
         }),
@@ -1354,6 +1401,132 @@ describe('UserService', () => {
     });
   });
 
+  describe('checkIsUrlSafe', () => {
+    it('negative: should throw error if user is not found', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      const isUrlSafeDto = {
+        url: 'https://example.com',
+        tab_title: 'Example',
+        meta_description: 'Example description',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
+      let exception: any;
+      try {
+        await userService.checkIsUrlSafe(isUrlSafeDto, userDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should call OpenAI service with correct parameters including normalized DTO', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const isUrlSafeDto = {
+        url: 'https://example.com',
+        tab_title: 'Example',
+        meta_description: 'Example description',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.8,
+        reason: 'This URL is safe to use',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      const result = await userService.checkIsUrlSafe(isUrlSafeDto, userDummy.id);
+
+      expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({ where: { id: userDummy.id } });
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: expect.any(String),
+          justificationForThisUrl: undefined,
+        }),
+        userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
+      expect(result).toEqual(expectedResponse);
+    });
+
+    it('positive: should normalize DTO and call OpenAI service with correct parameters', async () => {
+      const userWithContext = {
+        ...userDummy,
+        user_job_details: 'Software developer working on AI features',
+        user_typical_distractions: 'YouTube videos and Reddit',
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithContext);
+      const isUrlSafeDto = {
+        url: 'https://github.com',
+        tab_title: 'GitHub',
+        meta_description: 'GitHub description',
+        focus_mode: 'work',
+        intention: 'coding',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.9,
+        reason: 'This URL is safe to use',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsUrlSafe(isUrlSafeDto, userWithContext.id);
+
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: expect.any(String),
+          justificationForThisUrl: undefined,
+        }),
+        userWithContext.language,
+        {
+          jobDetails: userWithContext.user_job_details,
+          typicalDistractions: userWithContext.user_typical_distractions,
+        },
+      );
+    });
+
+    it('positive: should normalize DTO when user entity fields are null', async () => {
+      const userWithoutContext = {
+        ...userDummy,
+        user_job_details: null,
+        user_typical_distractions: null,
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithoutContext);
+      const isUrlSafeDto = {
+        url: 'https://example.com',
+        tab_title: 'Example',
+        meta_description: 'Example description',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.8,
+        reason: 'This URL is safe to use',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsUrlSafe(isUrlSafeDto, userWithoutContext.id);
+
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: expect.any(String),
+          justificationForThisUrl: undefined,
+        }),
+        userWithoutContext.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
+    });
+  });
+
   describe('checkIsAppSafe', () => {
     it('negative: should throw error if user is not found', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
@@ -1375,7 +1548,7 @@ describe('UserService', () => {
       expect(exception.message).toEqual(errorMessage);
     });
 
-    it('positive: should call OpenAI service with correct parameters', async () => {
+    it('positive: should call OpenAI service with correct parameters including normalized DTO', async () => {
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
       const isAppSafeDto = {
         focusMode: 'work',
@@ -1393,8 +1566,80 @@ describe('UserService', () => {
       const result = await userService.checkIsAppSafe(isAppSafeDto, userDummy.id);
 
       expect(UserRepositoryMock.orm.findOne).toHaveBeenCalledWith({ where: { id: userDummy.id } });
-      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(isAppSafeDto, userDummy.language);
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: 'I need it for programming',
+        }),
+        userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
       expect(result).toEqual(expectedResponse);
+    });
+
+    it('positive: should normalize DTO and call OpenAI service with correct parameters', async () => {
+      const userWithContext = {
+        ...userDummy,
+        user_job_details: 'Full-stack engineer at Focus Bear',
+        user_typical_distractions: 'Short-form social media clips',
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithContext);
+      const isAppSafeDto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Visual Studio Code',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.9,
+        reason: 'This app is related to your focus mode intention',
+      };
+      OpenAIServiceMock.checkIfAppIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsAppSafe(isAppSafeDto, userWithContext.id);
+
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: undefined,
+        }),
+        userWithContext.language,
+        {
+          jobDetails: userWithContext.user_job_details,
+          typicalDistractions: userWithContext.user_typical_distractions,
+        },
+      );
+    });
+
+    it('positive: should normalize DTO when user entity fields are null', async () => {
+      const userWithoutContext = {
+        ...userDummy,
+        user_job_details: null,
+        user_typical_distractions: null,
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userWithoutContext);
+      const isAppSafeDto = {
+        focusMode: 'work',
+        intention: 'coding project',
+        appName: 'Visual Studio Code',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.9,
+        reason: 'This app is related to your focus mode intention',
+      };
+      OpenAIServiceMock.checkIfAppIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      await userService.checkIsAppSafe(isAppSafeDto, userWithoutContext.id);
+
+      expect(OpenAIServiceMock.checkIfAppIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isAppSafeDto,
+          justificationForThisSpecificApp: undefined,
+        }),
+        userWithoutContext.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
     });
   });
 

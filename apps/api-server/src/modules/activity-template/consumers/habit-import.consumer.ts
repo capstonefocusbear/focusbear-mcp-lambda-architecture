@@ -304,7 +304,8 @@ export class HabitImportConsumer {
   }
 
   private formatHabitImportResult(results: HabitSuggestionResult[], routineType?: string): UpdateActivityDto[] {
-    const fallbackActivityType = this.resolveActivityTypeFromRoutineType(routineType) ?? ActivityType.library;
+    const requestedActivityType = this.resolveActivityTypeFromRoutineType(routineType);
+    const fallbackActivityType = requestedActivityType ?? ActivityType.library;
     return results
       .map((result) => {
         const sourceHabit = result.suggestedHabit ? result.suggestedHabit : result.extractedHabit;
@@ -320,7 +321,12 @@ export class HabitImportConsumer {
         }
 
         const description = template?.description ? template.description : sourceHabit.description;
-        const activityType = template?.activityType ? String(template.activityType) : String(fallbackActivityType);
+        const activityType =
+          requestedActivityType !== undefined
+            ? String(requestedActivityType)
+            : template?.activityType
+              ? String(template.activityType)
+              : String(fallbackActivityType);
 
         const habit: UpdateActivityDto = {
           id: resolvedId,

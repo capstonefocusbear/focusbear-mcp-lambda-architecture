@@ -91,7 +91,7 @@ describe('ActivityLibraryService', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
@@ -99,7 +99,7 @@ describe('ActivityLibraryService', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('getLibraryActivities', () => {
@@ -438,7 +438,9 @@ describe('ActivityLibraryService', () => {
 
       const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
 
-      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Get buffed', 10);
+      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Get buffed', 10, {
+        routineType: undefined,
+      });
       expect(RoutineSuggestionGeneratorServiceMock.generateSuggestions).toHaveBeenCalled();
       expect(response).toHaveLength(1);
       expect(response[0]).toHaveProperty('ai_justification', 'Supports strength goals.');

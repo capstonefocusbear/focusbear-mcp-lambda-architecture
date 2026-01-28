@@ -58,13 +58,12 @@ export class HabitImportExtractionService {
     const minMatchScore = options.minMatchScore ?? DEFAULT_MATCH_THRESHOLD;
     const { routineType } = options;
 
-    // Use p-limit to prevent overwhelming OpenAI with concurrent requests
-    const pLimit = (await import('p-limit')).default;
-    const limit = pLimit(CONCURRENT_MATCH_LIMIT);
-
-    return Promise.all(
-      habits.map((habit) =>
-        limit(async () => {
+    const results: HabitSuggestionResult[] = [];
+    for (let offset = 0; offset < habits.length; offset += CONCURRENT_MATCH_LIMIT) {
+      const batch = habits.slice(offset, offset + CONCURRENT_MATCH_LIMIT);
+      // eslint-disable-next-line no-await-in-loop
+      const batchResults = await Promise.all(
+        batch.map(async (habit) => {
           try {
             return await this.matchSingleHabit(habit, minMatchScore, routineType);
           } catch (error) {
@@ -76,8 +75,10 @@ export class HabitImportExtractionService {
             };
           }
         }),
-      ),
-    );
+      );
+      results.push(...batchResults);
+    }
+    return results;
   }
 
   private async matchSingleHabit(

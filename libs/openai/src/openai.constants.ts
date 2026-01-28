@@ -175,7 +175,9 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   analyzeImage: {
     model: GPT_5_2,
     prompt_cache_retention: '24h',
+    temperature: 0,
     messages: null,
+    response_format: { type: 'json_object' },
   },
 
   habitAdjustment: {
@@ -196,7 +198,7 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   routineSuggestions: {
     model: GPT_5_2,
-    temperature: 1,
+    temperature: 0,
     n: 1,
     messages: null,
   },

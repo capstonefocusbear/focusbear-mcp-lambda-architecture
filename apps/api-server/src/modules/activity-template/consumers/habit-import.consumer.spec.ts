@@ -216,6 +216,47 @@ describe('HabitImportConsumer', () => {
       );
     });
 
+    it('overrides matched activity type when routineType is provided', async () => {
+      const job = buildJob({ mediaType: 'image', routineType: 'morning' });
+
+      const overrideResults: HabitSuggestionResult[] = [
+        {
+          extractedHabit: mockExtractedHabits[0],
+          matched: true,
+          matchedTemplate: {
+            id: '11111111-1111-4111-8111-111111111111',
+            name: 'Mindfulness Meditation',
+            description: 'Guided meditation',
+            activityType: 'evening',
+            durationSeconds: 600,
+            matchScore: 0.9,
+            justification: 'Similar meditation activity',
+          },
+        },
+      ];
+
+      r2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/image.png');
+      mockedAxios.get.mockResolvedValueOnce({
+        data: Buffer.from('fake-image-data'),
+      });
+      habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce([mockExtractedHabits[0]]);
+      habitImportExtractionServiceMock.matchExtractedHabits.mockResolvedValueOnce(overrideResults);
+      habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
+
+      const result = await consumer.processHabitImport(job);
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Mindfulness Meditation',
+          duration_seconds: 600,
+          activity_type: 'morning',
+          category: 'meditation',
+          text_instructions: 'Guided meditation',
+        }),
+      ]);
+    });
+
     it('should return empty array when no habits are extracted', async () => {
       const job = buildJob({ mediaType: 'image' });
 

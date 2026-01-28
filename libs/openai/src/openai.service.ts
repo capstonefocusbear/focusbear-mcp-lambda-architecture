@@ -1191,6 +1191,22 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     }, template ?? '');
   }
 
+  private tryParseChatMessages(template: string): ChatCompletionMessageParam[] | null {
+    const trimmed = template.trim();
+    if (!trimmed.startsWith('[')) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (!Array.isArray(parsed)) {
+        return null;
+      }
+      return parsed as ChatCompletionMessageParam[];
+    } catch {
+      return null;
+    }
+  }
+
   async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
     try {
       const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
@@ -1504,7 +1520,7 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     try {
       const prompt = this.promptCacheService.getPrompt('habit-import-image');
 
-      const filledPrompt = this.fillPrompt(prompt, {});
+      const filledPrompt = this.fillPrompt(prompt, { url: imageBuffer });
       if (!prompt) {
         this.logger.warn('OpenAI:habitImportImage prompt missing from cache');
         this.sentryService.instance().captureMessage('Habit import image prompt missing from cache', {
@@ -1512,21 +1528,25 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
         });
       }
 
-      const messages: ChatCompletionMessageParam[] = [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: filledPrompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageBuffer,
-                detail: 'high',
+      const promptMessages = filledPrompt ? this.tryParseChatMessages(filledPrompt) : null;
+
+      const messages: ChatCompletionMessageParam[] =
+        promptMessages ??
+        ([
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: filledPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageBuffer,
+                  detail: 'high',
+                },
               },
-            },
-          ],
-        },
-      ];
+            ],
+          },
+        ] as ChatCompletionMessageParam[]);
 
       const response = await this.analyzeImage(messages);
       const choice0 = response.choices?.[0];

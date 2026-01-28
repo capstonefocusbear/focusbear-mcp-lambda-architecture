@@ -11,6 +11,52 @@ const DEFAULT_MINUTES_FALLBACK = 10;
 const DEFAULT_MIN_MATCH_SCORE = 0.5;
 const DEFAULT_SUGGESTION_LIMIT = 5;
 
+const ROUTINE_SUGGESTIONS_RERANK_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'routine_suggestions_rerank',
+    strict: true,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          habitId: { type: 'string', minLength: 1 },
+          name: { type: 'string', minLength: 1 },
+          description: { type: 'string' },
+          justification: { type: 'string' },
+          matchScore: { type: 'number', minimum: 0, maximum: 1 },
+        },
+        required: ['habitId', 'name', 'description', 'justification', 'matchScore'],
+        additionalProperties: false,
+      },
+    },
+  },
+} as const;
+
+const ROUTINE_SUGGESTIONS_GENERATION_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'routine_suggestions_generate',
+    strict: true,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', minLength: 1 },
+          description: { type: 'string' },
+          routineType: { type: 'string', enum: ['morning', 'evening', 'break'] },
+          durationMinutes: { type: 'integer', minimum: 1, maximum: 120 },
+          justification: { type: 'string' },
+        },
+        required: ['name', 'description', 'routineType', 'durationMinutes', 'justification'],
+        additionalProperties: false,
+      },
+    },
+  },
+} as const;
+
 export interface RoutineSuggestionCandidate {
   template: ActivityTemplate;
   similarity: number;
@@ -107,7 +153,11 @@ export class RoutineSuggestionGeneratorService {
     const messages = this.buildMessages(goal, promptContext, scoreThreshold);
 
     try {
-      const response = await this.openAIService.createChatCompletion(messages);
+      const response = await this.openAIService.createChatCompletion(messages, {
+        params: {
+          response_format: ROUTINE_SUGGESTIONS_RERANK_RESPONSE_FORMAT,
+        } as any,
+      });
       const content = response.choices?.[0]?.message?.content ?? '[]';
       this.logger.debug(
         `RoutineSuggestions:llmResponse ${JSON.stringify({
@@ -348,7 +398,11 @@ Guidance:
     );
 
     try {
-      const response = await this.openAIService.createChatCompletion(messages);
+      const response = await this.openAIService.createChatCompletion(messages, {
+        params: {
+          response_format: ROUTINE_SUGGESTIONS_GENERATION_RESPONSE_FORMAT,
+        } as any,
+      });
       const content = response.choices?.[0]?.message?.content ?? '[]';
       const parsed = this.parseGeneratedHabits(content, normalizedLimit);
       if (!parsed.length) {

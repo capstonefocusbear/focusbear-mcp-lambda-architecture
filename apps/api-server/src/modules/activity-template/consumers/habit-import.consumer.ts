@@ -95,8 +95,10 @@ export class HabitImportConsumer {
         });
       }
 
-      // 3. Match extracted habits against library
-      const results = await this.habitImportExtractionService.matchExtractedHabits(extractedHabits);
+      // 3. Match extracted habits against library (filtered by routine type if provided)
+      const results = await this.habitImportExtractionService.matchExtractedHabits(extractedHabits, {
+        routineType,
+      });
       const usableHabits = this.formatHabitImportResult(results, routineType);
 
       // 4. Log unmatched habits to habit_library_requests

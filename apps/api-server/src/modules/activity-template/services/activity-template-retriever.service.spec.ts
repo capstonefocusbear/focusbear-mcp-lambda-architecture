@@ -48,7 +48,9 @@ describe(ActivityTemplateRetrieverService.name, () => {
     const result = await service.retrieveByGoal('Get buffed', 5);
 
     expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith('Get buffed');
-    expect(embeddingRepositoryMock.findNearestByEmbedding).toHaveBeenCalledWith([0.1, 0.2], 5);
+    expect(embeddingRepositoryMock.findNearestByEmbedding).toHaveBeenCalledWith([0.1, 0.2], 5, {
+      activityType: undefined,
+    });
     expect(result).toEqual(expectedResult);
   });
 

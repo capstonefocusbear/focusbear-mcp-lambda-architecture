@@ -163,8 +163,10 @@ describe('HabitImportConsumer', () => {
         expect.stringMatching(/^data:image\/png;base64,/),
       );
 
-      // Verify matching was called
-      expect(habitImportExtractionServiceMock.matchExtractedHabits).toHaveBeenCalledWith(mockExtractedHabits);
+      // Verify matching was called with routineType option
+      expect(habitImportExtractionServiceMock.matchExtractedHabits).toHaveBeenCalledWith(mockExtractedHabits, {
+        routineType: 'morning',
+      });
 
       // Verify unmatched habits were logged
       expect(habitImportExtractionServiceMock.logUnmatchedHabits).toHaveBeenCalledWith(

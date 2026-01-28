@@ -20,6 +20,7 @@ export class ActivityTemplateEmbeddingRepository extends BaseRepository<Activity
   async findNearestByEmbedding(
     embedding: number[],
     limit: number = DEFAULT_LIMIT,
+    options?: { activityType?: string },
   ): Promise<ActivityTemplateEmbeddingMatch[]> {
     if (!embedding?.length) {
       return [];
@@ -36,14 +37,26 @@ export class ActivityTemplateEmbeddingRepository extends BaseRepository<Activity
     const sanitizedLimit = limit && limit > 0 ? limit : DEFAULT_LIMIT;
     const vectorLiteral = `[${sanitizedEmbedding.join(',')}]`;
 
-    const rawEmbeddings = await this.orm
+    let queryBuilder = this.orm
       .createQueryBuilder('embedding')
       .select('embedding.activity_template_id', 'activityTemplateId')
       .addSelect('1 - (embedding.embedding <=> :embedding_vector)', 'similarity')
       .orderBy('embedding.embedding <=> :embedding_vector', 'ASC')
       .take(sanitizedLimit)
-      .setParameters({ [EMBEDDING_PARAM]: vectorLiteral })
-      .getRawMany<{ activityTemplateId: string; similarity: string | number }>();
+      .setParameters({ [EMBEDDING_PARAM]: vectorLiteral });
+
+    if (options?.activityType) {
+      queryBuilder = queryBuilder
+        .innerJoin('embedding.activity_template', 'template')
+        .andWhere('template.activity_type = :activityType', {
+          activityType: options.activityType,
+        });
+    }
+
+    const rawEmbeddings = await queryBuilder.getRawMany<{
+      activityTemplateId: string;
+      similarity: string | number;
+    }>();
 
     return rawEmbeddings.map(({ activityTemplateId, similarity }) => ({
       activityTemplateId,

@@ -13,6 +13,7 @@ import { ExtractedHabit, HabitSuggestionResult } from '../dto/import-habits-from
 
 const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_MATCH_THRESHOLD = 0.5;
+const CONCURRENT_MATCH_LIMIT = 3;
 
 @Injectable()
 export class HabitImportExtractionService {
@@ -51,26 +52,39 @@ export class HabitImportExtractionService {
     habits: ExtractedHabit[],
     options: {
       minMatchScore?: number;
+      routineType?: string;
     } = {},
   ): Promise<HabitSuggestionResult[]> {
     const minMatchScore = options.minMatchScore ?? DEFAULT_MATCH_THRESHOLD;
+    const { routineType } = options;
+
+    // Use p-limit to prevent overwhelming OpenAI with concurrent requests
+    const pLimit = (await import('p-limit')).default;
+    const limit = pLimit(CONCURRENT_MATCH_LIMIT);
+
     return Promise.all(
-      habits.map(async (habit) => {
-        try {
-          return await this.matchSingleHabit(habit, minMatchScore);
-        } catch (error) {
-          this.logger.error(`Failed to match habit "${habit.name}": ${error.message}`, error.stack);
-          return {
-            extractedHabit: habit,
-            matched: false,
-            suggestedHabit: habit,
-          };
-        }
-      }),
+      habits.map((habit) =>
+        limit(async () => {
+          try {
+            return await this.matchSingleHabit(habit, minMatchScore, routineType);
+          } catch (error) {
+            this.logger.error(`Failed to match habit "${habit.name}": ${error.message}`, error.stack);
+            return {
+              extractedHabit: habit,
+              matched: false,
+              suggestedHabit: habit,
+            };
+          }
+        }),
+      ),
     );
   }
 
-  private async matchSingleHabit(habit: ExtractedHabit, minMatchScore: number): Promise<HabitSuggestionResult> {
+  private async matchSingleHabit(
+    habit: ExtractedHabit,
+    minMatchScore: number,
+    routineType?: string,
+  ): Promise<HabitSuggestionResult> {
     // Build search query from habit name and description
     const searchQuery = [habit.name, habit.description].filter(Boolean).join(' ');
 
@@ -78,11 +92,14 @@ export class HabitImportExtractionService {
       `HabitImport:matchSingleHabit ${JSON.stringify({
         habitName: habit.name,
         searchQuery: searchQuery.substring(0, 100),
+        routineType,
       })}`,
     );
 
-    // 1. RAG retrieval - get candidate matches
-    const matches = await this.activityTemplateRetrieverService.retrieveByText(searchQuery, RAG_RETRIEVAL_LIMIT);
+    // 1. RAG retrieval - get candidate matches (filtered by routine type if provided)
+    const matches = await this.activityTemplateRetrieverService.retrieveByText(searchQuery, RAG_RETRIEVAL_LIMIT, {
+      routineType,
+    });
 
     if (!matches.length) {
       // No candidates found - return extracted habit for manual addition

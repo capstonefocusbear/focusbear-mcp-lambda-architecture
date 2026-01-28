@@ -14,9 +14,16 @@ export class ActivityTemplateRetrieverService {
     private readonly embeddingRepository: ActivityTemplateEmbeddingRepository,
   ) {}
 
-  async retrieveByText(rawText: string, limit = 10): Promise<ActivityTemplateEmbeddingMatch[]> {
+  async retrieveByText(
+    rawText: string,
+    limit = 10,
+    options?: { routineType?: string },
+  ): Promise<ActivityTemplateEmbeddingMatch[]> {
     const startedAt = Date.now();
-    const embedding = await this.goalEmbeddingService.generateEmbedding(rawText, { rawText });
+    const embedding = await this.goalEmbeddingService.generateEmbedding(
+      rawText,
+      options?.routineType ? { routineType: options.routineType } : { rawText },
+    );
     const elapsedMs = Date.now() - startedAt;
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug(
@@ -24,13 +31,16 @@ export class ActivityTemplateRetrieverService {
           elapsedMs,
           embeddingPresent: embedding.length > 0,
           limit,
+          routineType: options?.routineType,
         })}`,
       );
     }
     if (!embedding.length) {
       return [];
     }
-    const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit);
+    const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit, {
+      activityType: options?.routineType,
+    });
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug(
         `RoutineSuggestions:embeddingMatchesText ${JSON.stringify({
@@ -42,9 +52,16 @@ export class ActivityTemplateRetrieverService {
     return matches;
   }
 
-  async retrieveByGoal(goal: string, limit = 10): Promise<ActivityTemplateEmbeddingMatch[]> {
+  async retrieveByGoal(
+    goal: string,
+    limit = 10,
+    options?: { routineType?: string },
+  ): Promise<ActivityTemplateEmbeddingMatch[]> {
     const startedAt = Date.now();
-    const embedding = await this.goalEmbeddingService.generateEmbedding(goal);
+    const embedding = await this.goalEmbeddingService.generateEmbedding(
+      goal,
+      options?.routineType ? { routineType: options.routineType } : undefined,
+    );
     const elapsedMs = Date.now() - startedAt;
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug(
@@ -53,13 +70,16 @@ export class ActivityTemplateRetrieverService {
           elapsedMs,
           embeddingPresent: embedding.length > 0,
           limit,
+          routineType: options?.routineType,
         })}`,
       );
     }
     if (!embedding.length) {
       return [];
     }
-    const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit);
+    const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit, {
+      activityType: options?.routineType,
+    });
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug(
         `RoutineSuggestions:embeddingMatches ${JSON.stringify({

@@ -60,7 +60,21 @@ export class PromptCacheService implements OnModuleInit {
     configPath: string,
   ): Promise<string | null> {
     if (prompt.raw) {
-      return prompt.raw;
+      const rawValue = String(prompt.raw);
+      const rawTrimmed = rawValue.trim();
+      if (rawTrimmed.startsWith('file://')) {
+        const filePath = rawTrimmed.replace('file://', '');
+        const configDir = dirname(configPath);
+        const fullPath = join(configDir, filePath);
+        try {
+          const content = await fs.readFile(fullPath, 'utf8');
+          return content;
+        } catch (error) {
+          this.logger.error(`Failed to load prompt file ${fullPath}: ${error.message}`);
+          throw error;
+        }
+      }
+      return rawValue;
     }
     if (prompt.file) {
       // Handle file:// protocol

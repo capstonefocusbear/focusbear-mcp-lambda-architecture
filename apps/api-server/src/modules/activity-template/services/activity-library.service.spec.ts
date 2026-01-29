@@ -98,10 +98,6 @@ describe('ActivityLibraryService', () => {
     expect(activityLibraryService).toBeDefined();
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
-  });
-
   describe('getLibraryActivities', () => {
     it("negative: given that the user auth token is invalid - should return that the user couldn't be found", async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);

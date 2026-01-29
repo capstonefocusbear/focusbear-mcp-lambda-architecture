@@ -4,6 +4,7 @@ import {
   ActivityTemplateEmbeddingMatch,
   ActivityTemplateEmbeddingRepository,
 } from '../repository/activity-template-embedding.repository';
+import { normalizeRoutineTypeToActivityType } from '../../activity/domain/activity-type.enum';
 
 @Injectable()
 export class ActivityTemplateRetrieverService {
@@ -38,8 +39,9 @@ export class ActivityTemplateRetrieverService {
     if (!embedding.length) {
       return [];
     }
+    const normalizedActivityType = normalizeRoutineTypeToActivityType(options?.routineType);
     const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit, {
-      activityType: options?.routineType,
+      activityType: normalizedActivityType,
     });
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug(
@@ -77,8 +79,9 @@ export class ActivityTemplateRetrieverService {
     if (!embedding.length) {
       return [];
     }
+    const normalizedActivityType = normalizeRoutineTypeToActivityType(options?.routineType);
     const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit, {
-      activityType: options?.routineType,
+      activityType: normalizedActivityType,
     });
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug(

@@ -48,7 +48,7 @@ export class ActivityTemplateEmbeddingRepository extends BaseRepository<Activity
     if (options?.activityType) {
       queryBuilder = queryBuilder
         .innerJoin('embedding.activity_template', 'template')
-        .andWhere('template.activity_type = :activityType', {
+        .where('template.activity_type = :activityType', {
           activityType: options.activityType,
         });
     }

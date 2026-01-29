@@ -17,19 +17,26 @@ const ROUTINE_SUGGESTIONS_RERANK_RESPONSE_FORMAT = {
     name: 'routine_suggestions_rerank',
     strict: true,
     schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          habitId: { type: 'string', minLength: 1 },
-          name: { type: 'string', minLength: 1 },
-          description: { type: 'string' },
-          justification: { type: 'string' },
-          matchScore: { type: 'number', minimum: 0, maximum: 1 },
+      type: 'object',
+      properties: {
+        suggestions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              habitId: { type: 'string', minLength: 1 },
+              name: { type: 'string', minLength: 1 },
+              description: { type: 'string' },
+              justification: { type: 'string' },
+              matchScore: { type: 'number', minimum: 0, maximum: 1 },
+            },
+            required: ['habitId', 'name', 'description', 'justification', 'matchScore'],
+            additionalProperties: false,
+          },
         },
-        required: ['habitId', 'name', 'description', 'justification', 'matchScore'],
-        additionalProperties: false,
       },
+      required: ['suggestions'],
+      additionalProperties: false,
     },
   },
 } as const;
@@ -40,19 +47,26 @@ const ROUTINE_SUGGESTIONS_GENERATION_RESPONSE_FORMAT = {
     name: 'routine_suggestions_generate',
     strict: true,
     schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', minLength: 1 },
-          description: { type: 'string' },
-          routineType: { type: 'string', enum: ['morning', 'evening', 'break'] },
-          durationMinutes: { type: 'integer', minimum: 1, maximum: 120 },
-          justification: { type: 'string' },
+      type: 'object',
+      properties: {
+        habits: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', minLength: 1 },
+              description: { type: 'string' },
+              routineType: { type: 'string', enum: ['morning', 'evening', 'break'] },
+              durationMinutes: { type: 'integer', minimum: 1, maximum: 120 },
+              justification: { type: 'string' },
+            },
+            required: ['name', 'description', 'routineType', 'durationMinutes', 'justification'],
+            additionalProperties: false,
+          },
         },
-        required: ['name', 'description', 'routineType', 'durationMinutes', 'justification'],
-        additionalProperties: false,
       },
+      required: ['habits'],
+      additionalProperties: false,
     },
   },
 } as const;
@@ -139,13 +153,12 @@ export class RoutineSuggestionGeneratorService {
       level: 'info',
       message: 'Evaluating RAG candidates',
       data: {
-        goal,
         minMatchScore: scoreThreshold,
+        candidateCount: sortedCandidates.length,
         topCandidates: sortedCandidates.slice(0, 5).map((candidate) => ({
           templateId: candidate.template.id,
           similarity: Number(candidate.similarity.toFixed(4)),
           activityType: candidate.template.activity_type,
-          name: candidate.template.activity_data?.name,
         })),
       },
     });
@@ -196,18 +209,13 @@ export class RoutineSuggestionGeneratorService {
         return { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
       }
     } catch (error) {
-      this.logger.error(
-        `RoutineSuggestions:generateSuggestions failed for goal "${goal}": ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`RoutineSuggestions:generateSuggestions failed: ${error.message}`, error.stack);
       this.sentry.instance().captureException(error, {
         level: 'error',
         extra: {
-          goal,
           operation: 'generateSuggestions',
           candidateCount: candidates.length,
           errorType: error.constructor?.name,
-          errorMessage: error.message,
         },
       });
     }
@@ -303,7 +311,14 @@ Guidance:
   ): { accepted: RoutineSuggestionResult[]; rejectedCount: number; parsedCount: number } {
     try {
       const parsed = JSON.parse(content);
-      if (!Array.isArray(parsed)) {
+
+      // Handle both new object format and legacy array format for backward compatibility
+      let items: unknown[];
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.suggestions)) {
+        items = parsed.suggestions;
+      } else {
         return { accepted: [], rejectedCount: 0, parsedCount: 0 };
       }
 
@@ -311,7 +326,7 @@ Guidance:
 
       const results: RoutineSuggestionResult[] = [];
       let rejectedCount = 0;
-      parsed.forEach((item) => {
+      items.forEach((item: any) => {
         const habitId = item?.habitId || item?.templateId || item?.id;
         if (!habitId) {
           return;
@@ -349,7 +364,7 @@ Guidance:
         });
       });
       const limited = results.slice(0, limit);
-      return { accepted: limited, rejectedCount, parsedCount: parsed.length };
+      return { accepted: limited, rejectedCount, parsedCount: items.length };
     } catch (error) {
       this.sentry.instance().captureException(error, {
         level: 'warning',
@@ -408,24 +423,19 @@ Guidance:
       if (!parsed.length) {
         this.sentry.instance().captureMessage('RoutineSuggestion: no habits generated by OpenAI', {
           level: 'warning',
-          extra: { goal, limit: normalizedLimit, routineType: preferredRoutineType },
+          extra: { limit: normalizedLimit, routineType: preferredRoutineType },
         });
       }
       return parsed;
     } catch (error) {
-      this.logger.error(
-        `RoutineSuggestions:generateNewHabits failed for goal "${goal}": ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`RoutineSuggestions:generateNewHabits failed: ${error.message}`, error.stack);
       this.sentry.instance().captureException(error, {
         level: 'error',
         extra: {
-          goal,
           operation: 'generateNewHabits',
           preferredRoutineType,
           limit: normalizedLimit,
           errorType: error.constructor?.name,
-          errorMessage: error.message,
         },
       });
       return [];
@@ -453,12 +463,13 @@ Guidance:
         role: 'system',
         content: `You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
 Analyse the goal text to understand the desired outcome, key skills, and relevant contexts. Generate up to ${limit} habits that directly advance those needs (avoid generic wellness tips unless they are explicitly required by the goal).
-Return ONLY a JSON array. Each habit must include:
+Return ONLY a JSON object with a "habits" array. Each habit must include:
 - name (string, concise and goal-aligned)
 - description (string, what the user does)
-- routineType ("morning" or "evening")
+- routineType ("morning", "evening", or "break")
 - durationMinutes (integer, >= 1)
 - justification (<=120 characters summarising why it helps)
+Example: { "habits": [{ "name": "...", "description": "...", "routineType": "morning", "durationMinutes": 10, "justification": "..." }] }
 Guidance:
 - Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
 - Include a mix of training, learning, strategy, or recovery actions as appropriate for the outcome.
@@ -476,12 +487,19 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
   private parseGeneratedHabits(content: string, limit: number): GeneratedHabitSuggestion[] {
     try {
       const parsed = JSON.parse(content);
-      if (!Array.isArray(parsed)) {
+
+      // Handle both new object format and legacy array format for backward compatibility
+      let items: unknown[];
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.habits)) {
+        items = parsed.habits;
+      } else {
         return [];
       }
 
       const results: GeneratedHabitSuggestion[] = [];
-      parsed.forEach((item) => {
+      items.forEach((item: any) => {
         if (!item || typeof item !== 'object') {
           return;
         }

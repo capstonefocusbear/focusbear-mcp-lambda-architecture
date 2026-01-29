@@ -1,19 +1,19 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger, Optional } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { finalize, tap } from 'rxjs/operators';
 import { ConfigService } from '@nestjs/config';
+import { emitUserActivityMetric } from '@app/observability';
 import { MetricsConfig } from '../../config/metrics.config';
-import { emitUserActivityMetric } from '../../../../../libs/observability/src/embedded-metrics.helper';
 
 @Injectable()
 export class MetricsInterceptor implements NestInterceptor {
   private readonly logger = new Logger(MetricsInterceptor.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(@Optional() private readonly config?: ConfigService) {}
 
   private getMetricsConfig(): MetricsConfig {
     return (
-      this.config.get<MetricsConfig>('metrics') || {
+      this.config?.get<MetricsConfig>('metrics') || {
         emitQueueMetrics: true,
         emitUserActivityMetrics: true,
         pollIntervalMs: 60_000,
@@ -26,13 +26,13 @@ export class MetricsInterceptor implements NestInterceptor {
   }
 
   private async emitMetric(operation: string, durationMs: number, success: boolean, userId: string): Promise<void> {
-    const metrics = this.getMetricsConfig();
-    const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
-    if (!shouldEmitMetrics) {
-      return;
-    }
-
     try {
+      const metrics = this.getMetricsConfig();
+      const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
+      if (!shouldEmitMetrics) {
+        return;
+      }
+
       await emitUserActivityMetric({
         namespace: metrics.namespace,
         environment: metrics.environment,
@@ -43,7 +43,9 @@ export class MetricsInterceptor implements NestInterceptor {
         userId,
       });
     } catch (error) {
-      this.logger.error(`Failed to emit ${operation} metrics`, error);
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Failed to emit ${operation} metrics: ${message}`, stack);
     }
   }
 
@@ -52,19 +54,17 @@ export class MetricsInterceptor implements NestInterceptor {
     const handlerName = context.getHandler().name;
     const request = context.switchToHttp().getRequest();
     const userId = request.user?.id || 'anonymous';
+    let success = true;
 
     return next.handle().pipe(
       tap({
-        next: () => {
-          // Emit success metric
-          const durationMs = Date.now() - startTime;
-          this.emitMetric(handlerName, durationMs, true, userId).catch();
-        },
         error: () => {
-          // Emit error metric
-          const durationMs = Date.now() - startTime;
-          this.emitMetric(handlerName, durationMs, false, userId).catch();
+          success = false;
         },
+      }),
+      finalize(() => {
+        const durationMs = Date.now() - startTime;
+        this.emitMetric(handlerName, durationMs, success, userId).catch(() => undefined);
       }),
     );
   }

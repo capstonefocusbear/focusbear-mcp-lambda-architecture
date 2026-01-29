@@ -44,6 +44,11 @@ export interface TestResult {
     imageFetchMs: number;
     extractionMs: number;
     ragMatchingMs: number;
+    // Detailed RAG breakdown:
+    embeddingMs: number;
+    vectorSearchMs: number;
+    templateFetchMs: number;
+    llmRerankMs: number;
     totalMs: number;
   };
   errors: string[];
@@ -55,7 +60,7 @@ export interface TestResult {
 export const imageTestCases: HabitImportTestCase[] = [
   {
     description: 'Input 1 - Goals and productivity habits',
-    url: 'https://i.ibb.co/XfnvCXxk/input-1.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input%201%20.png',
     mediaType: 'image',
     expectedHabits: ['Review goals 5 minutes', 'Save or invest money', 'Tidy up 5 minutes', 'Check email and messages'],
     minExtracted: 3,
@@ -63,7 +68,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 2 - Single hydration habit',
-    url: 'https://i.ibb.co/gbkDZpP3/input-2.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input%202.png',
     mediaType: 'image',
     expectedHabits: ['Drink 2L Water'],
     minExtracted: 1,
@@ -71,7 +76,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 3 - Evening/health habits',
-    url: 'https://i.ibb.co/PsHxGWCT/input-3.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input%203.png',
     mediaType: 'image',
     expectedHabits: [
       'No screen time before bed',
@@ -84,7 +89,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 4 - Daily wellness routine',
-    url: 'https://i.ibb.co/tTX3vBK0/input-4.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input%204.jpg',
     mediaType: 'image',
     expectedHabits: [
       'Hydrate / Drink water',
@@ -98,7 +103,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 5 - Evening productivity habits',
-    url: 'https://i.ibb.co/L25gc4T/input-5.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input%205.jpg',
     mediaType: 'image',
     expectedHabits: [
       'No social media after 9 PM',
@@ -111,7 +116,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 6 - Single reading habit',
-    url: 'https://i.ibb.co/XfYM8tVz/input-6.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input%206.jpg',
     mediaType: 'image',
     expectedHabits: ['Read 10 mins daily'],
     minExtracted: 1,
@@ -119,7 +124,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 7 - Comprehensive daily habits',
-    url: 'https://i.ibb.co/pvbRr0xs/input-7.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input_7.jpg',
     mediaType: 'image',
     expectedHabits: [
       'Drink 2L water daily',
@@ -143,7 +148,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 8 - Basic daily habits',
-    url: 'https://i.ibb.co/Q3kS0xkH/input-8.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input_8.jpg',
     mediaType: 'image',
     expectedHabits: ['Drink 2L water daily', 'Read 10 minutes daily', 'Walk 20 minutes daily'],
     minExtracted: 3,
@@ -151,7 +156,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 9 - Morning routine',
-    url: 'https://i.ibb.co/S4VtvH3k/input-9.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input_9.png',
     mediaType: 'image',
     routineType: 'morning',
     expectedHabits: [
@@ -167,7 +172,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 11 - Morning self-care routine',
-    url: 'https://i.ibb.co/Q3WwG742/input-11.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input_11.jpeg',
     mediaType: 'image',
     routineType: 'morning',
     expectedHabits: [
@@ -186,7 +191,7 @@ export const imageTestCases: HabitImportTestCase[] = [
   },
   {
     description: 'Input 12 - Wellness habits list',
-    url: 'https://i.ibb.co/Z6cSzSNr/input-12.jpg',
+    url: 'https://pub-a692a9744d1041b59020087ffebbcc04.r2.dev/images/input_12.jpeg',
     mediaType: 'image',
     expectedHabits: [
       'Waking up early (even just 30 mins)',

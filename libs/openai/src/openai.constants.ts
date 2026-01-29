@@ -1,11 +1,5 @@
 import OpenAI from 'openai';
-import {
-  GPT_4_1,
-  GPT_4_1_MINI,
-  GPT_5_MINI,
-  GPT_5_1,
-  GPT_5_2,
-} from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_4_1, GPT_4_1_MINI, GPT_5_MINI, GPT_5_2 } from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
 export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };

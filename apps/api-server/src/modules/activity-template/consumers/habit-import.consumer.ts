@@ -321,12 +321,14 @@ export class HabitImportConsumer {
         }
 
         const description = template?.description ? template.description : sourceHabit.description;
-        const activityType =
-          requestedActivityType !== undefined
-            ? String(requestedActivityType)
-            : template?.activityType
-              ? String(template.activityType)
-              : String(fallbackActivityType);
+        let activityType: string;
+        if (requestedActivityType !== undefined) {
+          activityType = String(requestedActivityType);
+        } else if (template?.activityType) {
+          activityType = String(template.activityType);
+        } else {
+          activityType = String(fallbackActivityType);
+        }
 
         const habit: UpdateActivityDto = {
           id: resolvedId,

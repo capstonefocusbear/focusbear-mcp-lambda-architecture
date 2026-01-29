@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
@@ -7,11 +7,13 @@ import { GetUserSettingsQueryDto } from '../../dto/get-user-settings-query.dto';
 import { UpdateUserSettingsDto } from '../../dto/update-user-settings.dto';
 import { UserSettingsService } from '../../services/user-settings/user-settings.service';
 import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
+import { MetricsInterceptor } from '../../../../shared/interceptors/metrics.interceptor';
 
 @Controller('user-settings')
 @UseGuards(IsAuth)
 @ApiTags('user-settings')
 @ApiSecurity('Auth0AccessToken')
+@UseInterceptors(MetricsInterceptor)
 export class UserSettingsController {
   constructor(private readonly userSettingsService: UserSettingsService) {}
 

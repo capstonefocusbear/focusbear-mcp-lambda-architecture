@@ -19,6 +19,10 @@ export class CreateNotesTables1769224042884 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
+      CREATE UNIQUE INDEX "UQ_note_tags_user_id_text" ON "note_tags" ("user_id", "text")
+    `);
+
+    await queryRunner.query(`
       CREATE TABLE "notes" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -91,6 +95,7 @@ export class CreateNotesTables1769224042884 implements MigrationInterface {
     await queryRunner.query('DROP INDEX "IDX_notes_user_id"');
     await queryRunner.query('DROP TABLE "notes"');
 
+    await queryRunner.query('DROP INDEX "UQ_note_tags_user_id_text"');
     await queryRunner.query('DROP INDEX "IDX_note_tags_user_id"');
     await queryRunner.query('DROP TABLE "note_tags"');
   }

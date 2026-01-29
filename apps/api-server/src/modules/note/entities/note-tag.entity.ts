@@ -1,8 +1,9 @@
-import { Column, Entity, Index, ManyToMany } from 'typeorm';
+import { Column, Entity, Index, ManyToMany, Unique } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { Note } from './note.entity';
 
 @Entity('note_tags')
+@Unique('UQ_note_tags_user_id_text', ['user_id', 'text'])
 export class NoteTag extends BaseEntity {
   constructor({ id, ...tag }: Partial<NoteTag> = {}, options = { generateId: false }) {
     super(id, options);

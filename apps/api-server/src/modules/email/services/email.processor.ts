@@ -230,7 +230,7 @@ export class EmailProcessor {
       if (user) {
         const updatedMetadata = {
           ...user.metadata,
-          last_email_sent: new Date(),
+          last_email_sent: new Date().toISOString(),
         };
         await this.userRepository.update(userId, { metadata: updatedMetadata });
       }
@@ -239,20 +239,6 @@ export class EmailProcessor {
         extra: { operation: 'updateLastEmailSent', userId },
         level: 'warning',
       });
-    }
-  }
-
-  private async isUserUnsubscribed(userId: string): Promise<boolean> {
-    try {
-      const record = await this.userRepository.orm.findOne({ where: { id: userId } });
-      return record?.email_frequency === EmailFrequency.UNSUBSCRIBED;
-    } catch (error) {
-      // If we cannot determine, be safe and do not block sending; log for visibility
-      this.sentryService.instance().captureException(error, {
-        extra: { operation: 'isUserUnsubscribed', userId },
-        level: 'warning',
-      });
-      return false;
     }
   }
 

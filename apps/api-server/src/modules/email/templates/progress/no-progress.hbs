@@ -16,6 +16,28 @@
 
 {{> cta-button href=dashboardUrl text=getBackOnTrackText}}
 
+{{#if announcements.length}}
+<mj-divider border-color="#eee" />
+
+<mj-text color="#333333">
+  <p>{{announcementsTitle}}</p>
+</mj-text>
+
+{{#each announcements}}
+<mj-text css-class="metric-card" color="#333333">
+  <div class="metric-title">{{heading}}</div>
+  <p>{{details}}</p>
+  {{#if details_url}}
+    <p>
+      <a href="{{details_url}}" style="color:#FF6B35;">
+        {{../announcementCtaText}}
+      </a>
+    </p>
+  {{/if}}
+</mj-text>
+{{/each}}
+{{/if}}
+
 <mj-text color="#333333">
   <p>{{footerText}}<br/>
   {{weBelieveInYouText}}</p>

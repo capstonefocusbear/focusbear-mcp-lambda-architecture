@@ -6,6 +6,8 @@ import { EmailProcessor } from './services/email.processor';
 import { ProgressEmailTemplateService } from './services/progress-email-template/progress-email-template.service';
 import { EmailTemplateCompilerService } from './services/email-template-compiler/email-template-compiler.service';
 import { UserModule } from '../user/user.module';
+import { DeviceModule } from '../device/device.module';
+import { AnnouncementsModule } from '../announcements/announcements.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { UserModule } from '../user/user.module';
       name: 'emailQueue',
     }),
     forwardRef(() => UserModule),
+    DeviceModule,
+    AnnouncementsModule,
   ],
   providers: [EmailProcessor, ProgressEmailTemplateService, EmailTemplateCompilerService],
   exports: [BullModule, ProgressEmailTemplateService, EmailTemplateCompilerService],

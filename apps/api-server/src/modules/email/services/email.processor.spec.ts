@@ -210,7 +210,7 @@ describe('EmailProcessor', () => {
       },
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
     });
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });
@@ -241,7 +241,7 @@ describe('EmailProcessor', () => {
       text: 'No progress text content',
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
     });
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });
@@ -280,7 +280,7 @@ describe('EmailProcessor', () => {
       },
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
     });
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });
@@ -409,7 +409,7 @@ describe('EmailProcessor', () => {
       },
     });
     expect(userRepositoryMock.update).toHaveBeenCalledWith('user-123', {
-      metadata: { ...mockUser.metadata, last_email_sent: expect.any(Date) },
+      metadata: { ...mockUser.metadata, last_email_sent: expect.any(String) },
     });
     expect(result).toEqual({ success: true, userId: 'user-123' });
   });

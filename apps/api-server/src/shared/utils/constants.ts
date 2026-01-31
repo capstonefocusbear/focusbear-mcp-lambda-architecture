@@ -165,6 +165,8 @@ export const GPT_5_1 = 'gpt-5.1';
 
 export const GPT_4_1 = 'gpt-4.1';
 
+export const MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER = 10;
+
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',
   REVENUE_CAT_STATUS = 'revenue-cat-status',
@@ -185,6 +187,7 @@ export enum BullQueues {
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
   EMAIL_VERIFICATION = 'email-verification',
   HABIT_IMPORT = 'habit-import',
+  WEBHOOK = 'webhook',
   STRIPE_CUSTOMER = 'stripe-customer',
   PASSWORD_RESET_EMAIL = 'password-reset-email',
 }
@@ -212,6 +215,7 @@ export enum BullWorkers {
   PROCESS_HABIT_CREATION = 'process-habit-creation',
   SEND_EMAIL_VERIFICATION = 'send-email-verification',
   PROCESS_HABIT_IMPORT = 'process-habit-import',
+  SEND_WEBHOOK = 'send-webhook',
   SEND_PASSWORD_RESET_EMAIL = 'send-password-reset-email',
 }
 

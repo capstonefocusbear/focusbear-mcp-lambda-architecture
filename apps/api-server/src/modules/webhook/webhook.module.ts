@@ -10,6 +10,7 @@ import { BullQueues } from '../../shared/utils/constants';
 import { UserModule } from '../user/user.module';
 import { FocusModeModule } from '../focus-mode/focus-mode.module';
 import { ActivityModule } from '../activity/activity.module';
+import { DeviceModule } from '../device/device.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ActivityModule } from '../activity/activity.module';
       name: BullQueues.WEBHOOK,
     }),
     forwardRef(() => UserModule),
+    forwardRef(() => DeviceModule),
     forwardRef(() => FocusModeModule),
     forwardRef(() => ActivityModule),
   ],

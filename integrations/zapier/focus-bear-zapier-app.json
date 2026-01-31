@@ -48,15 +48,16 @@
       "operation": {
         "type": "hook",
         "performSubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
           "method": "POST",
           "body": {
+            "name": "Zapier - Habit Completed",
             "url": "{{bundle.targetUrl}}",
             "event_types": ["habit.completed"]
           }
         },
         "performUnsubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks/{{bundle.subscribeData.id}}",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
           "method": "DELETE"
         },
         "perform": {
@@ -95,15 +96,16 @@
       "operation": {
         "type": "hook",
         "performSubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
           "method": "POST",
           "body": {
+            "name": "Zapier - Routine Completed",
             "url": "{{bundle.targetUrl}}",
             "event_types": ["routine.completed"]
           }
         },
         "performUnsubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks/{{bundle.subscribeData.id}}",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
           "method": "DELETE"
         },
         "perform": {
@@ -139,15 +141,16 @@
       "operation": {
         "type": "hook",
         "performSubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
           "method": "POST",
           "body": {
+            "name": "Zapier - Focus Session Started",
             "url": "{{bundle.targetUrl}}",
             "event_types": ["focus_session.started"]
           }
         },
         "performUnsubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks/{{bundle.subscribeData.id}}",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
           "method": "DELETE"
         },
         "perform": {
@@ -186,15 +189,16 @@
       "operation": {
         "type": "hook",
         "performSubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
           "method": "POST",
           "body": {
+            "name": "Zapier - Focus Session Completed",
             "url": "{{bundle.targetUrl}}",
             "event_types": ["focus_session.completed"]
           }
         },
         "performUnsubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks/{{bundle.subscribeData.id}}",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
           "method": "DELETE"
         },
         "perform": {
@@ -232,15 +236,16 @@
       "operation": {
         "type": "hook",
         "performSubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
           "method": "POST",
           "body": {
+            "name": "Zapier - Break Started",
             "url": "{{bundle.targetUrl}}",
             "event_types": ["break.started"]
           }
         },
         "performUnsubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks/{{bundle.subscribeData.id}}",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
           "method": "DELETE"
         },
         "perform": {
@@ -274,15 +279,16 @@
       "operation": {
         "type": "hook",
         "performSubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
           "method": "POST",
           "body": {
+            "name": "Zapier - Break Completed",
             "url": "{{bundle.targetUrl}}",
             "event_types": ["break.completed"]
           }
         },
         "performUnsubscribe": {
-          "url": "{{API_BASE_URL}}/external/v1/webhooks/{{bundle.subscribeData.id}}",
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
           "method": "DELETE"
         },
         "perform": {
@@ -388,9 +394,9 @@
             "key": "routine_name",
             "label": "Routine Name",
             "type": "string",
-            "required": true,
+            "required": false,
             "choices": ["morning", "evening", "break"],
-            "helpText": "The routine this habit belongs to"
+            "helpText": "Optional routine name to disambiguate the habit"
           },
           {
             "key": "duration_seconds",

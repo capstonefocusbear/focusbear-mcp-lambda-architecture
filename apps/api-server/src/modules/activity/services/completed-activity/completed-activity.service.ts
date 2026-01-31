@@ -275,20 +275,13 @@ export class CompletedActivityService implements OnModuleInit {
 
       this.logUserData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
 
-      // Dispatch webhook event for habit completion
-      this.webhookDispatcherService
-        .dispatchEvent(user_id, WebhookEventType.HABIT_COMPLETED, {
-          habit_name: activity.activity_data?.name || activity.id,
-          routine_name: sequence.type,
-          duration_seconds: completedActivity.duration_logged,
-          completed_at: new Date().toISOString(),
-        })
-        .catch((err) => {
-          this.sentryService.instance().captureException(err, {
-            level: 'warning',
-            tags: { webhook: 'habit_completed' },
-          });
-        });
+      // Dispatch webhook event for habit completion (fire-and-forget, errors handled internally)
+      this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.HABIT_COMPLETED, {
+        habit_name: activity.activity_data?.name || activity.id,
+        routine_name: this.formatRoutineName(sequence.type),
+        duration_seconds: completedActivity.duration_logged,
+        completed_at: new Date().toISOString(),
+      });
 
       const response = new CompletedActivityResponse({
         ...createdItem,
@@ -429,18 +422,6 @@ export class CompletedActivityService implements OnModuleInit {
   ): Promise<CompletedActivityResponse> {
     const { device_id, log_quantity_answers, duration_logged } = completedActivity;
 
-    this.webhookDispatcherService
-      .dispatchEvent(user_id, WebhookEventType.BREAK_STARTED, {
-        break_name: activity.activity_data?.name || activity.id,
-        started_at: startTimeToUse.toISOString(),
-      })
-      .catch((err) => {
-        this.sentryService.instance().captureException(err, {
-          level: 'warning',
-          tags: { webhook: 'break_started' },
-        });
-      });
-
     this.validateChoice(activity, choice);
     await this.deviceService.markAsLeader(device_id, user_id);
     const createdItem = await this.saveCompletedLog(
@@ -459,18 +440,17 @@ export class CompletedActivityService implements OnModuleInit {
     }
     await this.userDailyStatsService.updateTimeSpentInBreaks(user_id, startTimeToUse, timeZone, duration_logged);
 
-    this.webhookDispatcherService
-      .dispatchEvent(user_id, WebhookEventType.BREAK_COMPLETED, {
-        break_name: activity.activity_data?.name || activity.id,
-        duration_seconds: duration_logged,
-        completed_at: new Date().toISOString(),
-      })
-      .catch((err) => {
-        this.sentryService.instance().captureException(err, {
-          level: 'warning',
-          tags: { webhook: 'break_completed' },
-        });
-      });
+    // Fire-and-forget webhook events (errors handled internally)
+    this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.BREAK_STARTED, {
+      break_name: activity.activity_data?.name || activity.id,
+      started_at: startTimeToUse.toISOString(),
+    });
+
+    this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.BREAK_COMPLETED, {
+      break_name: activity.activity_data?.name || activity.id,
+      duration_seconds: duration_logged,
+      completed_at: new Date().toISOString(),
+    });
 
     return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
   }
@@ -1271,18 +1251,18 @@ export class CompletedActivityService implements OnModuleInit {
       partialUser.current_sequence_started_at,
     );
 
-    this.webhookDispatcherService
-      .dispatchEvent(partialUser.id, WebhookEventType.ROUTINE_COMPLETED, {
-        routine_name: seqLog.activity_sequence?.type || 'unknown',
-        completed_habits_count: seqLog.completed_activity_logs?.length || 0,
-        completed_at: new Date().toISOString(),
-      })
-      .catch((err) => {
-        this.sentryService.instance().captureException(err, {
-          level: 'warning',
-          tags: { webhook: 'routine_completed' },
-        });
-      });
+    // Fire-and-forget webhook event (errors handled internally)
+    this.webhookDispatcherService.dispatchEvent(partialUser.id, WebhookEventType.ROUTINE_COMPLETED, {
+      routine_name: this.formatRoutineName(seqLog.activity_sequence?.type),
+      completed_habits_count: seqLog.completed_activity_logs?.length || 0,
+      completed_at: new Date().toISOString(),
+    });
+  }
+
+  private formatRoutineName(type?: string): string {
+    if (!type) return 'unknown';
+    if (type === ActivityType.break) return 'break';
+    return type;
   }
 
   isCutoffTimeReached(partialUser: Partial<User>): boolean {

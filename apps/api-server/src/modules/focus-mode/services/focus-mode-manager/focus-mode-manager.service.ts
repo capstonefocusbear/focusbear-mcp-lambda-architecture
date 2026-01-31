@@ -147,19 +147,13 @@ export class FocusModeManagerService {
         throw error;
       }
 
-      this.webhookDispatcherService
-        .dispatchEvent(user_id, WebhookEventType.FOCUS_SESSION_STARTED, {
-          focus_mode_name: name,
-          intention,
-          scheduled_finish_time: scheduled_finish_time?.toISOString(),
-          started_at: start_time?.toISOString() || new Date().toISOString(),
-        })
-        .catch((err) => {
-          this.sentryService.instance().captureException(err, {
-            level: 'warning',
-            tags: { webhook: 'focus_session_started' },
-          });
-        });
+      // Fire-and-forget webhook event (errors handled internally)
+      this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.FOCUS_SESSION_STARTED, {
+        focus_mode_name: name,
+        intention,
+        scheduled_finish_time: scheduled_finish_time?.toISOString(),
+        started_at: start_time?.toISOString() || new Date().toISOString(),
+      });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -314,19 +308,13 @@ export class FocusModeManagerService {
       });
 
       const focusMode = await this.focusModeRepository.findOneByIdForUser(focus_mode_id, user_id);
-      this.webhookDispatcherService
-        .dispatchEvent(user_id, WebhookEventType.FOCUS_SESSION_COMPLETED, {
-          focus_mode_name: focusMode?.name || 'unknown',
-          intention,
-          duration_seconds: finalDurationSecs,
-          completed_at: effectiveFinish.toISOString(),
-        })
-        .catch((err) => {
-          this.sentryService.instance().captureException(err, {
-            level: 'warning',
-            tags: { webhook: 'focus_session_completed' },
-          });
-        });
+      // Fire-and-forget webhook event (errors handled internally)
+      this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.FOCUS_SESSION_COMPLETED, {
+        focus_mode_name: focusMode?.name || 'unknown',
+        intention,
+        duration_seconds: finalDurationSecs,
+        completed_at: effectiveFinish.toISOString(),
+      });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

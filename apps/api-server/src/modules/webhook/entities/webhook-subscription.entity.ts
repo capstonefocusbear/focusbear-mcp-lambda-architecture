@@ -43,6 +43,7 @@ export class WebhookSubscription extends BaseEntity {
     type: 'varchar',
     length: 64,
     nullable: true,
+    transformer: BaseEntity.encryptField('secret'),
   })
   secret?: string;
 

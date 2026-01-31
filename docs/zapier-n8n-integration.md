@@ -16,11 +16,11 @@ The webhook module provides:
 | Event | Description | Payload |
 |-------|-------------|---------|
 | `habit.completed` | Fired when a user completes a habit/activity | `{ habit_name, routine_name, duration_seconds, completed_at }` |
-| `routine.completed` | Fired when a user completes a routine | `{ routine_type, completed_at }` |
-| `focus_session.started` | Fired when a focus session begins | `{ focus_mode_name, duration_minutes, started_at }` |
-| `focus_session.completed` | Fired when a focus session ends | `{ focus_mode_name, duration_minutes, completed_at }` |
-| `break.started` | Fired when a break begins | `{ break_type, started_at }` |
-| `break.completed` | Fired when a break ends | `{ break_type, completed_at }` |
+| `routine.completed` | Fired when a user completes a routine | `{ routine_name, completed_habits_count, completed_at }` |
+| `focus_session.started` | Fired when a focus session begins | `{ focus_mode_name, intention, scheduled_finish_time, started_at }` |
+| `focus_session.completed` | Fired when a focus session ends | `{ focus_mode_name, intention, duration_seconds, completed_at }` |
+| `break.started` | Fired when a break begins | `{ break_name, started_at }` |
+| `break.completed` | Fired when a break ends | `{ break_name, duration_seconds, completed_at }` |
 
 ### External API Endpoints
 
@@ -31,6 +31,7 @@ All endpoints require Auth0 OAuth authentication.
 | `GET` | `/external/v1/me` | Get current user info |
 | `GET` | `/external/v1/focus-modes` | List user's focus modes |
 | `GET` | `/external/v1/routines` | List user's routines with activities |
+| `GET` | `/external/v1/webhooks/sample/:eventType` | Get sample webhook payload for testing |
 | `GET` | `/external/v1/streaks` | Get user's streak data |
 | `POST` | `/external/v1/focus-session/start` | Start a focus session |
 | `POST` | `/external/v1/habit/complete` | Mark a habit as completed |
@@ -99,7 +100,7 @@ DELETE /webhooks/subscriptions/{{bundle.subscribeData.id}}
 
 Perform List (for testing):
 ```
-GET /external/v1/routines
+GET /external/v1/webhooks/sample/habit.completed
 ```
 
 ### Step 4: Define Actions
@@ -133,8 +134,8 @@ Body: {
 
 Input fields:
 - `habit_name` (required): Name of the habit to complete
-- `routine_name` (required): Name of the routine containing the habit (morning_routine, evening_routine, break_routine)
-- `duration_seconds` (optional): Time spent on the habit
+- `routine_name` (optional): Name of the routine containing the habit (`morning`, `evening`, `break`)
+- `duration_seconds` (optional): Time spent on the habit (seconds)
 
 ## Setting Up n8n Integration
 
@@ -196,7 +197,7 @@ POST https://api.focusbear.io/external/v1/habit/complete
 Headers: Authorization: Bearer {{$credentials.oauth2Api.accessToken}}
 Body: {
   "habit_name": "Meditation",
-  "routine_name": "morning_routine",
+  "routine_name": "morning",
   "duration_seconds": 600
 }
 ```
@@ -205,7 +206,7 @@ Body: {
 
 ### Security
 
-All webhook payloads are signed with HMAC-SHA256. The signature is included in the `X-Webhook-Signature` header.
+All webhook payloads are signed with HMAC-SHA256. The signature is included in the `X-Webhook-Signature` header as `sha256=<hex>`.
 
 To verify:
 ```javascript
@@ -221,32 +222,29 @@ const expectedSignature = `sha256=${signature}`;
 ### Retry Logic
 
 - Failed deliveries are retried up to 3 times
-- Exponential backoff: 1 minute, 5 minutes, 15 minutes
-- After 5 consecutive failures, the subscription is automatically disabled
+- Exponential backoff starts at 2 seconds (e.g., 2s, 4s, 8s)
+- After 5 consecutive failures, the subscription is skipped
 
 ### Payload Format
 
 ```json
 {
-  "event": "habit.completed",
+  "event_type": "habit.completed",
   "timestamp": "2024-01-15T10:30:00Z",
+  "user_id": "user_123",
   "data": {
     "habit_name": "Morning Meditation",
-    "routine_name": "morning_routine",
+    "routine_name": "morning",
     "duration_seconds": 600,
     "completed_at": "2024-01-15T10:30:00Z"
   }
 }
 ```
 
-## Follow-up Work Required
+### Limits
 
-**Important**: The webhook infrastructure is in place, but event dispatching is not yet integrated into existing services. A follow-up PR is needed to:
-
-1. Call `WebhookDispatcherService.dispatchEvent()` from `CompletedActivityService` when habits are completed
-2. Call `WebhookDispatcherService.dispatchEvent()` from `FocusModeManagerService` when focus sessions start/end
-3. Call `WebhookDispatcherService.dispatchEvent()` when breaks start/end
-4. Call `WebhookDispatcherService.dispatchEvent()` when routines are completed
+- Max 10 webhook subscriptions per user
+- Webhook URLs must be public `https` URLs (localhost/private IPs are rejected)
 
 ## Key Files
 

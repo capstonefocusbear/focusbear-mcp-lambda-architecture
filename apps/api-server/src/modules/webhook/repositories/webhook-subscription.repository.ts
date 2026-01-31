@@ -18,6 +18,10 @@ export class WebhookSubscriptionRepository {
     });
   }
 
+  async countByUserId(userId: string): Promise<number> {
+    return this.orm.count({ where: { user_id: userId } });
+  }
+
   async findActiveByUserId(userId: string): Promise<WebhookSubscription[]> {
     return this.orm.find({
       where: { user_id: userId, is_active: true },

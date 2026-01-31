@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsUrl, IsArray, IsEnum, IsOptional, MaxLength, MinLength, ArrayMinSize } from 'class-validator';
 import { WebhookEventType } from '../domain/webhook-event-type.enum';
+import { IsPublicWebhookUrl } from '../../../shared/decorators/is-public-webhook-url.decorator';
 
 export class CreateWebhookSubscriptionDto {
   @ApiProperty({
@@ -16,7 +17,8 @@ export class CreateWebhookSubscriptionDto {
     description: 'The URL to send webhook events to',
     example: 'https://hooks.zapier.com/hooks/catch/123456/abcdef/',
   })
-  @IsUrl({ require_tld: false })
+  @IsUrl({ protocols: ['https'], require_protocol: true, require_tld: true })
+  @IsPublicWebhookUrl({ message: 'Webhook URL must be a public https URL' })
   @MaxLength(2048)
   url: string;
 

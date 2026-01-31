@@ -29,6 +29,7 @@ describe('WebhookSubscriptionService', () => {
     },
     findByUserId: jest.fn(),
     findByEventType: jest.fn(),
+    countByUserId: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -61,6 +62,7 @@ describe('WebhookSubscriptionService', () => {
         event_types: [WebhookEventType.HABIT_COMPLETED],
       };
 
+      webhookSubscriptionRepositoryMock.countByUserId.mockResolvedValueOnce(0);
       const savedSubscription = {
         id: mockSubscriptionId,
         user_id: mockUserId,
@@ -81,6 +83,18 @@ describe('WebhookSubscriptionService', () => {
       expect(result).toHaveProperty('url', createDto.url);
       expect(result).toHaveProperty('event_types', createDto.event_types);
       expect(webhookSubscriptionRepositoryMock.orm.save).toHaveBeenCalled();
+    });
+
+    it('should throw when user exceeds subscription limit', async () => {
+      const createDto = {
+        name: 'Test Webhook',
+        url: 'https://hooks.zapier.com/test',
+        event_types: [WebhookEventType.HABIT_COMPLETED],
+      };
+
+      webhookSubscriptionRepositoryMock.countByUserId.mockResolvedValueOnce(10);
+
+      await expect(service.createSubscription(mockUserId, createDto)).rejects.toThrow('Webhook subscription limit');
     });
   });
 

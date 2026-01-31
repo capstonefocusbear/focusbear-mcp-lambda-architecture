@@ -165,6 +165,8 @@ export const GPT_5_1 = 'gpt-5.1';
 
 export const GPT_4_1 = 'gpt-4.1';
 
+export const MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER = 10;
+
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',
   REVENUE_CAT_STATUS = 'revenue-cat-status',

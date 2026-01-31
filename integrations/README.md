@@ -70,7 +70,8 @@ All webhook events follow this format:
 
 ### Security
 
-Webhooks are signed using HMAC-SHA256. The signature is included in the `X-Webhook-Signature` header. Verify the signature by computing HMAC-SHA256 of the request body using your webhook secret.
+- Webhooks are signed using HMAC-SHA256. The signature is included in the `X-Webhook-Signature` header as `sha256=<hex>`.
+- Webhook URLs must be public `https` URLs (localhost/private IPs are rejected).
 
 ## Auth0 Configuration
 

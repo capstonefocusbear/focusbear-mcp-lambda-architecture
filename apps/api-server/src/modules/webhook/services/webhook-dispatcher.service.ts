@@ -8,6 +8,7 @@ import { WebhookSubscriptionRepository } from '../repositories/webhook-subscript
 import { WebhookEventType } from '../domain/webhook-event-type.enum';
 import { WebhookPayload } from '../domain/webhook-payload.model';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { isPublicWebhookUrl, resolvesToPublicAddress } from '../../../shared/utils/webhook-url';
 
 @Injectable()
 export class WebhookDispatcherService {
@@ -22,61 +23,69 @@ export class WebhookDispatcherService {
   ) {}
 
   async dispatchEvent(userId: string, eventType: WebhookEventType, data: Record<string, any>): Promise<void> {
-    this.sentryService.instance().addBreadcrumb({
-      category: 'Webhook',
-      level: 'debug',
-      message: 'Dispatching webhook event',
-      data: { userId, eventType },
-    });
+    try {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Webhook',
+        level: 'debug',
+        message: 'Dispatching webhook event',
+        data: { userId, eventType },
+      });
 
-    const subscriptions = await this.webhookSubscriptionRepository.findByEventType(userId, eventType);
+      const subscriptions = await this.webhookSubscriptionRepository.findByEventType(userId, eventType);
 
-    if (subscriptions.length === 0) {
-      return;
-    }
-
-    const payload: WebhookPayload = {
-      event_type: eventType,
-      timestamp: new Date().toISOString(),
-      user_id: userId,
-      data,
-    };
-
-    const validSubscriptions = subscriptions.filter((subscription) => {
-      if (subscription.failure_count >= this.MAX_FAILURE_COUNT) {
-        this.sentryService.instance().addBreadcrumb({
-          category: 'Webhook',
-          level: 'warning',
-          message: 'Skipping webhook due to too many failures',
-          data: { subscriptionId: subscription.id, failureCount: subscription.failure_count },
-        });
-        return false;
+      if (subscriptions.length === 0) {
+        return;
       }
-      return true;
-    });
 
-    await Promise.all(
-      validSubscriptions.map((subscription) =>
-        this.webhookQueue.add(
-          BullWorkers.SEND_WEBHOOK,
-          {
-            subscriptionId: subscription.id,
-            url: subscription.url,
-            secret: subscription.secret,
-            payload,
-          },
-          {
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 2000,
+      const payload: WebhookPayload = {
+        event_type: eventType,
+        timestamp: new Date().toISOString(),
+        user_id: userId,
+        data,
+      };
+
+      const validSubscriptions = subscriptions.filter((subscription) => {
+        if (subscription.failure_count >= this.MAX_FAILURE_COUNT) {
+          this.sentryService.instance().addBreadcrumb({
+            category: 'Webhook',
+            level: 'warning',
+            message: 'Skipping webhook due to too many failures',
+            data: { subscriptionId: subscription.id, failureCount: subscription.failure_count },
+          });
+          return false;
+        }
+        return true;
+      });
+
+      await Promise.all(
+        validSubscriptions.map((subscription) =>
+          this.webhookQueue.add(
+            BullWorkers.SEND_WEBHOOK,
+            {
+              subscriptionId: subscription.id,
+              url: subscription.url,
+              secret: subscription.secret,
+              payload,
             },
-            removeOnComplete: 100,
-            removeOnFail: 50,
-          },
+            {
+              attempts: 3,
+              backoff: {
+                type: 'exponential',
+                delay: 2000,
+              },
+              removeOnComplete: 100,
+              removeOnFail: 50,
+            },
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        tags: { webhook: 'dispatch_event' },
+        extra: { userId, eventType },
+      });
+    }
   }
 
   async sendWebhook(
@@ -98,6 +107,7 @@ export class WebhookDispatcherService {
     }
 
     try {
+      await this.assertWebhookUrlIsPublic(url);
       await axios.post(url, payload, {
         headers,
         timeout: this.WEBHOOK_TIMEOUT_MS,
@@ -133,6 +143,19 @@ export class WebhookDispatcherService {
 
   private generateSignature(payload: WebhookPayload, secret: string): string {
     const payloadString = JSON.stringify(payload);
-    return createHmac('sha256', secret).update(payloadString).digest('hex');
+    const digest = createHmac('sha256', secret).update(payloadString).digest('hex');
+    return `sha256=${digest}`;
+  }
+
+  private async assertWebhookUrlIsPublic(url: string): Promise<void> {
+    if (!isPublicWebhookUrl(url)) {
+      throw new Error('Webhook URL must be a public https URL');
+    }
+
+    const { hostname } = new URL(url);
+    const resolvesPublicly = await resolvesToPublicAddress(hostname);
+    if (!resolvesPublicly) {
+      throw new Error('Webhook URL resolves to a private or localhost address');
+    }
   }
 }

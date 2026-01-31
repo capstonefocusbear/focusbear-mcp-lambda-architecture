@@ -8,7 +8,7 @@ import { CreateWebhookSubscriptionDto } from '../dto/create-webhook-subscription
 import { UpdateWebhookSubscriptionDto } from '../dto/update-webhook-subscription.dto';
 import { WebhookSubscriptionResponseDto } from '../dto/webhook-subscription-response.dto';
 
-@Controller('webhook/subscriptions')
+@Controller('webhooks/subscriptions')
 @UseGuards(IsAuth)
 @ApiTags('Webhook - Subscriptions')
 @ApiSecurity('Auth0AccessToken')

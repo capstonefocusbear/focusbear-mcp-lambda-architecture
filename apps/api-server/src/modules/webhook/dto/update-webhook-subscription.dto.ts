@@ -11,6 +11,7 @@ import {
   ArrayMinSize,
 } from 'class-validator';
 import { WebhookEventType } from '../domain/webhook-event-type.enum';
+import { IsPublicWebhookUrl } from '../../../shared/decorators/is-public-webhook-url.decorator';
 
 export class UpdateWebhookSubscriptionDto {
   @ApiPropertyOptional({
@@ -28,7 +29,8 @@ export class UpdateWebhookSubscriptionDto {
     example: 'https://hooks.zapier.com/hooks/catch/123456/abcdef/',
   })
   @IsOptional()
-  @IsUrl({ require_tld: false })
+  @IsUrl({ protocols: ['https'], require_protocol: true, require_tld: true })
+  @IsPublicWebhookUrl({ message: 'Webhook URL must be a public https URL' })
   @MaxLength(2048)
   url?: string;
 

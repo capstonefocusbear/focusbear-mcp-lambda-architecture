@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, TooManyRequestsException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { WebhookSubscriptionRepository } from '../repositories/webhook-subscription.repository';
 import { WebhookSubscription } from '../entities/webhook-subscription.entity';
@@ -6,6 +6,7 @@ import { CreateWebhookSubscriptionDto } from '../dto/create-webhook-subscription
 import { UpdateWebhookSubscriptionDto } from '../dto/update-webhook-subscription.dto';
 import { WebhookSubscriptionResponseDto } from '../dto/webhook-subscription-response.dto';
 import { WebhookEventType } from '../domain/webhook-event-type.enum';
+import { MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER } from '../../../shared/utils/constants';
 
 @Injectable()
 export class WebhookSubscriptionService {
@@ -18,6 +19,13 @@ export class WebhookSubscriptionService {
     userId: string,
     createDto: CreateWebhookSubscriptionDto,
   ): Promise<WebhookSubscriptionResponseDto> {
+    const existingCount = await this.webhookSubscriptionRepository.countByUserId(userId);
+    if (existingCount >= MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER) {
+      throw new TooManyRequestsException(
+        `Webhook subscription limit reached (${MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER} per user).`,
+      );
+    }
+
     this.sentryService.instance().addBreadcrumb({
       category: 'Service',
       level: 'debug',

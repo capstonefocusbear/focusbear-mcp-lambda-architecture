@@ -45,6 +45,7 @@ import { HelperModule } from '../helper/helper.module';
 import { UserStatsController } from './controllers/user-stats/user-stats.controller';
 import { UserPersonalDataConsumer } from './consumers/user-data.consumer';
 import { RevenueCatStatusConsumer } from './consumers/revenue-cat-status.consumer';
+import { StripeCustomerConsumer } from './consumers/stripe-customer.consumer';
 import { UserFeedbackRepository } from './repositories/user-feedback.repository';
 import { UserFeedbackController } from './controllers/user-feedback/user-feedback.controller';
 import { UserFeedbackService } from './services/user-feedback/user-feedback.service';
@@ -86,6 +87,7 @@ import { FlankerTest } from './entities/flanker-test.entity';
     UserDataService,
     UserPersonalDataConsumer,
     RevenueCatStatusConsumer,
+    StripeCustomerConsumer,
     UserFeedbackRepository,
     UserFeedbackService,
     CustomRoutineRepository,
@@ -165,6 +167,9 @@ import { FlankerTest } from './entities/flanker-test.entity';
       },
       {
         name: BullQueues.USAGE_DATA,
+      },
+      {
+        name: BullQueues.STRIPE_CUSTOMER,
       },
     ),
     R2Module.registerAsync({

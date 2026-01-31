@@ -40,6 +40,11 @@ import { BraindumpTaskDto } from './dto/braindump-task-response.dto';
 import { SubtasksDto } from './dto/subtasks-response.dto';
 import { PromptCacheService } from './prompt-cache.service';
 
+type SafetyUserContext = {
+  jobDetails?: string | null;
+  typicalDistractions?: string | null;
+};
+
 @Injectable()
 export class OpenAIService {
   private readonly logger = new Logger(OpenAIService.name);
@@ -301,6 +306,7 @@ export class OpenAIService {
   async checkIfUrlIsSafeToUse(
     isUrlSafeDto: IsUrlSafeDto,
     prefLanguage: string,
+    userContext?: SafetyUserContext,
   ): Promise<URLSafeProbabilityResponseDto> {
     const {
       url,
@@ -311,7 +317,8 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       justificationForThisUrl,
       lastFiveJustificationsInThisFocusSession,
-      current_tasks, // Used for task suggestions when alignment score < 70% (lines 404, 530) and in prompt filling (lines 357, 367)
+      task_must_align_to_focus_intention,
+      current_tasks,
     } = isUrlSafeDto;
 
     const sanitizedUrl = sanitizeUrl(url);
@@ -367,12 +374,36 @@ export class OpenAIService {
         justificationForThisUrl: justificationForThisUrl || '',
         currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
         lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
+        task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
         current_tasks: currentTasksJson,
       });
 
+      // Append user context at the end to preserve prompt caching
+      let finalPromptContent = filledPromptContent;
+      const jobDetails = this.normalizeSafetyUserContextInput(userContext?.jobDetails, 'safety_user_job_details');
+      const typicalDistractions = this.normalizeSafetyUserContextInput(
+        userContext?.typicalDistractions,
+        'safety_user_typical_distractions',
+      );
+      if (jobDetails || typicalDistractions) {
+        const contextParts: string[] = [];
+        if (jobDetails) {
+          contextParts.push(`The user provided this context about their job: ${this.wrapUserInput(jobDetails)}`);
+        }
+        if (typicalDistractions) {
+          const distractionPhrase = jobDetails
+            ? 'And said that they normally get distracted by:'
+            : 'The user said that they normally get distracted by:';
+          contextParts.push(`${distractionPhrase} ${this.wrapUserInput(typicalDistractions)}`);
+        }
+        if (contextParts.length > 0) {
+          finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
+        }
+      }
+
       const basePrompt: ChatCompletionMessageParam = {
         role: 'system',
-        content: filledPromptContent,
+        content: finalPromptContent,
       };
 
       let retryCount = 0;
@@ -434,9 +465,17 @@ export class OpenAIService {
   async checkIfAppIsSafeToUse(
     isAppSafeDto: IsAppSafeDto,
     prefLanguage: string,
+    userContext?: SafetyUserContext,
   ): Promise<URLSafeProbabilityResponseDto> {
-    const { focusMode, intention, appName, justificationForThisSpecificApp, currentTaskInToDoPlayer, current_tasks } =
-      isAppSafeDto;
+    const {
+      focusMode,
+      intention,
+      appName,
+      justificationForThisSpecificApp,
+      currentTaskInToDoPlayer,
+      task_must_align_to_focus_intention,
+      current_tasks,
+    } = isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
     const isIntentionValid = this.isValidInput(intention, MAX_WORD_LENGTH.intention);
@@ -474,12 +513,36 @@ export class OpenAIService {
       intention: intention || '',
       justificationForThisSpecificApp: justificationForThisSpecificApp || '',
       currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+      task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
       current_tasks: currentTasksJson,
     });
 
+    // Append user context at the end to preserve prompt caching
+    let finalPromptContent = filledPromptContent;
+    const jobDetails = this.normalizeSafetyUserContextInput(userContext?.jobDetails, 'safety_user_job_details');
+    const typicalDistractions = this.normalizeSafetyUserContextInput(
+      userContext?.typicalDistractions,
+      'safety_user_typical_distractions',
+    );
+    if (jobDetails || typicalDistractions) {
+      const contextParts: string[] = [];
+      if (jobDetails) {
+        contextParts.push(`The user provided this context about their job: ${this.wrapUserInput(jobDetails)}`);
+      }
+      if (typicalDistractions) {
+        const distractionPhrase = jobDetails
+          ? 'And said that they normally get distracted by:'
+          : 'The user said that they normally get distracted by:';
+        contextParts.push(`${distractionPhrase} ${this.wrapUserInput(typicalDistractions)}`);
+      }
+      if (contextParts.length > 0) {
+        finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
+      }
+    }
+
     const basePrompt: ChatCompletionMessageParam = {
       role: 'system',
-      content: filledPromptContent,
+      content: finalPromptContent,
     };
 
     let retryCount = 0;
@@ -1101,6 +1164,20 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
 
   private wrapUserInput(input: string): string {
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
+  }
+
+  private normalizeSafetyUserContextInput(input: string | null | undefined, context: string): string | undefined {
+    const value = input?.trim();
+    if (!value) {
+      return undefined;
+    }
+
+    const truncated = value.slice(0, MAX_WORD_LENGTH.metadata);
+    if (!this.isValidInput(truncated, MAX_WORD_LENGTH.metadata, context)) {
+      return undefined;
+    }
+
+    return truncated;
   }
 
   private fillPrompt(

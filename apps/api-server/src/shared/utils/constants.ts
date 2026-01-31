@@ -186,6 +186,8 @@ export enum BullQueues {
   EMAIL_VERIFICATION = 'email-verification',
   HABIT_IMPORT = 'habit-import',
   WEBHOOK = 'webhook',
+  STRIPE_CUSTOMER = 'stripe-customer',
+  PASSWORD_RESET_EMAIL = 'password-reset-email',
 }
 
 export enum BullWorkers {
@@ -196,6 +198,7 @@ export enum BullWorkers {
   SYNC_PROJECT_TASKS = 'sync-project-tasks',
   RESUME_NOTIFICATION = 'resume-notification',
   MANUALLY_SYNC_PLATFORM_TASKS = 'manually-sync-platform-tasks',
+  CREATE_STRIPE_CUSTOMER = 'create-stripe-customer',
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
@@ -211,6 +214,7 @@ export enum BullWorkers {
   SEND_EMAIL_VERIFICATION = 'send-email-verification',
   PROCESS_HABIT_IMPORT = 'process-habit-import',
   SEND_WEBHOOK = 'send-webhook',
+  SEND_PASSWORD_RESET_EMAIL = 'send-password-reset-email',
 }
 
 export const createActivityFunction = {

@@ -50,6 +50,7 @@ import { ObservabilityModule } from './observability/observability.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
+import { GeofenceModule } from './modules/geofence/geofence.module';
 
 @Module({
   imports: [
@@ -123,6 +124,7 @@ import { AppVersionsModule } from './modules/app-versions/app-versions.module';
     WebhookModule,
     AnnouncementsModule,
     AppVersionsModule,
+    GeofenceModule,
   ],
   controllers: [AppController],
   providers: [

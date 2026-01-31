@@ -1,7 +1,7 @@
 import { IsString, registerDecorator, ValidationOptions } from 'class-validator';
 
 function PasswordComplexity(validationOptions?: ValidationOptions) {
-  return function (object: any, propertyName: string) {
+  return (object: any, propertyName: string) => {
     registerDecorator({
       name: 'passwordComplexity',
       target: object.constructor,

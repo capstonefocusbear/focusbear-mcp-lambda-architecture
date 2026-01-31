@@ -49,7 +49,7 @@ function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOpti
 }
 
 function IsSubsetOfCustomRoutineDays(validationOptions?: ValidationOptions) {
-  return function (object: Record<string, any>, propertyName: string) {
+  return (object: Record<string, any>, propertyName: string) => {
     registerDecorator({
       name: 'IsSubsetOfCustomRoutineDays',
       target: object.constructor,

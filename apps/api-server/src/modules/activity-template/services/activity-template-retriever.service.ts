@@ -21,9 +21,10 @@ export class ActivityTemplateRetrieverService {
     options?: { routineType?: string },
   ): Promise<ActivityTemplateEmbeddingMatch[]> {
     const startedAt = Date.now();
+    const normalizedActivityType = normalizeRoutineTypeToActivityType(options?.routineType);
     const embedding = await this.goalEmbeddingService.generateEmbedding(
       rawText,
-      options?.routineType ? { routineType: options.routineType } : { rawText },
+      normalizedActivityType ? { routineType: normalizedActivityType } : { rawText },
     );
     const elapsedMs = Date.now() - startedAt;
     if (process.env.NODE_ENV !== 'production') {
@@ -32,14 +33,13 @@ export class ActivityTemplateRetrieverService {
           elapsedMs,
           embeddingPresent: embedding.length > 0,
           limit,
-          routineType: options?.routineType,
+          routineType: normalizedActivityType,
         })}`,
       );
     }
     if (!embedding.length) {
       return [];
     }
-    const normalizedActivityType = normalizeRoutineTypeToActivityType(options?.routineType);
     const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit, {
       activityType: normalizedActivityType,
     });
@@ -60,9 +60,10 @@ export class ActivityTemplateRetrieverService {
     options?: { routineType?: string },
   ): Promise<ActivityTemplateEmbeddingMatch[]> {
     const startedAt = Date.now();
+    const normalizedActivityType = normalizeRoutineTypeToActivityType(options?.routineType);
     const embedding = await this.goalEmbeddingService.generateEmbedding(
       goal,
-      options?.routineType ? { routineType: options.routineType } : undefined,
+      normalizedActivityType ? { routineType: normalizedActivityType } : undefined,
     );
     const elapsedMs = Date.now() - startedAt;
     if (process.env.NODE_ENV !== 'production') {
@@ -72,14 +73,13 @@ export class ActivityTemplateRetrieverService {
           elapsedMs,
           embeddingPresent: embedding.length > 0,
           limit,
-          routineType: options?.routineType,
+          routineType: normalizedActivityType,
         })}`,
       );
     }
     if (!embedding.length) {
       return [];
     }
-    const normalizedActivityType = normalizeRoutineTypeToActivityType(options?.routineType);
     const matches = await this.embeddingRepository.findNearestByEmbedding(embedding, limit, {
       activityType: normalizedActivityType,
     });

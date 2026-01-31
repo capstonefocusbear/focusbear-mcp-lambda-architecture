@@ -28,6 +28,7 @@ const EMOJI_REGEX = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Co
 
 const MAX_ROUTINE_HABITS_PER_TYPE = 10;
 const RAG_RETRIEVAL_LIMIT = 10;
+const RAG_RETRIEVAL_DURATION_MULTIPLIER = 2;
 const DEFAULT_GENERATED_ACTIVITY_MINUTES = 10;
 const ADJUST_HABIT_MIN_SIMILARITY = 0.7;
 
@@ -514,7 +515,12 @@ export class ActivityLibraryService {
           routineDurationSeconds,
         };
         try {
-          const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, RAG_RETRIEVAL_LIMIT, {
+          const retrievalLimit =
+            routineDurationSeconds && routineDurationSeconds > 0
+              ? RAG_RETRIEVAL_LIMIT * RAG_RETRIEVAL_DURATION_MULTIPLIER
+              : RAG_RETRIEVAL_LIMIT;
+
+          const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, retrievalLimit, {
             routineType: request.routine,
           });
           if (!matches.length) {

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { OpenAIService, PromptCacheService } from '@app/openai';
+import { createHash } from 'crypto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 
@@ -209,13 +210,18 @@ export class RoutineSuggestionGeneratorService {
         return { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
       }
     } catch (error) {
-      this.logger.error(`RoutineSuggestions:generateSuggestions failed: ${error.message}`, error.stack);
+      const goalHash = this.hashGoal(goal);
+      this.logger.error(
+        `RoutineSuggestions:generateSuggestions failed${goalHash ? ` [goalHash=${goalHash}]` : ''}: ${error.message}`,
+        error.stack,
+      );
       this.sentry.instance().captureException(error, {
         level: 'error',
         extra: {
           operation: 'generateSuggestions',
           candidateCount: candidates.length,
           errorType: error.constructor?.name,
+          goalHash,
         },
       });
     }
@@ -428,7 +434,11 @@ Guidance:
       }
       return parsed;
     } catch (error) {
-      this.logger.error(`RoutineSuggestions:generateNewHabits failed: ${error.message}`, error.stack);
+      const goalHash = this.hashGoal(goal);
+      this.logger.error(
+        `RoutineSuggestions:generateNewHabits failed${goalHash ? ` [goalHash=${goalHash}]` : ''}: ${error.message}`,
+        error.stack,
+      );
       this.sentry.instance().captureException(error, {
         level: 'error',
         extra: {
@@ -436,6 +446,7 @@ Guidance:
           preferredRoutineType,
           limit: normalizedLimit,
           errorType: error.constructor?.name,
+          goalHash,
         },
       });
       return [];
@@ -525,5 +536,13 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
       });
       return [];
     }
+  }
+
+  private hashGoal(goal?: string): string | undefined {
+    const trimmed = goal?.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    return createHash('sha256').update(trimmed).digest('hex').slice(0, 16);
   }
 }

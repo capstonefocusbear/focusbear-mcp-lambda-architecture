@@ -434,7 +434,7 @@ describe('ActivityLibraryService', () => {
 
       const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
 
-      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Get buffed', 10, {
+      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Get buffed', 20, {
         routineType: undefined,
       });
       expect(RoutineSuggestionGeneratorServiceMock.generateSuggestions).toHaveBeenCalled();

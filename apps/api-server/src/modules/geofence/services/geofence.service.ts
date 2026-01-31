@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
+import { ActivitySequenceRepository } from '../../activity/repositories/activity-sequence.repository';
 import { GeofenceRepository } from '../repositories/geofence.repository';
 import { CreateGeofenceDto } from '../dto/create-geofence.dto';
 import { UpdateGeofenceDto } from '../dto/update-geofence.dto';
@@ -7,7 +8,10 @@ import { Geofence } from '../entities/geofence.entity';
 
 @Injectable()
 export class GeofenceService {
-  constructor(private readonly geofenceRepository: GeofenceRepository) {}
+  constructor(
+    private readonly geofenceRepository: GeofenceRepository,
+    private readonly activitySequenceRepository: ActivitySequenceRepository,
+  ) {}
 
   async getUserGeofences(user_id: string): Promise<Geofence[]> {
     return this.geofenceRepository.findByUserId(user_id);
@@ -22,6 +26,7 @@ export class GeofenceService {
   }
 
   async createGeofence(user_id: string, createGeofenceDto: CreateGeofenceDto): Promise<Geofence> {
+    await this.assertAssociatedRoutineOwnership(user_id, createGeofenceDto.associated_routine_id);
     const geofence = new Geofence({
       user_id,
       name: createGeofenceDto.name,
@@ -56,7 +61,8 @@ export class GeofenceService {
       existingGeofence.trigger_after_time = updateGeofenceDto.trigger_after_time;
     }
     if (updateGeofenceDto.associated_routine_id !== undefined) {
-      existingGeofence.associated_routine_id = updateGeofenceDto.associated_routine_id;
+      await this.assertAssociatedRoutineOwnership(user_id, updateGeofenceDto.associated_routine_id);
+      existingGeofence.associated_routine_id = updateGeofenceDto.associated_routine_id ?? null;
     }
 
     return this.geofenceRepository.orm.save(existingGeofence);
@@ -70,5 +76,19 @@ export class GeofenceService {
 
     await this.geofenceRepository.orm.delete({ id: geofence_id, user_id });
     return new ResponseMessage(`Successfully deleted geofence with ID: ${geofence_id}`);
+  }
+
+  private async assertAssociatedRoutineOwnership(
+    user_id: string,
+    associated_routine_id?: string | null,
+  ): Promise<void> {
+    if (!associated_routine_id) {
+      return;
+    }
+
+    const routine = await this.activitySequenceRepository.findOneByIdForUser(associated_routine_id, user_id);
+    if (!routine) {
+      throw new NotFoundException('Associated routine not found');
+    }
   }
 }

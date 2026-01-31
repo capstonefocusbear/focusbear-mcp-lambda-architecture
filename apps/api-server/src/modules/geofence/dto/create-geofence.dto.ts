@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateGeofenceDto {
   @IsNotEmpty()
@@ -26,6 +26,9 @@ export class CreateGeofenceDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'Time must be in the format of hh:mm',
+  })
   trigger_after_time?: string;
 
   @IsOptional()

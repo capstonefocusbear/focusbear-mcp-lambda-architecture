@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, TooManyRequestsException } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { WebhookSubscriptionRepository } from '../repositories/webhook-subscription.repository';
 import { WebhookSubscription } from '../entities/webhook-subscription.entity';
@@ -21,8 +21,9 @@ export class WebhookSubscriptionService {
   ): Promise<WebhookSubscriptionResponseDto> {
     const existingCount = await this.webhookSubscriptionRepository.countByUserId(userId);
     if (existingCount >= MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER) {
-      throw new TooManyRequestsException(
+      throw new HttpException(
         `Webhook subscription limit reached (${MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER} per user).`,
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 

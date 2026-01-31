@@ -9,6 +9,7 @@ import { R2Module } from '@app/r2';
 import { configsArray } from '../../config';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
+import { WebhookModule } from '../webhook/webhook.module';
 import { CompletedActivitySequenceController } from './controllers/completed-activity-sequence.controller';
 import { CompletedActivityController } from './controllers/completed-activity.controller';
 import { ActivitySequenceRepository } from './repositories/activity-sequence.repository';
@@ -109,6 +110,7 @@ import { CompletedActivityConsumer } from './consumers/completed-activity.consum
       inject: [ConfigService],
       useFactory: (configService: ConfigService): any => configService.get('openai'),
     }),
+    forwardRef(() => WebhookModule),
   ],
 })
 export class ActivityModule {}

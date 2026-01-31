@@ -21,6 +21,8 @@ import { ToDoRepository } from '../../../to-do/repositories/to-do.repository';
 import { ToDoService } from '../../../to-do/services/to-do.service';
 import { UpdateScheduledFinishDto } from '../../dto/update-scheduled-finish-time.dto';
 import { UserService } from '../../../user/services/user/user.service';
+import { WebhookDispatcherService } from '../../../webhook/services/webhook-dispatcher.service';
+import { WebhookEventType } from '../../../webhook/domain/webhook-event-type.enum';
 
 @Injectable()
 export class FocusModeManagerService {
@@ -37,6 +39,7 @@ export class FocusModeManagerService {
     private readonly toDoService: ToDoService,
     private readonly i18nService: I18nService,
     private readonly userService: UserService,
+    private readonly webhookDispatcherService: WebhookDispatcherService,
   ) {}
 
   async startCurrentFocusMode(
@@ -143,6 +146,14 @@ export class FocusModeManagerService {
         ]);
         throw error;
       }
+
+      // Fire-and-forget webhook event (errors handled internally)
+      this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.FOCUS_SESSION_STARTED, {
+        focus_mode_name: name,
+        intention,
+        scheduled_finish_time: scheduled_finish_time?.toISOString(),
+        started_at: start_time?.toISOString() || new Date().toISOString(),
+      });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -294,6 +305,15 @@ export class FocusModeManagerService {
         last_completed_focus_mode_at: DateTime.local({ zone: 'UTC' }).toJSDate(),
         updated_at: new Date().toISOString(),
         has_received_inactivity_warning: false,
+      });
+
+      const focusMode = await this.focusModeRepository.findOneByIdForUser(focus_mode_id, user_id);
+      // Fire-and-forget webhook event (errors handled internally)
+      this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.FOCUS_SESSION_COMPLETED, {
+        focus_mode_name: focusMode?.name || 'unknown',
+        intention,
+        duration_seconds: finalDurationSecs,
+        completed_at: effectiveFinish.toISOString(),
       });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

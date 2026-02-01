@@ -95,8 +95,10 @@ export class HabitImportConsumer {
         });
       }
 
-      // 3. Match extracted habits against library
-      const results = await this.habitImportExtractionService.matchExtractedHabits(extractedHabits);
+      // 3. Match extracted habits against library (filtered by routine type if provided)
+      const results = await this.habitImportExtractionService.matchExtractedHabits(extractedHabits, {
+        routineType,
+      });
       const usableHabits = this.formatHabitImportResult(results, routineType);
 
       // 4. Log unmatched habits to habit_library_requests
@@ -302,7 +304,8 @@ export class HabitImportConsumer {
   }
 
   private formatHabitImportResult(results: HabitSuggestionResult[], routineType?: string): UpdateActivityDto[] {
-    const fallbackActivityType = this.resolveActivityTypeFromRoutineType(routineType) ?? ActivityType.library;
+    const requestedActivityType = this.resolveActivityTypeFromRoutineType(routineType);
+    const fallbackActivityType = requestedActivityType ?? ActivityType.library;
     return results
       .map((result) => {
         const sourceHabit = result.suggestedHabit ? result.suggestedHabit : result.extractedHabit;
@@ -318,7 +321,14 @@ export class HabitImportConsumer {
         }
 
         const description = template?.description ? template.description : sourceHabit.description;
-        const activityType = template?.activityType ? String(template.activityType) : String(fallbackActivityType);
+        let activityType: string;
+        if (requestedActivityType !== undefined) {
+          activityType = String(requestedActivityType);
+        } else if (template?.activityType) {
+          activityType = String(template.activityType);
+        } else {
+          activityType = String(fallbackActivityType);
+        }
 
         const habit: UpdateActivityDto = {
           id: resolvedId,

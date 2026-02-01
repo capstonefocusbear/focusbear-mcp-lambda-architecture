@@ -571,7 +571,8 @@ export class CompletedActivitySequenceService {
       if (!sequence) return null;
 
       const completedSequence = completedMap.get(sequence.id);
-      let completedHabitIds = [];
+      let completedHabitIds: string[] = [];
+      let skippedHabitIds: string[] = [];
 
       // If this is the current in-progress sequence, get completed activities from the current log
       if (sequence.id === user.current_activity_sequence_id && user.current_completing_sequence_log_id) {
@@ -584,8 +585,11 @@ export class CompletedActivitySequenceService {
         });
 
         if (inProgressSequence?.completed_activity_logs) {
-          completedHabitIds = inProgressSequence.completed_activity_logs
-            .filter((log) => !log.metadata?.is_skipped)
+          // Include all activity IDs (including skipped) for consistency with current_sequence_completed_activities
+          completedHabitIds = inProgressSequence.completed_activity_logs.map((log) => log.activity_id).filter(Boolean);
+          // Track skipped activities separately
+          skippedHabitIds = inProgressSequence.completed_activity_logs
+            .filter((log) => log.metadata?.is_skipped)
             .map((log) => log.activity_id)
             .filter(Boolean);
         } else {
@@ -600,8 +604,11 @@ export class CompletedActivitySequenceService {
 
           const activities = completedActivities?.completed_activity_logs || [];
 
-          completedHabitIds = activities
-            .filter((log) => !log.metadata?.is_skipped)
+          // Include all activity IDs (including skipped) for consistency with current_sequence_completed_activities
+          completedHabitIds = activities.map((log) => log.activity_id).filter(Boolean);
+          // Track skipped activities separately
+          skippedHabitIds = activities
+            .filter((log) => log.metadata?.is_skipped)
             .map((log) => log.activity_id)
             .filter(Boolean);
         }
@@ -609,6 +616,10 @@ export class CompletedActivitySequenceService {
         // For other sequences, get from completed sequence logs
         const completedActivityLogs = completedSequence?.completed_activity_logs || [];
         completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
+        skippedHabitIds = completedActivityLogs
+          .filter((log) => log.metadata?.is_skipped)
+          .map((log) => log.activity_id)
+          .filter(Boolean);
       }
 
       let status: SequenceStatus;
@@ -623,22 +634,17 @@ export class CompletedActivitySequenceService {
         return null;
       }
 
-      // Calculate completion percentage based on activities in the sequence
-      const totalActivities = sequence.activity_ids?.length || 0;
-      const completionPercentage =
-        totalActivities > 0 ? Math.round((completedHabitIds.length / totalActivities) * 100) : 0;
-
       const baseData = {
         sequence_id: sequence.id,
         status,
-        completion_percentage: completionPercentage,
       };
 
-      // Only include completed_habit_ids for non-completed routines
+      // Only include completed_habit_ids and skipped_habit_ids for non-completed routines
       if (status !== SequenceStatus.COMPLETED) {
         return {
           ...baseData,
           completed_habit_ids: completedHabitIds,
+          skipped_habit_ids: skippedHabitIds,
         };
       }
 

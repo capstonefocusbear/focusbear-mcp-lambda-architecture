@@ -124,6 +124,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         allowed_apps: focusModeDto.allowed_apps,
         allowed_urls: focusModeDto.allowed_urls,
         tags: focusModeTags,
+        is_ai_enabled: focusModeDto.is_ai_enabled ?? true,
       });
       const savedFocusMode = await this.focusModeRepository.orm.save(createdFocusMode);
       // check that focus mode is not one created by default when installing one of the apps

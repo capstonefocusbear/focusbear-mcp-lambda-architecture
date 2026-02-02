@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsObject, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { IsArray, IsBoolean, IsObject, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 import { CreateFocusModeTagDto } from './create-focus-mode-tag.dto';
 
 export class UpdateFocusModeDto {
@@ -33,4 +33,9 @@ export class UpdateFocusModeDto {
   @IsOptional()
   @IsArray()
   tags?: CreateFocusModeTagDto[];
+
+  @IsBoolean()
+  @IsOptional()
+  @ApiProperty({ required: false })
+  is_ai_enabled?: boolean;
 }

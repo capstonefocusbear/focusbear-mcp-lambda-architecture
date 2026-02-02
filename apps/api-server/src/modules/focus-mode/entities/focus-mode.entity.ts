@@ -57,6 +57,12 @@ export class FocusMode extends BaseEntity {
   })
   metadata?: any;
 
+  @Column({
+    type: 'boolean',
+    default: true,
+  })
+  is_ai_enabled?: boolean;
+
   @Index()
   @Column({
     type: 'uuid',

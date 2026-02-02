@@ -14,5 +14,5 @@ export class RecentToDoDto {
 
   @IsOptional()
   @IsNumber()
-  take?: number = 15;
+  take?: number = 50;
 }

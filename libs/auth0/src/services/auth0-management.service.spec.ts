@@ -23,7 +23,7 @@ jest.mock('auth0', () => {
   };
 
   return {
-    ManagementClient: jest.fn().mockImplementation(function () {
+    ManagementClient: jest.fn().mockImplementation(function ManagementClientMock() {
       this.users = mockUsers;
       this.jobs = mockJobs;
       this.deviceCredentials = mockDeviceCredentials;

@@ -162,8 +162,10 @@ export const AUTH0_RETRY_CONFIG = {
 export const GPT_4_1_MINI = 'gpt-4.1-mini';
 export const GPT_5_MINI = 'gpt-5-mini';
 export const GPT_5_1 = 'gpt-5.1';
-
 export const GPT_4_1 = 'gpt-4.1';
+export const GPT_5_2 = 'gpt-5.2';
+
+export const MAX_WEBHOOK_SUBSCRIPTIONS_PER_USER = 10;
 
 export enum BullQueues {
   SYNC_EVENTS = 'sync-events',
@@ -185,6 +187,9 @@ export enum BullQueues {
   ROUTINE_SUGGESTIONS = 'routine-suggestions',
   EMAIL_VERIFICATION = 'email-verification',
   HABIT_IMPORT = 'habit-import',
+  WEBHOOK = 'webhook',
+  STRIPE_CUSTOMER = 'stripe-customer',
+  PASSWORD_RESET_EMAIL = 'password-reset-email',
 }
 
 export enum BullWorkers {
@@ -195,6 +200,7 @@ export enum BullWorkers {
   SYNC_PROJECT_TASKS = 'sync-project-tasks',
   RESUME_NOTIFICATION = 'resume-notification',
   MANUALLY_SYNC_PLATFORM_TASKS = 'manually-sync-platform-tasks',
+  CREATE_STRIPE_CUSTOMER = 'create-stripe-customer',
   SAVE_TASK_TIME_LOG = 'save-task-time-log',
   UPDATE_REVENUE_CAT_STATUS = 'update-revenue-cat-status',
   GET_USER_PERSONAL_DATA = 'get-user-personal-data',
@@ -209,6 +215,8 @@ export enum BullWorkers {
   PROCESS_HABIT_CREATION = 'process-habit-creation',
   SEND_EMAIL_VERIFICATION = 'send-email-verification',
   PROCESS_HABIT_IMPORT = 'process-habit-import',
+  SEND_WEBHOOK = 'send-webhook',
+  SEND_PASSWORD_RESET_EMAIL = 'send-password-reset-email',
 }
 
 export const createActivityFunction = {

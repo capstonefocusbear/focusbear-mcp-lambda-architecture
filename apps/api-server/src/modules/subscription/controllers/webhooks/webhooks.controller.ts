@@ -3,6 +3,7 @@ import { FastifyRequest } from 'fastify';
 import { StripeService } from '@app/stripe';
 import { RevenueCatService } from '@app/revenue-cat';
 import { StripeEvents } from '@app/stripe/model/stripe-events.enum';
+import { IsNull } from 'typeorm';
 import { WebhookHandlerStrategy } from '../../services/webhook-handler/webhook-handler.strategy';
 import { Headers } from '../../../../shared/decorators/headers.decorator';
 import { SubscriptionProvider } from '../../domain/subscription-provider.enum';
@@ -37,17 +38,41 @@ export class WebhooksController {
       const payload = JSON.parse(JSON.stringify(event.data.object));
       this.rcLogger.warn(event.type);
       // check if event is for team plan
-      if (payload.plan.product === process.env.STRIPE_TEAM_PLAN_PRODUCT_ID) {
+      if (payload.plan?.product === process.env.STRIPE_TEAM_PLAN_PRODUCT_ID) {
         await this.teamManagementService.handleChangeInTeamSubscription(event.type, payload);
       }
       if (event.type !== StripeEvents.CREATED) return null;
       // forward new subscription to RevenueCat
-      const user = await this.userRepository.orm.findOne({
+      let user = await this.userRepository.orm.findOne({
         where: { stripe_customer_id: payload.customer },
       });
-      this.rcLogger.warn(JSON.stringify(user || 'empty'));
+
+      if (!user) {
+        try {
+          const customer = await this.stripeService.customers.retrieve(payload.customer);
+          if (!('deleted' in customer)) {
+            const userIdFromMetadata = customer.metadata?.user_id;
+            if (userIdFromMetadata) {
+              user = await this.userRepository.orm.findOneBy({ id: userIdFromMetadata });
+              if (user) {
+                await this.userRepository.orm.update(
+                  { id: user.id, stripe_customer_id: IsNull() },
+                  { stripe_customer_id: payload.customer },
+                );
+              }
+            }
+          }
+        } catch (lookupError) {
+          this.rcLogger.warn(`Failed to resolve user for Stripe customer ${payload.customer}`);
+        }
+      }
+
+      if (!user) {
+        this.rcLogger.warn(`User not found for Stripe customer ${payload.customer}, skipping RevenueCat forwarding`);
+        return null;
+      }
+
       const purchaseData = { app_user_id: user.id, fetch_token: payload.id };
-      this.rcLogger.warn(purchaseData);
       await this.revenueCatService.createPurchase(SubscriptionProvider.stripe, purchaseData);
       return null;
     } catch (error) {

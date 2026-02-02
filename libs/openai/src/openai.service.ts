@@ -40,6 +40,11 @@ import { BraindumpTaskDto } from './dto/braindump-task-response.dto';
 import { SubtasksDto } from './dto/subtasks-response.dto';
 import { PromptCacheService } from './prompt-cache.service';
 
+type SafetyUserContext = {
+  jobDetails?: string | null;
+  typicalDistractions?: string | null;
+};
+
 @Injectable()
 export class OpenAIService {
   private readonly logger = new Logger(OpenAIService.name);
@@ -301,6 +306,7 @@ export class OpenAIService {
   async checkIfUrlIsSafeToUse(
     isUrlSafeDto: IsUrlSafeDto,
     prefLanguage: string,
+    userContext?: SafetyUserContext,
   ): Promise<URLSafeProbabilityResponseDto> {
     const {
       url,
@@ -372,9 +378,32 @@ export class OpenAIService {
         current_tasks: currentTasksJson,
       });
 
+      // Append user context at the end to preserve prompt caching
+      let finalPromptContent = filledPromptContent;
+      const jobDetails = this.normalizeSafetyUserContextInput(userContext?.jobDetails, 'safety_user_job_details');
+      const typicalDistractions = this.normalizeSafetyUserContextInput(
+        userContext?.typicalDistractions,
+        'safety_user_typical_distractions',
+      );
+      if (jobDetails || typicalDistractions) {
+        const contextParts: string[] = [];
+        if (jobDetails) {
+          contextParts.push(`The user provided this context about their job: ${this.wrapUserInput(jobDetails)}`);
+        }
+        if (typicalDistractions) {
+          const distractionPhrase = jobDetails
+            ? 'And said that they normally get distracted by:'
+            : 'The user said that they normally get distracted by:';
+          contextParts.push(`${distractionPhrase} ${this.wrapUserInput(typicalDistractions)}`);
+        }
+        if (contextParts.length > 0) {
+          finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
+        }
+      }
+
       const basePrompt: ChatCompletionMessageParam = {
         role: 'system',
-        content: filledPromptContent,
+        content: finalPromptContent,
       };
 
       let retryCount = 0;
@@ -436,6 +465,7 @@ export class OpenAIService {
   async checkIfAppIsSafeToUse(
     isAppSafeDto: IsAppSafeDto,
     prefLanguage: string,
+    userContext?: SafetyUserContext,
   ): Promise<URLSafeProbabilityResponseDto> {
     const {
       focusMode,
@@ -487,9 +517,32 @@ export class OpenAIService {
       current_tasks: currentTasksJson,
     });
 
+    // Append user context at the end to preserve prompt caching
+    let finalPromptContent = filledPromptContent;
+    const jobDetails = this.normalizeSafetyUserContextInput(userContext?.jobDetails, 'safety_user_job_details');
+    const typicalDistractions = this.normalizeSafetyUserContextInput(
+      userContext?.typicalDistractions,
+      'safety_user_typical_distractions',
+    );
+    if (jobDetails || typicalDistractions) {
+      const contextParts: string[] = [];
+      if (jobDetails) {
+        contextParts.push(`The user provided this context about their job: ${this.wrapUserInput(jobDetails)}`);
+      }
+      if (typicalDistractions) {
+        const distractionPhrase = jobDetails
+          ? 'And said that they normally get distracted by:'
+          : 'The user said that they normally get distracted by:';
+        contextParts.push(`${distractionPhrase} ${this.wrapUserInput(typicalDistractions)}`);
+      }
+      if (contextParts.length > 0) {
+        finalPromptContent = `${filledPromptContent}\n\n${contextParts.join('\n')}`;
+      }
+    }
+
     const basePrompt: ChatCompletionMessageParam = {
       role: 'system',
-      content: filledPromptContent,
+      content: finalPromptContent,
     };
 
     let retryCount = 0;
@@ -1113,6 +1166,20 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     return `${INPUT_WRAPPER}${input}${INPUT_WRAPPER}`;
   }
 
+  private normalizeSafetyUserContextInput(input: string | null | undefined, context: string): string | undefined {
+    const value = input?.trim();
+    if (!value) {
+      return undefined;
+    }
+
+    const truncated = value.slice(0, MAX_WORD_LENGTH.metadata);
+    if (!this.isValidInput(truncated, MAX_WORD_LENGTH.metadata, context)) {
+      return undefined;
+    }
+
+    return truncated;
+  }
+
   private fillPrompt(
     template: string | null | undefined,
     replacements: Record<string, string | undefined | null>,
@@ -1122,6 +1189,22 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       const placeholder = `{{${key}}}`;
       return acc.split(placeholder).join(safeValue);
     }, template ?? '');
+  }
+
+  private tryParseChatMessages(template: string): ChatCompletionMessageParam[] | null {
+    const trimmed = template.trim();
+    if (!trimmed.startsWith('[')) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (!Array.isArray(parsed)) {
+        return null;
+      }
+      return parsed as ChatCompletionMessageParam[];
+    } catch {
+      return null;
+    }
   }
 
   async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
@@ -1437,7 +1520,7 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     try {
       const prompt = this.promptCacheService.getPrompt('habit-import-image');
 
-      const filledPrompt = this.fillPrompt(prompt, {});
+      const filledPrompt = this.fillPrompt(prompt, { url: imageBuffer });
       if (!prompt) {
         this.logger.warn('OpenAI:habitImportImage prompt missing from cache');
         this.sentryService.instance().captureMessage('Habit import image prompt missing from cache', {
@@ -1445,21 +1528,25 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
         });
       }
 
-      const messages: ChatCompletionMessageParam[] = [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: filledPrompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageBuffer,
-                detail: 'high',
+      const promptMessages = filledPrompt ? this.tryParseChatMessages(filledPrompt) : null;
+
+      const messages: ChatCompletionMessageParam[] =
+        promptMessages ??
+        ([
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: filledPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageBuffer,
+                  detail: 'high',
+                },
               },
-            },
-          ],
-        },
-      ];
+            ],
+          },
+        ] as ChatCompletionMessageParam[]);
 
       const response = await this.analyzeImage(messages);
       const choice0 = response.choices?.[0];
@@ -1518,8 +1605,17 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       this.logger.debug(`OpenAI:extractHabitsFromImage parsed ${JSON.stringify({ habitCount: normalized.length })}`);
       return normalized;
     } catch (error) {
+      this.logger.error(
+        `OpenAI:extractHabitsFromImage error ${JSON.stringify({
+          errorMessage: error?.message ?? null,
+          errorName: error?.name ?? null,
+          errorCode: (error as any)?.code ?? null,
+          errorStatus: (error as any)?.status ?? null,
+          errorType: (error as any)?.type ?? null,
+        })}`,
+      );
       this.sentryService.instance().captureException(error, { level: 'error' });
-      throw new Error('Failed to extract habits from image');
+      throw new Error(`Failed to extract habits from image: ${error.message}`);
     }
   }
 

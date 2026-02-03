@@ -165,3 +165,61 @@ tests:
     assert:
       - type: javascript
         value: file://../validate-task-suggestion.js
+
+  # Test 9: Zoho Sign with unrelated AWS task as current task - should NOT suggest current task
+  - description: "Zoho Sign with unrelated AWS task - should suggest new task, not current task"
+    vars:
+      url: "https://sign.zoho.com/signrequest"
+      tab_title: "Sign Document - Zoho Sign"
+      meta_description: "Electronic signature and document signing"
+      current_task_in_todo_player: "aws infra for BearlyMail"
+      current_tasks_list: |
+        - task_name: "aws infra for BearlyMail"
+          task_id: "task-aws-123"
+        - task_name: "Code review"
+          task_id: "task-review-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-aws-123", "task-review-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 10: Slack with team comms as current task - CAN suggest current task (genuinely aligned)
+  - description: "Slack with team comms task - can suggest current task since aligned"
+    vars:
+      url: "https://app.slack.com/client/T123/C456"
+      tab_title: "Slack - Team Channel"
+      meta_description: "Team messaging and collaboration"
+      current_task_in_todo_player: "check team comms"
+      current_tasks_list: |
+        - task_name: "check team comms"
+          task_id: "task-comms-123"
+        - task_name: "Code review"
+          task_id: "task-review-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-comms-123"
+      existing_task_ids: ["task-comms-123", "task-review-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 11: Random shopping site with coding task as current task - should suggest new task
+  - description: "Shopping site with coding task - should suggest new task, not current task"
+    vars:
+      url: "https://www.amazon.com/dp/B09V3KXJPB"
+      tab_title: "Baby Mattress - Amazon"
+      meta_description: "Buy baby mattress online"
+      current_task_in_todo_player: "Fix backend API bug"
+      current_tasks_list: |
+        - task_name: "Fix backend API bug"
+          task_id: "task-bug-123"
+        - task_name: "Deploy to production"
+          task_id: "task-deploy-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-bug-123", "task-deploy-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js

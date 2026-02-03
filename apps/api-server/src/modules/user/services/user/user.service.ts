@@ -23,6 +23,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
+import { R2Service } from '@app/r2';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
@@ -62,6 +63,7 @@ import {
   EMAIL_SUBJECTS,
   FOCUS_BEAR_EMAILS,
   USERNAME_VALIDATION_TIMEOUT,
+  S3_BUCKET_PROFILE_IMAGES,
 } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
@@ -114,6 +116,7 @@ export class UserService {
     private completedActivitySequenceService: CompletedActivitySequenceService,
     @Inject(forwardRef(() => AccountabilityBuddyService))
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
+    private readonly r2Service: R2Service,
   ) {}
 
   @SentryTraced('syncUserAccount')
@@ -1214,5 +1217,26 @@ export class UserService {
         logQueueFailures: true,
       }
     );
+  }
+
+  async getProfileImageUploadUrl(
+    userId: string,
+    filename: string,
+    contentType: string,
+  ): Promise<{ uploadUrl: string; publicUrl: string }> {
+    const user = await this.userRepository.orm.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException(`User with id: ${userId} does not exist!`);
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const key = `${userId}/${timestamp}-${filename}`;
+
+    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_PROFILE_IMAGES, key, contentType);
+
+    const r2PublicUrl = this.config.get<string>('r2.publicUrl');
+    const publicUrl = `${r2PublicUrl}/${S3_BUCKET_PROFILE_IMAGES}/${key}`;
+
+    return { uploadUrl, publicUrl };
   }
 }

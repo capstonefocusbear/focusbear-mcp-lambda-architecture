@@ -16,6 +16,7 @@ import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
 import { SendGridService } from '@app/send-grid';
+import { R2Service } from '@app/r2';
 import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
@@ -51,6 +52,7 @@ import {
   SendGridServiceMock,
   CompletedActivitySequenceServiceMock,
   FocusModeServiceMock,
+  R2ServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -135,6 +137,7 @@ describe('UserService', () => {
         },
         CompletedActivitySequenceService,
         AccountabilityBuddyService,
+        R2Service,
       ],
     })
       .overrideProvider(AccountabilityBuddyService)
@@ -179,6 +182,8 @@ describe('UserService', () => {
       .useValue(FocusModeServiceMock)
       .overrideProvider(CompletedActivitySequenceService)
       .useValue(CompletedActivitySequenceServiceMock)
+      .overrideProvider(R2Service)
+      .useValue(R2ServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
   });
@@ -1684,6 +1689,27 @@ describe('UserService', () => {
       await userService.uninstallApplication(dummyUninstallApplicationQueryDto, userDummy.id);
 
       expect(SendGridServiceMock.sendEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getProfileImageUploadUrl', () => {
+    it('should throw NotFoundException if user does not exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await expect(
+        userService.getProfileImageUploadUrl('non-existent-user-id', 'profile.jpg', 'image/jpeg'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should return upload URL and public URL for valid user', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      const result = await userService.getProfileImageUploadUrl(userDummy.id, 'profile.jpg', 'image/jpeg');
+
+      expect(result).toHaveProperty('uploadUrl');
+      expect(result).toHaveProperty('publicUrl');
+      expect(result.publicUrl).toContain(userDummy.id);
+      expect(result.publicUrl).toContain('profile.jpg');
     });
   });
 });

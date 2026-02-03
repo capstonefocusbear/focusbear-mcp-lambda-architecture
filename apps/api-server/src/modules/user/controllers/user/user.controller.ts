@@ -47,6 +47,7 @@ import { UnsubscribeEmailDto } from '../../dto/unsubscribe-email.dto';
 import { UserEmailPreferencesService } from '../../services/user-email-preferences/user-email-preferences.service';
 import { EmailTemplateCompilerService } from '../../../email/services/email-template-compiler/email-template-compiler.service';
 import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-preferences-with-token.dto';
+import { CreateProfileImageUploadUrlQueryDto } from '../../dto/create-profile-image-upload-url-query.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -381,5 +382,16 @@ export class UserController {
   async updateEmailPreferencesWithToken(@Body() dto: UpdateEmailPreferencesWithTokenDto): Promise<{ message: string }> {
     await this.userEmailPreferencesService.updateEmailPreferencesWithToken(dto.token, dto.email_frequency);
     return { message: 'Email preferences updated successfully' };
+  }
+
+  @Get('profile-image-upload-url')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @ApiOperation({ summary: 'Get a presigned URL for uploading a profile image to R2' })
+  async getProfileImageUploadUrl(
+    @AuthContext() { user }: Passport,
+    @Query() { filename, content_type }: CreateProfileImageUploadUrlQueryDto,
+  ): Promise<{ uploadUrl: string; publicUrl: string }> {
+    return this.userService.getProfileImageUploadUrl(user.id, filename, content_type);
   }
 }

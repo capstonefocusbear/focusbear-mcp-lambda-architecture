@@ -70,11 +70,13 @@ const mockPrompts = {
   ],
 };
 
+const getDefaultPrompt = (name: string) => {
+  const prompt = mockPrompts.prompts.find((p) => p.name === name);
+  return prompt ? prompt.content : null;
+};
+
 const promptCacheServiceMock = {
-  getPrompt: jest.fn().mockImplementation((name: string) => {
-    const prompt = mockPrompts.prompts.find((p) => p.name === name);
-    return prompt ? prompt.content : null;
-  }),
+  getPrompt: jest.fn().mockImplementation(getDefaultPrompt),
 
   getAllPrompts: jest.fn().mockReturnValue(mockPrompts.prompts),
 
@@ -108,6 +110,8 @@ describe('OpenAIService', () => {
     mockEmbeddingsCreate.mockReset();
     mockChatCompletionsCreate.mockReset();
     mockChatCompletionsCreate.mockRejectedValue(new Error('mocked openai failure'));
+    promptCacheServiceMock.getPrompt.mockReset();
+    promptCacheServiceMock.getPrompt.mockImplementation(getDefaultPrompt);
   });
 
   beforeAll(async () => {
@@ -1041,7 +1045,7 @@ describe('OpenAIService', () => {
         if (name === 'username-validation') {
           return 'Check if the following username is appropriate: {{input_wrapper}}{{username}}{{input_wrapper}}';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
 
       service = new OpenAIService(
@@ -1148,7 +1152,7 @@ describe('OpenAIService', () => {
         if (name === 'habit-adjustment-default') {
           return 'You are a helpful AI assistant that helps users refine their daily habits and routines. Return ONLY a JSON array of objects with keys: id, name, duration_seconds.';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
 
       service = new OpenAIService(
@@ -1761,7 +1765,7 @@ describe('OpenAIService', () => {
         if (name === 'subtasks-generation') {
           return 'Break down the following task into smaller steps: {{input_wrapper}}{{task}}{{input_wrapper}} in {{language}}';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
 
       service = new OpenAIService(
@@ -1813,7 +1817,7 @@ describe('OpenAIService', () => {
         if (name === 'brain-dump-conversion') {
           return 'Convert the following brain dump to tasks: {{input_wrapper}}{{brain_dump_contents}}{{input_wrapper}}';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
 
       service = new OpenAIService(
@@ -1953,7 +1957,7 @@ describe('OpenAIService', () => {
         if (name === 'usage-screenshot-analysis') {
           return 'Analyze this usage screenshot';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
     });
 
@@ -2009,7 +2013,7 @@ describe('OpenAIService', () => {
         if (name === 'emoji-generation') {
           return 'Generate a single emoji for this activity: {{input_wrapper}}{{activity_name}}{{input_wrapper}}';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
 
       service = new OpenAIService(

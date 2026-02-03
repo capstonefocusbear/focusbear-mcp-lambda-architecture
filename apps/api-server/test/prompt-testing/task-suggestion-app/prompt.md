@@ -27,3 +27,4 @@ Return your response as a JSON object with this exact format:
 }
 
 If suggesting a new task, use a simple identifier like "suggested-{timestamp}" for the task_id.
+The task_id MUST start with "suggested-".

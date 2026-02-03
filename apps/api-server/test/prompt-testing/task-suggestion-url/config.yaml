@@ -1,6 +1,5 @@
 prompts:
-  - id: task-suggestion-url
-    file: prompt.md
+  - file://prompt.md
 
 providers:
   - id: openai:gpt-4o-mini
@@ -14,6 +13,7 @@ output:
   - debug
   - json
 
+# Note: LLM evals can be flaky even at low temperature; rerun if you see a single failure.
 tests:
   # Test 1: GitHub with "Coding" task - SHOULD match (GitHub is commonly used for coding)
   - description: "GitHub with Coding task - should match existing task"
@@ -34,7 +34,7 @@ tests:
       existing_task_ids: ["task-coding-123", "task-email-456", "task-docs-789"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js
 
   # Test 2: Google homepage with unrelated tasks - should suggest new task
   - description: "Google homepage with unrelated tasks - should suggest new task"
@@ -52,7 +52,7 @@ tests:
       existing_task_ids: ["task-docs-789", "task-plants-456"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js
 
   # Test 3: Jira with project management task - SHOULD match (specialized site)
   - description: "Jira with project management task - should match existing task"
@@ -71,7 +71,7 @@ tests:
       existing_task_ids: ["task-pm-123", "task-blog-456"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js
 
   # Test 4: Figma with Design task - SHOULD match (specialized site)
   - description: "Figma with Design task - should match existing task"
@@ -90,7 +90,7 @@ tests:
       existing_task_ids: ["task-design-123", "task-tests-456"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js
 
   # Test 5: Stack Overflow with Development task - SHOULD match (commonly used for coding)
   - description: "Stack Overflow with Development task - should match existing task"
@@ -109,7 +109,7 @@ tests:
       existing_task_ids: ["task-dev-123", "task-meetings-456"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js
 
   # Test 6: Twitter feed with only unrelated tasks - should suggest new task
   - description: "Twitter feed with only unrelated tasks - should suggest new task"
@@ -127,7 +127,7 @@ tests:
       existing_task_ids: ["task-bug-123", "task-deploy-456"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js
 
   # Test 7: Gmail inbox with only coding tasks - should suggest new task
   - description: "Gmail inbox with only coding tasks - should suggest new task"
@@ -145,7 +145,7 @@ tests:
       existing_task_ids: ["task-tests-123", "task-review-456"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js
 
   # Test 8: Gmail inbox with Email task - SHOULD match (commonly used for email)
   - description: "Gmail inbox with Email task - should match existing task"
@@ -164,4 +164,4 @@ tests:
       existing_task_ids: ["task-email-123", "task-review-456"]
     assert:
       - type: javascript
-        value: file://validate-task-suggestion.js
+        value: file://../validate-task-suggestion.js

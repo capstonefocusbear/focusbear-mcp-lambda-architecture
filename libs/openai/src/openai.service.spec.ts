@@ -351,6 +351,7 @@ describe('OpenAIService', () => {
         'Baby mattresses and changepads',
         dto.current_tasks,
         'en',
+        undefined,
       );
       completionsSpy.mockRestore();
       suggestTaskSpy.mockRestore();
@@ -993,7 +994,7 @@ describe('OpenAIService', () => {
       expect(result.allowed_probability).toBe(0.6);
       expect(result.suggested_task).toBe('coding project');
       expect(result.suggested_task_id).toBe('task-789');
-      expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en');
+      expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en', undefined);
       completionsSpy.mockRestore();
       suggestTaskSpy.mockRestore();
     });

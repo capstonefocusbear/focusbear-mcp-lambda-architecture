@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -9,6 +9,8 @@ import { UpdateTaskCommentDto } from '../dto/update-task-comment.dto';
 import { TaskCommentParamsDto } from '../dto/task-comment-params.dto';
 import { TaskCommentByIdParamsDto } from '../dto/task-comment-by-id-params.dto';
 import { TaskCommentResponseDto } from '../dto/task-comment-response.dto';
+import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
 
 @Controller('to-do/:task_id/comments')
 @ApiTags('task-comments')
@@ -29,9 +31,10 @@ export class TaskCommentController {
   @Get()
   async getComments(
     @Param() params: TaskCommentParamsDto,
+    @Query() paginationOptions: PaginationOptionsDto,
     @AuthContext() { user }: Passport,
-  ): Promise<TaskCommentResponseDto[]> {
-    return this.taskCommentService.getCommentsByTaskId(user.id, params.task_id);
+  ): Promise<PaginationDto<TaskCommentResponseDto>> {
+    return this.taskCommentService.getCommentsByTaskId(user.id, params.task_id, paginationOptions);
   }
 
   @Put(':comment_id')

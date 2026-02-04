@@ -25,6 +25,7 @@ import { SyncedProjectsController } from './controllers/synced-projects.controll
 import { SyncedProjectsService } from './services/synced-projects.service';
 import { IntegrationModule } from '../integration/integration.module';
 import { FocusModeModule } from '../focus-mode/focus-mode.module';
+import { ProjectModule } from '../project/project.module';
 import { PlatformIntegrationRepository } from '../platform-integrations/repositories/platform-integration.repository';
 import { AsyncTaskModule } from '../async-task/async-task.module';
 import { BullQueues } from '../../shared/utils/constants';
@@ -91,6 +92,7 @@ import { BullQueues } from '../../shared/utils/constants';
       useFactory: (configService: ConfigService): any => configService.get('openai'),
     }),
     forwardRef(() => FocusModeModule),
+    forwardRef(() => ProjectModule),
   ],
   controllers: [
     TodoController,

@@ -52,6 +52,7 @@ export class ToDo extends BaseEntity {
   })
   assignee_id?: string;
 
+  @Index()
   @Column({
     type: 'varchar',
     length: 100,

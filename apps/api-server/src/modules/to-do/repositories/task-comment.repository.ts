@@ -9,11 +9,13 @@ export class TaskCommentRepository extends BaseRepository<TaskComment> {
     super(dataSource, TaskComment);
   }
 
-  async getCommentsByTaskId(taskId: string): Promise<TaskComment[]> {
-    return this.orm.find({
+  async getCommentsByTaskId(taskId: string, options?: { skip?: number; take?: number }): Promise<[TaskComment[], number]> {
+    return this.orm.findAndCount({
       where: { task_id: taskId },
       relations: ['user'],
       order: { created_at: 'ASC' },
+      skip: options?.skip,
+      take: options?.take,
     });
   }
 

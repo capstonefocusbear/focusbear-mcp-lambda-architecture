@@ -4,6 +4,8 @@ import { randomUUID } from 'crypto';
 import { TaskCommentService } from './task-comment.service';
 import { TaskCommentRepository } from '../repositories/task-comment.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
+import { ProjectMemberRepository } from '../../project/repositories/project-member.repository';
+import { ProjectMemberInvitationStatus } from '../../project/domain/project-member-invitation-status.enum';
 
 const TaskCommentRepositoryMock = {
   orm: {
@@ -20,6 +22,10 @@ const ToDoRepositoryMock = {
   orm: {
     findOne: jest.fn(),
   },
+};
+
+const ProjectMemberRepositoryMock = {
+  getMemberByProjectAndUser: jest.fn(),
 };
 
 describe('TaskCommentService', () => {
@@ -47,12 +53,14 @@ describe('TaskCommentService', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [TaskCommentService, TaskCommentRepository, ToDoRepository],
+      providers: [TaskCommentService, TaskCommentRepository, ToDoRepository, ProjectMemberRepository],
     })
       .overrideProvider(TaskCommentRepository)
       .useValue(TaskCommentRepositoryMock)
       .overrideProvider(ToDoRepository)
       .useValue(ToDoRepositoryMock)
+      .overrideProvider(ProjectMemberRepository)
+      .useValue(ProjectMemberRepositoryMock)
       .compile();
 
     taskCommentService = moduleRef.get<TaskCommentService>(TaskCommentService);
@@ -91,7 +99,7 @@ describe('TaskCommentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access to task', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
       await expect(taskCommentService.createComment(userDummy.id, otherTask.id, { content: 'Test' })).rejects.toThrow(
@@ -111,26 +119,70 @@ describe('TaskCommentService', () => {
 
       expect(result.content).toBe('Test comment');
     });
+
+    it('positive: should allow project member to create comment', async () => {
+      const projectId = randomUUID();
+      const projectTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: projectId };
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce({
+        invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
+      });
+      TaskCommentRepositoryMock.orm.save.mockResolvedValueOnce(commentDummy);
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+
+      const result = await taskCommentService.createComment(userDummy.id, projectTask.id, {
+        content: 'Test comment',
+      });
+
+      expect(result.content).toBe('Test comment');
+      expect(ProjectMemberRepositoryMock.getMemberByProjectAndUser).toHaveBeenCalledWith(projectId, userDummy.id);
+    });
+
+    it('negative: should throw ForbiddenException when user is not a project member', async () => {
+      const projectId = randomUUID();
+      const projectTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: projectId };
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
+
+      await expect(
+        taskCommentService.createComment(userDummy.id, projectTask.id, { content: 'Test' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('negative: should throw ForbiddenException when project member invitation is pending', async () => {
+      const projectId = randomUUID();
+      const projectTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: projectId };
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce({
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+      });
+
+      await expect(
+        taskCommentService.createComment(userDummy.id, projectTask.id, { content: 'Test' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('getCommentsByTaskId', () => {
-    it('positive: should return comments for task', async () => {
+    it('positive: should return paginated comments for task', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
-      TaskCommentRepositoryMock.getCommentsByTaskId.mockResolvedValueOnce([commentDummy]);
+      TaskCommentRepositoryMock.getCommentsByTaskId.mockResolvedValueOnce([[commentDummy], 1]);
 
       const result = await taskCommentService.getCommentsByTaskId(userDummy.id, taskDummy.id);
 
-      expect(result).toHaveLength(1);
-      expect(result[0].content).toBe('Test comment');
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].content).toBe('Test comment');
+      expect(result.meta.itemCount).toBe(1);
     });
 
-    it('positive: should return empty array when no comments', async () => {
+    it('positive: should return empty paginated result when no comments', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
-      TaskCommentRepositoryMock.getCommentsByTaskId.mockResolvedValueOnce([]);
+      TaskCommentRepositoryMock.getCommentsByTaskId.mockResolvedValueOnce([[], 0]);
 
       const result = await taskCommentService.getCommentsByTaskId(userDummy.id, taskDummy.id);
 
-      expect(result).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
+      expect(result.meta.itemCount).toBe(0);
     });
 
     it('negative: should throw NotFoundException when task does not exist', async () => {
@@ -142,7 +194,7 @@ describe('TaskCommentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
       await expect(taskCommentService.getCommentsByTaskId(userDummy.id, otherTask.id)).rejects.toThrow(

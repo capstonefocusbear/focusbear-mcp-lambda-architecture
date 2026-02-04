@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, IsNull } from 'typeorm';
+import { Brackets, DataSource, IsNull } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Project } from '../entities/project.entity';
 
@@ -13,12 +13,17 @@ export class ProjectRepository extends BaseRepository<Project> {
     return this.orm
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.members', 'members')
-      .where('project.owner_id = :userId', { userId })
-      .andWhere('project.deleted_at IS NULL')
-      .orWhere('members.user_id = :userId AND members.invitation_status = :status', {
-        userId,
-        status: 'accepted',
-      })
+      .where(
+        new Brackets((qb) => {
+          qb.where('project.owner_id = :userId', { userId }).orWhere(
+            new Brackets((sqb) => {
+              sqb
+                .where('members.user_id = :userId', { userId })
+                .andWhere('members.invitation_status = :status', { status: 'accepted' });
+            }),
+          );
+        }),
+      )
       .andWhere('project.deleted_at IS NULL')
       .orderBy('project.created_at', 'DESC')
       .getMany();

@@ -120,11 +120,17 @@ export class CreateTableProjects1768535078000 implements MigrationInterface {
     await queryRunner.query(`
       ALTER TABLE "to_do" ADD COLUMN "custom_status_id" character varying(100)
     `);
+
+    // Create index for to_do.custom_status_id
+    await queryRunner.query(`
+      CREATE INDEX "IDX_to_do_custom_status_id" ON "to_do" ("custom_status_id")
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Remove custom_status_id column from to_do
+    // Remove custom_status_id index and column from to_do
     await queryRunner.query(`
+      DROP INDEX IF EXISTS "IDX_to_do_custom_status_id";
       ALTER TABLE "to_do" DROP COLUMN IF EXISTS "custom_status_id"
     `);
 

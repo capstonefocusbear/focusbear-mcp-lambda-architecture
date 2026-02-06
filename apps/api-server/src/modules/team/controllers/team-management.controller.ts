@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -20,6 +20,7 @@ import { HasTeamSubscription } from '../../subscription/guards/has-team-subscrip
 import { RemoveTeamMemberDto } from '../dto/remove-team-member.dto';
 import { GetTeamInsightsQueryDto } from '../dto/get-team-insights-query.dto';
 import { GetMemberInsightsResponseDto } from '../dto/get-member-insights-response.dto';
+import { JoinTeamDto } from '../dto/join-team.dto';
 
 @Controller('team-management')
 @ApiTags('team-management')
@@ -67,6 +68,20 @@ export class TeamManagementController {
     @AuthContext() { user: { id: user_id } }: Passport,
   ): Promise<any> {
     return this.teamManagementService.acceptInvitation(token, user_id);
+  }
+
+  @Post('/join')
+  @ApiOperation({ summary: 'Self-enroll authenticated user into a team by team_id' })
+  @ApiResponse({ status: 201, description: 'Successfully joined team' })
+  @ApiResponse({ status: 200, description: 'User is already a member of this team' })
+  @ApiResponse({ status: 400, description: 'Invalid team_id or team has reached its member limit' })
+  @ApiResponse({ status: 404, description: 'Team not found' })
+  async joinTeam(
+    @Body() { team_id }: JoinTeamDto,
+    @AuthContext() { user: { id: userId } }: Passport,
+  ): Promise<any> {
+    const result = await this.teamManagementService.joinTeam(userId, team_id);
+    return result;
   }
 
   @Post('/assign-admin')

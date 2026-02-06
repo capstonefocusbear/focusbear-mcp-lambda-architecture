@@ -601,6 +601,58 @@ export class TeamManagementService {
     }
   }
 
+  async joinTeam(userId: string, teamId: string) {
+    // 1. Look up the team
+    const team = await this.teamRepository.orm.findOne({ where: { id: teamId } });
+    if (!team) {
+      throw new NotFoundException('Team not found');
+    }
+
+    // 2. Check if team is expired
+    if (team.expires_date && new Date(team.expires_date) < new Date()) {
+      throw new NotFoundException('Team not found');
+    }
+
+    // 3. Check existing membership (idempotent - return early if already a member)
+    const existingMember = await this.teamToMemberRepository.orm.findOne({
+      where: { team_id: teamId, member_id: userId },
+    });
+    if (existingMember) {
+      return { message: 'User is already a member of this team', statusCode: 200 };
+    }
+
+    // 4. Check team capacity
+    const members = await this.teamRepository.getTeamMembersIncludingUnregistered(teamId);
+    if (team.team_size_limit && members.length >= team.team_size_limit) {
+      throw new BadRequestException('Team has reached its member limit');
+    }
+
+    // 5. Add member as standard member with accepted status
+    const newMember = this.teamToMemberRepository.orm.create({
+      team_id: teamId,
+      member_id: userId,
+      member_expiry_date: team.expires_date ? (team.expires_date as Date) : null,
+      invitation_status: InvitationStatus.ACCEPTED,
+      invitation_sent_at: null,
+      invitation_send_count: 0,
+      invitation_responded_at: null,
+    });
+    await this.teamToMemberRepository.orm.save(newMember);
+
+    // 6. Grant team membership entitlement and update team size
+    await Promise.allSettled([
+      this.revenueCatService.grantTeamMembership(userId, Entitlement.team_member, team.expires_date),
+      this.syncTeamSizeWithSubscription(team, members.length + 1),
+    ]);
+
+    return {
+      message: 'Successfully joined team',
+      team_id: teamId,
+      team_name: team.name,
+      statusCode: 201,
+    };
+  }
+
   async syncTeamSizeWithSubscription(team: Team, teamSize: number) {
     if (team.payment_type === PaymentType.STRIPE) {
       const subId = team?.stripe_data?.subscriptionId;

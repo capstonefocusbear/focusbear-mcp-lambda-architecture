@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { getQueueToken } from '@nestjs/bull';
 import { SENTRY_TOKEN } from '@app/observability';
 import { SendGridService } from '@app/send-grid';
+import { Auth0ManagementService } from '@app/auth0';
 import { DataSource } from 'typeorm';
 import { UserEmailPreferencesService } from './user-email-preferences.service';
 import { UserRepository } from '../../repositories/user.repository';
@@ -59,6 +60,11 @@ describe('UserEmailPreferencesService', () => {
     sendEmail: jest.fn(),
   };
 
+  const mockAuth0ManagementService = {
+    getAuth0UsersWithEmail: jest.fn(),
+    getAuth0User: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -78,6 +84,10 @@ describe('UserEmailPreferencesService', () => {
         {
           provide: SendGridService,
           useValue: mockSendGridService,
+        },
+        {
+          provide: Auth0ManagementService,
+          useValue: mockAuth0ManagementService,
         },
         {
           provide: getQueueToken('emailQueue'),
@@ -300,6 +310,143 @@ describe('UserEmailPreferencesService', () => {
         extra: { userId, reason: dto.reason },
         tags: { email_action: 'unsubscribe' },
       });
+    });
+  });
+
+  describe('sendEmailPreferencesLink', () => {
+    const testEmail = 'test@example.com';
+    const mockAuth0User = {
+      user_id: 'auth0|123',
+      email: testEmail,
+      email_verified: true,
+    };
+    const mockUser = {
+      id: 'user-123',
+      auth0_id: 'auth0|123',
+      email_frequency: EmailFrequency.WEEKLY,
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should send email when user exists in Auth0 and local DB', async () => {
+      // Arrange
+      mockAuth0ManagementService.getAuth0UsersWithEmail.mockResolvedValue([mockAuth0User]);
+      mockUserRepository.orm.findOne.mockResolvedValue(mockUser);
+      mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      mockJwtService.sign.mockReturnValue('mock-token-abc');
+
+      // Act
+      await service.sendEmailPreferencesLink(testEmail);
+
+      // Assert
+      expect(mockAuth0ManagementService.getAuth0UsersWithEmail).toHaveBeenCalledWith(testEmail);
+      expect(mockUserRepository.orm.findOne).toHaveBeenCalledWith({
+        where: { auth0_id: mockAuth0User.user_id },
+      });
+      expect(mockSendGridService.sendEmail).toHaveBeenCalledWith({
+        to: testEmail,
+        from: 'support@focusbear.io',
+        replyTo: 'support@focusbear.io',
+        subject: 'Manage Your Focus Bear Email Preferences',
+        html: expect.stringContaining('mock-token-abc'),
+        text: expect.stringContaining('mock-token-abc'),
+      });
+      expect(mockSentryInstance.captureMessage).toHaveBeenCalledWith(
+        'Email preferences link sent',
+        expect.objectContaining({
+          level: 'info',
+          extra: expect.objectContaining({ userId: 'user-123' }),
+          tags: { email_action: 'preferences_link_sent' },
+        }),
+      );
+    });
+
+    it('should silently skip when Auth0 user does not exist (anti-enumeration)', async () => {
+      // Arrange
+      mockAuth0ManagementService.getAuth0UsersWithEmail.mockResolvedValue([]);
+
+      // Act
+      await service.sendEmailPreferencesLink(testEmail);
+
+      // Assert
+      expect(mockAuth0ManagementService.getAuth0UsersWithEmail).toHaveBeenCalledWith(testEmail);
+      expect(mockUserRepository.orm.findOne).not.toHaveBeenCalled();
+      expect(mockSendGridService.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('should handle Auth0 user exists but local DB user does not', async () => {
+      // Arrange
+      mockAuth0ManagementService.getAuth0UsersWithEmail.mockResolvedValue([mockAuth0User]);
+      mockUserRepository.orm.findOne.mockResolvedValue(null);
+
+      // Act
+      await service.sendEmailPreferencesLink(testEmail);
+
+      // Assert
+      expect(mockAuth0ManagementService.getAuth0UsersWithEmail).toHaveBeenCalledWith(testEmail);
+      expect(mockUserRepository.orm.findOne).toHaveBeenCalledWith({
+        where: { auth0_id: mockAuth0User.user_id },
+      });
+      expect(mockSendGridService.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('should handle SendGrid errors gracefully', async () => {
+      // Arrange
+      const sendGridError = new Error('SendGrid API error');
+      mockAuth0ManagementService.getAuth0UsersWithEmail.mockResolvedValue([mockAuth0User]);
+      mockUserRepository.orm.findOne.mockResolvedValue(mockUser);
+      mockSendGridService.sendEmail.mockRejectedValue(sendGridError);
+      mockJwtService.sign.mockReturnValue('mock-token');
+
+      // Act
+      await service.sendEmailPreferencesLink(testEmail);
+
+      // Assert
+      expect(mockSentryInstance.captureException).toHaveBeenCalledWith(
+        sendGridError,
+        expect.objectContaining({
+          tags: { email_action: 'preferences_link_failed' },
+        }),
+      );
+    });
+
+    it('should handle Auth0 lookup errors gracefully', async () => {
+      // Arrange
+      const auth0Error = new Error('Auth0 API timeout');
+      mockAuth0ManagementService.getAuth0UsersWithEmail.mockRejectedValue(auth0Error);
+
+      // Act
+      await service.sendEmailPreferencesLink(testEmail);
+
+      // Assert
+      expect(mockAuth0ManagementService.getAuth0UsersWithEmail).toHaveBeenCalledWith(testEmail);
+      expect(mockUserRepository.orm.findOne).not.toHaveBeenCalled();
+      expect(mockSendGridService.sendEmail).not.toHaveBeenCalled();
+      expect(mockSentryInstance.captureException).toHaveBeenCalledWith(
+        auth0Error,
+        expect.objectContaining({
+          tags: { email_action: 'preferences_link_failed' },
+        }),
+      );
+    });
+
+    it('should generate valid JWT token for email preferences', async () => {
+      // Arrange
+      mockAuth0ManagementService.getAuth0UsersWithEmail.mockResolvedValue([mockAuth0User]);
+      mockUserRepository.orm.findOne.mockResolvedValue(mockUser);
+      mockSendGridService.sendEmail.mockResolvedValue(undefined);
+      mockJwtService.sign.mockReturnValue('valid-jwt-token');
+
+      // Act
+      await service.sendEmailPreferencesLink(testEmail);
+
+      // Assert
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        { userId: 'user-123', purpose: 'unsubscribe' },
+        { expiresIn: '30d' },
+      );
     });
   });
 });

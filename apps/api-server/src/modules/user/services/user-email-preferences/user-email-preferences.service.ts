@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectSentry, SentryService } from '@app/observability';
 import { SendGridService } from '@app/send-grid';
+import { Auth0ManagementService } from '@app/auth0';
 import { DataSource } from 'typeorm';
 import { UserRepository } from '../../repositories/user.repository';
 import { UpdateEmailPreferencesDto } from '../../dto/update-email-preferences.dto';
@@ -18,6 +19,7 @@ export class UserEmailPreferencesService {
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
     private readonly sendGridService: SendGridService,
+    private readonly auth0ManagementService: Auth0ManagementService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -147,13 +149,25 @@ export class UserEmailPreferencesService {
 
   async sendEmailPreferencesLink(email: string): Promise<void> {
     try {
-      const user = await this.userRepository.orm
-        .createQueryBuilder('user')
-        .where('user.email = :email', { email })
-        .getOne();
+      // Look up user in Auth0 (cached, encrypted)
+      const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+      if (!auth0User) {
+        // Anti-enumeration: silently return without revealing if email exists
+        this.logger.log(`Email preferences link requested for non-existent email: ${email.substring(0, 3)}***`);
+        return;
+      }
+
+      // Find local user by auth0_id
+      const user = await this.userRepository.orm.findOne({
+        where: { auth0_id: auth0User.user_id },
+      });
 
       if (!user) {
-        this.logger.log(`Email preferences link requested for non-existent email: ${email.substring(0, 3)}***`);
+        // Auth0 user exists but no local user record - log for investigation
+        this.logger.warn('Auth0 user found but no local user record', {
+          auth0_id: auth0User.user_id,
+          email_substring: email.substring(0, 3),
+        });
         return;
       }
 
@@ -179,8 +193,15 @@ export class UserEmailPreferencesService {
       this.logger.error('Failed to send email preferences link:', {
         error: error.message,
         stack: error.stack,
+        email_substring: email.substring(0, 3),
       });
-      this.sentryService.instance().captureException(error);
+      this.sentryService.instance().captureException(error, {
+        tags: { email_action: 'preferences_link_failed' },
+        extra: {
+          email_substring: email.substring(0, 3),
+          error_name: error.name,
+        },
+      });
     }
   }
 

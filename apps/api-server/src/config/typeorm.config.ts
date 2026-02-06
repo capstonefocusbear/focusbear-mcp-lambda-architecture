@@ -44,6 +44,7 @@ import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 import { TrackEvent } from '../modules/events/entities/track-event.entity';
 import { Tutorial } from '../modules/activity/entities/tutorial.entity';
+import { Geofence } from '../modules/geofence/entities/geofence.entity';
 import { Feedback } from '../../../../libs/stripe/src/entities/feedback.entity';
 import { Survey } from '../modules/survey/entities/survey.entity';
 import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
@@ -123,6 +124,7 @@ export const typeormConfig = registerAs(
       Calendar,
       TrackEvent,
       Tutorial,
+      Geofence,
       Feedback,
       Survey,
       SurveyAnswer,

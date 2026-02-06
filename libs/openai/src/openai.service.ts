@@ -262,14 +262,10 @@ export class OpenAIService {
   @SentryTraced('streamChatReply')
   async streamChatReply(res: FastifyReply, messages: ChatCompletionMessageParam[], language = 'English') {
     const promptTemplate = this.promptCacheService.getPrompt('chat-reply');
-    const content = promptTemplate
-      ? this.fillPrompt(promptTemplate, { language })
-      : `You are a ${language} speaking chatbot(don't mention that you are a chatbot) 
-      named Focus Bear helping people to be productive and achieve 
-      the goals they set out to achieve. You are part of an app that has features 
-      like allowing users to block apps and websites they find distracting and letting them 
-       practice habits they set out to do as part of their daily routines. You are restricted to 
-      talking about productivity and habits and should limit responses to 100 words. Please greet the user briefly.`;
+    if (!promptTemplate) {
+      throw new Error('chat-reply prompt template not found');
+    }
+    const content = this.fillPrompt(promptTemplate, { language });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content,
@@ -601,34 +597,16 @@ export class OpenAIService {
       const currentTasksList = currentTasks?.map((t) => `- ${t.task_name} (ID: ${t.task_id})`).join('\n') || 'None';
 
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-url');
-      const taskSuggestionPrompt = promptTemplate
-        ? this.fillPrompt(promptTemplate, {
-            input_wrapper: INPUT_WRAPPER,
-            url,
-            tab_title: tabTitle,
-            meta_description: metaDescription,
-            current_tasks_list: currentTasksList,
-          })
-        : `Based on the following website information, suggest what task the user might be working on.
-
-Website URL: ${INPUT_WRAPPER}${url}${INPUT_WRAPPER}
-Page Title: ${INPUT_WRAPPER}${tabTitle}${INPUT_WRAPPER}
-Page Description: ${INPUT_WRAPPER}${metaDescription}${INPUT_WRAPPER}
-
-Current available tasks:
-${INPUT_WRAPPER}${currentTasksList}${INPUT_WRAPPER}
-
-Please analyze the website content and:
-1. If any of the current tasks seem relevant to this website, return the most relevant one (use its exact task_name and task_id)
-2. If none of the current tasks match, suggest a new task name that would be appropriate for this website
-
-Return your response as a JSON object with this exact format:
-{
-  "task_name": "the task name",
-  "task_id": "the task_id if from current tasks, or a new unique identifier if suggesting a new task"
-}
-
-If suggesting a new task, use a simple identifier like "suggested-{timestamp}" for the task_id.`;
+      if (!promptTemplate) {
+        throw new Error('task-suggestion-url prompt template not found');
+      }
+      const taskSuggestionPrompt = this.fillPrompt(promptTemplate, {
+        input_wrapper: INPUT_WRAPPER,
+        url,
+        tab_title: tabTitle,
+        meta_description: metaDescription,
+        current_tasks_list: currentTasksList,
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         this.getUntrustedUserInputPrompt(),
@@ -679,32 +657,15 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       const currentTasksList = currentTasks?.map((t) => `- ${t.task_name} (ID: ${t.task_id})`).join('\n') || 'None';
 
       const promptTemplate = this.promptCacheService.getPrompt('task-suggestion-app');
-      const taskSuggestionPrompt = promptTemplate
-        ? this.fillPrompt(promptTemplate, {
-            input_wrapper: INPUT_WRAPPER,
-            app_name: appName,
-            focus_mode: focusMode,
-            current_tasks_list: currentTasksList,
-          })
-        : `Based on the following app information, suggest what task the user might be working on.
-
-App Name: ${INPUT_WRAPPER}${appName}${INPUT_WRAPPER}
-Focus Mode: ${INPUT_WRAPPER}${focusMode}${INPUT_WRAPPER}
-
-Current available tasks:
-${INPUT_WRAPPER}${currentTasksList}${INPUT_WRAPPER}
-
-Please analyze the app and:
-1. If any of the current tasks seem relevant to this app, return the most relevant one (use its exact task_name and task_id)
-2. If none of the current tasks match, suggest a new task name that would be appropriate for this app
-
-Return your response as a JSON object with this exact format:
-{
-  "task_name": "the task name",
-  "task_id": "the task_id if from current tasks, or a new unique identifier if suggesting a new task"
-}
-
-If suggesting a new task, use a simple identifier like "suggested-{timestamp}" for the task_id.`;
+      if (!promptTemplate) {
+        throw new Error('task-suggestion-app prompt template not found');
+      }
+      const taskSuggestionPrompt = this.fillPrompt(promptTemplate, {
+        input_wrapper: INPUT_WRAPPER,
+        app_name: appName,
+        focus_mode: focusMode,
+        current_tasks_list: currentTasksList,
+      });
 
       const messages: ChatCompletionMessageParam[] = [
         this.getUntrustedUserInputPrompt(),
@@ -929,14 +890,10 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     });
 
     const promptTemplate = this.promptCacheService.getPrompt('username-validation');
-    const usernamePromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, username })
-      : `Given the following username, determine whether it uses curse words, sexual language, or could be offensive to anyone, if it is deemed fine, return true, if offensive, return false.
-      Examples of inappropriate usernames for which false should be returned: sexymommee, hitler 
-      the output should be in the format:
-      { allowed: boolean }
-      username: ${this.wrapUserInput(username)},
-      JSON output:`;
+    if (!promptTemplate) {
+      throw new Error('username-validation prompt template not found');
+    }
+    const usernamePromptContent = this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, username });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: usernamePromptContent,
@@ -973,17 +930,10 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     });
 
     const promptTemplate = this.promptCacheService.getPrompt('subtasks-generation');
-    const subtasksPromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, language, task })
-      : `Break down the following task into smaller steps. Each step should be a JSON object with the format: 
-      { "name": "Subtask Name (capitalized and in ${language})", "is_completed": false }. 
-      The final output should be: { "task": "${task}", "subtasks": [array of subtasks] }.
-      
-      Please use the following JSON structure without any code block formatting or backticks:
-    
-      Task: ${this.wrapUserInput(task)}
-      
-      JSON output:`;
+    if (!promptTemplate) {
+      throw new Error('subtasks-generation prompt template not found');
+    }
+    const subtasksPromptContent = this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, language, task });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: subtasksPromptContent,
@@ -1017,22 +967,13 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     });
 
     const promptTemplate = this.promptCacheService.getPrompt('brain-dump-conversion');
-    const brainDumpPromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, brain_dump_contents: brainDumpContents })
-      : `The user has done a 'brain dump' of ideas and wants help converting it into tasks and subtasks. 
-                Structure it into array of JSON tasks for them and come up with subtasks if the task is large. 
-                The user may have ADHD and needs help with task initiation so make the first task really easy.
-                Please use the following JSON structure without any code block formatting or backticks:
-                  [
-                    {
-                      "task_name": "name1",
-                      "estimated_duration_minutes": 20,
-                      "subtasks": ["subtask1", "subtask2"]
-                    }
-                  ]
-
-                Here is the braindump: ${this.wrapUserInput(brainDumpContents)}. 
-                `;
+    if (!promptTemplate) {
+      throw new Error('brain-dump-conversion prompt template not found');
+    }
+    const brainDumpPromptContent = this.fillPrompt(promptTemplate, {
+      input_wrapper: INPUT_WRAPPER,
+      brain_dump_contents: brainDumpContents,
+    });
     const userMessage: ChatCompletionMessageParam = {
       role: 'user',
       content: brainDumpPromptContent,
@@ -1191,6 +1132,22 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     }, template ?? '');
   }
 
+  private tryParseChatMessages(template: string): ChatCompletionMessageParam[] | null {
+    const trimmed = template.trim();
+    if (!trimmed.startsWith('[')) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (!Array.isArray(parsed)) {
+        return null;
+      }
+      return parsed as ChatCompletionMessageParam[];
+    } catch {
+      return null;
+    }
+  }
+
   async analyzeImage(messages: ChatCompletionMessageParam[]): Promise<OpenAI.Chat.ChatCompletion> {
     try {
       const openai = this.getOpenAIInstance(OpenAIKeyType.SCREEN_TIME_IMAGE_OCR);
@@ -1274,11 +1231,13 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
 
   async generateEmojiForActivity(activityName: string): Promise<string> {
     const promptTemplate = this.promptCacheService.getPrompt('emoji-generation');
-    const emojiPromptContent = promptTemplate
-      ? this.fillPrompt(promptTemplate, { input_wrapper: INPUT_WRAPPER, activity_name: activityName })
-      : `Given the following activity name that is part of the user's routine, generate a single emoji that best describe the activity.
-      Activity name: ${this.wrapUserInput(activityName)}
-      `;
+    if (!promptTemplate) {
+      throw new Error('emoji-generation prompt template not found');
+    }
+    const emojiPromptContent = this.fillPrompt(promptTemplate, {
+      input_wrapper: INPUT_WRAPPER,
+      activity_name: activityName,
+    });
     const defaultChat: ChatCompletionMessageParam = {
       role: 'system',
       content: emojiPromptContent,
@@ -1504,7 +1463,7 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
     try {
       const prompt = this.promptCacheService.getPrompt('habit-import-image');
 
-      const filledPrompt = this.fillPrompt(prompt, {});
+      const filledPrompt = this.fillPrompt(prompt, { url: imageBuffer });
       if (!prompt) {
         this.logger.warn('OpenAI:habitImportImage prompt missing from cache');
         this.sentryService.instance().captureMessage('Habit import image prompt missing from cache', {
@@ -1512,21 +1471,25 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
         });
       }
 
-      const messages: ChatCompletionMessageParam[] = [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: filledPrompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageBuffer,
-                detail: 'high',
+      const promptMessages = filledPrompt ? this.tryParseChatMessages(filledPrompt) : null;
+
+      const messages: ChatCompletionMessageParam[] =
+        promptMessages ??
+        ([
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: filledPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageBuffer,
+                  detail: 'high',
+                },
               },
-            },
-          ],
-        },
-      ];
+            ],
+          },
+        ] as ChatCompletionMessageParam[]);
 
       const response = await this.analyzeImage(messages);
       const choice0 = response.choices?.[0];
@@ -1585,8 +1548,17 @@ If suggesting a new task, use a simple identifier like "suggested-{timestamp}" f
       this.logger.debug(`OpenAI:extractHabitsFromImage parsed ${JSON.stringify({ habitCount: normalized.length })}`);
       return normalized;
     } catch (error) {
+      this.logger.error(
+        `OpenAI:extractHabitsFromImage error ${JSON.stringify({
+          errorMessage: error?.message ?? null,
+          errorName: error?.name ?? null,
+          errorCode: (error as any)?.code ?? null,
+          errorStatus: (error as any)?.status ?? null,
+          errorType: (error as any)?.type ?? null,
+        })}`,
+      );
       this.sentryService.instance().captureException(error, { level: 'error' });
-      throw new Error('Failed to extract habits from image');
+      throw new Error(`Failed to extract habits from image: ${error.message}`);
     }
   }
 

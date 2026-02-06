@@ -9,7 +9,7 @@ import { FocusModeTemplatesService } from './services/focus-mode-templates.servi
 @Module({
   providers: [FocusModeTemplatesRepository, InstalledFocusModeTemplatesRepository, FocusModeTemplatesService],
   exports: [FocusModeTemplatesRepository, InstalledFocusModeTemplatesRepository],
-  imports: [forwardRef(() => UserModule), FocusModeModule],
+  imports: [forwardRef(() => UserModule), forwardRef(() => FocusModeModule)],
   controllers: [FocusModeTemplatesController],
 })
 export class FocusModeTemplatesModule {}

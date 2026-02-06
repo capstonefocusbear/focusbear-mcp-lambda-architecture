@@ -1,7 +1,7 @@
 /* eslint-disable global-require */
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { SENTRY_TOKEN } from '@app/observability';
 import { BrevoService } from '@app/brevo/brevo.service';
 import axios from 'axios';
@@ -323,13 +323,12 @@ describe('EventService', () => {
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue(auth0UserDummy);
     });
 
-    it('negative: should return a not found exception if user is not found in DB', async () => {
+    it('positive: should return early without saving when user is not found in DB (deprecated endpoint)', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
-      const errorMessage = `User with ID: ${userDummy.id} does not exist!`;
 
-      await expect(
-        eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy),
-      ).rejects.toThrow(new NotFoundException(errorMessage));
+      await eventsService.handleIncomingEvent({ event_type: 'test-event' }, userDummy.id, headersDummy);
+
+      expect(QueueMock.add).not.toHaveBeenCalled();
     });
 
     it('positive: should add the incoming track event to the events queue', async () => {

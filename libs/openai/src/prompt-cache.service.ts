@@ -3,7 +3,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import * as fs from 'fs/promises';
 import * as yaml from 'js-yaml';
-import { join, dirname } from 'path';
+import { join, dirname, resolve, normalize } from 'path';
 import {
   PROMPT_CONFIG_PATH,
   APP_SAFETY_PROMPT_CONFIG_PATH,
@@ -54,13 +54,51 @@ export class PromptCacheService implements OnModuleInit {
     await this.loadPrompts();
   }
 
+  /**
+   * Resolves a file path relative to the config directory and validates
+   * that the resolved path stays within the config directory (prevents path traversal).
+   */
+  private resolveAndValidatePath(filePath: string, configPath: string): string | null {
+    // Reject paths with explicit parent directory references
+    if (filePath.includes('..')) {
+      return null;
+    }
+
+    const configDir = dirname(resolve(configPath));
+    const fullPath = normalize(join(configDir, filePath));
+
+    // Verify the resolved path is within the config directory
+    if (!fullPath.startsWith(configDir)) {
+      return null;
+    }
+
+    return fullPath;
+  }
+
   // Helper method to load prompt content, handling both raw strings and file references
   private async loadPromptContent(
     prompt: { id: string; raw?: string; file?: string },
     configPath: string,
   ): Promise<string | null> {
     if (prompt.raw) {
-      return prompt.raw;
+      const rawValue = String(prompt.raw);
+      const rawTrimmed = rawValue.trim();
+      if (rawTrimmed.startsWith('file://')) {
+        const filePath = rawTrimmed.replace('file://', '');
+        const fullPath = this.resolveAndValidatePath(filePath, configPath);
+        if (!fullPath) {
+          this.logger.error(`Path traversal attempt detected in prompt ${prompt.id}: ${filePath}`);
+          throw new Error('Invalid file path: path traversal not allowed');
+        }
+        try {
+          const content = await fs.readFile(fullPath, 'utf8');
+          return content;
+        } catch (error) {
+          this.logger.error(`Failed to load prompt file ${fullPath}: ${error.message}`);
+          throw error;
+        }
+      }
+      return rawValue;
     }
     if (prompt.file) {
       // Handle file:// protocol
@@ -68,9 +106,11 @@ export class PromptCacheService implements OnModuleInit {
       if (filePath.startsWith('file://')) {
         filePath = filePath.replace('file://', '');
       }
-      // Resolve relative to config file directory
-      const configDir = dirname(configPath);
-      const fullPath = join(configDir, filePath);
+      const fullPath = this.resolveAndValidatePath(filePath, configPath);
+      if (!fullPath) {
+        this.logger.error(`Path traversal attempt detected in prompt ${prompt.id}: ${filePath}`);
+        throw new Error('Invalid file path: path traversal not allowed');
+      }
       try {
         const content = await fs.readFile(fullPath, 'utf8');
         return content;

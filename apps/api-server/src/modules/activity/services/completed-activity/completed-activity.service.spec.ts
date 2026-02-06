@@ -25,6 +25,7 @@ import {
   UserServiceMock,
   PusherBeamsServiceMock,
   CompletedActivityQueueMock,
+  WebhookDispatcherServiceMock,
 } from '../../../../../test/mocks';
 import {
   ActivitiesArrayDummy,
@@ -81,6 +82,7 @@ import { LogQuantityAnswersStats } from '../../domain/log-quantity-answers-stats
 import { LogQuantityAnswer } from '../../entities/log-quantity-answers';
 import { UserService } from '../../../user/services/user/user.service';
 import { ActivityPriority } from '../../domain/activity-priority.enum';
+import { WebhookDispatcherService } from '../../../webhook/services/webhook-dispatcher.service';
 
 describe('CompletedActivityService', () => {
   let completedActivityService: CompletedActivityService;
@@ -115,6 +117,7 @@ describe('CompletedActivityService', () => {
         LogQuantityQuestionsRepository,
         UserService,
         PusherBeamsService,
+        WebhookDispatcherService,
         {
           provide: I18nService,
           useValue: i18nServiceMock,
@@ -155,6 +158,8 @@ describe('CompletedActivityService', () => {
       .useValue(PusherBeamsServiceMock)
       .overrideProvider('BullQueue_completed-activity')
       .useValue(CompletedActivityQueueMock)
+      .overrideProvider(WebhookDispatcherService)
+      .useValue(WebhookDispatcherServiceMock)
       .compile();
 
     completedActivityService = moduleRef.get<CompletedActivityService>(CompletedActivityService);
@@ -171,6 +176,9 @@ describe('CompletedActivityService', () => {
       isVerboseLoggingAllowed: false,
       user: null,
     });
+
+    // Re-setup WebhookDispatcherService mock after resetAllMocks
+    WebhookDispatcherServiceMock.dispatchEvent.mockImplementation(() => Promise.resolve());
   });
 
   afterAll(async () => {
@@ -3078,6 +3086,9 @@ describe('CompletedActivityService', () => {
 
         // Set up queue mock
         CompletedActivityQueueMock.add.mockResolvedValue({ id: 'test-job-id' });
+
+        // Re-setup WebhookDispatcherService mock
+        WebhookDispatcherServiceMock.dispatchEvent.mockImplementation(() => Promise.resolve());
       });
 
       afterEach(() => {
@@ -3405,6 +3416,7 @@ describe('CompletedActivityService', () => {
       const userService = { isVerboseLoggingAllowed: jest.fn().mockResolvedValue({ isVerboseLoggingAllowed: false }) };
       const i18n = { t: jest.fn().mockReturnValue('ok') };
       const queue = { add: jest.fn() };
+      const webhookDispatcherService = { dispatchEvent: jest.fn(() => Promise.resolve()) };
 
       svc = new CompletedActivityService(
         completedActivityRepository as any,
@@ -3426,6 +3438,7 @@ describe('CompletedActivityService', () => {
         userService as any,
         i18n as any,
         queue as any,
+        webhookDispatcherService as any,
       );
 
       await (svc as any).redisClient?.quit?.();

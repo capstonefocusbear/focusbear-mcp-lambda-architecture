@@ -28,6 +28,7 @@ const EMOJI_REGEX = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Co
 
 const MAX_ROUTINE_HABITS_PER_TYPE = 10;
 const RAG_RETRIEVAL_LIMIT = 10;
+const RAG_RETRIEVAL_DURATION_MULTIPLIER = 2;
 const DEFAULT_GENERATED_ACTIVITY_MINUTES = 10;
 const ADJUST_HABIT_MIN_SIMILARITY = 0.7;
 
@@ -508,18 +509,20 @@ export class ActivityLibraryService {
 
     const goalResults = await Promise.all(
       goals.map(async ({ goal, isCustom }) => {
-        // When a user typed a custom goal, treat it as the primary intent.
-        // We still generate for predefined goals, but we keep their per-goal cap lower so custom tends to dominate.
         const generationOptions = {
-          limit:
-            normalizedGoals.hasCustomGoals && !isCustom
-              ? Math.max(1, Math.floor(RAG_RETRIEVAL_LIMIT / 2))
-              : RAG_RETRIEVAL_LIMIT,
+          limit: RAG_RETRIEVAL_LIMIT,
           routineType: request.routine,
           routineDurationSeconds,
         };
         try {
-          const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, RAG_RETRIEVAL_LIMIT);
+          const retrievalLimit =
+            routineDurationSeconds && routineDurationSeconds > 0
+              ? RAG_RETRIEVAL_LIMIT * RAG_RETRIEVAL_DURATION_MULTIPLIER
+              : RAG_RETRIEVAL_LIMIT;
+
+          const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, retrievalLimit, {
+            routineType: request.routine,
+          });
           if (!matches.length) {
             const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
             return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
@@ -549,9 +552,23 @@ export class ActivityLibraryService {
             return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
-          const suggestionResult = await this.routineSuggestionGeneratorService.generateSuggestions(goal, candidates, {
-            limit: generationOptions.limit,
-          });
+          const durationFilteredCandidates =
+            routineDurationSeconds && routineDurationSeconds > 0
+              ? candidates.filter(({ template }) => Number(template.duration_seconds ?? 0) <= routineDurationSeconds)
+              : candidates;
+
+          if (!durationFilteredCandidates.length) {
+            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
+            return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
+          }
+
+          const suggestionResult = await this.routineSuggestionGeneratorService.generateSuggestions(
+            goal,
+            durationFilteredCandidates,
+            {
+              limit: generationOptions.limit,
+            },
+          );
           if (suggestionResult.accepted.length) {
             const acceptedDurationSeconds = suggestionResult.accepted.reduce(
               (total, suggestion) => total + Number(suggestion.template?.duration_seconds ?? 0),
@@ -590,7 +607,11 @@ export class ActivityLibraryService {
             category: 'RoutineSuggestion',
             level: 'info',
             message: 'Falling back to generated habits',
-            data: { goal, candidateCount: candidates.length, rejectedCount: suggestionResult.rejectedCount },
+            data: {
+              goal,
+              candidateCount: durationFilteredCandidates.length,
+              rejectedCount: suggestionResult.rejectedCount,
+            },
           });
           const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
           if (generated.length) {
@@ -599,12 +620,16 @@ export class ActivityLibraryService {
 
           this.sentryService.instance().captureMessage('RoutineSuggestion: generated habits fallback returned empty', {
             level: 'warning',
-            extra: { goal, candidateCount: candidates.length, rejectedCount: suggestionResult.rejectedCount },
+            extra: {
+              goal,
+              candidateCount: durationFilteredCandidates.length,
+              rejectedCount: suggestionResult.rejectedCount,
+            },
           });
 
           const similarityFallback = this.buildSimilarityFallback(
             goal,
-            candidates,
+            durationFilteredCandidates,
             generationOptions.limit ?? RAG_RETRIEVAL_LIMIT,
             suggestionResult.minScoreApplied,
           );

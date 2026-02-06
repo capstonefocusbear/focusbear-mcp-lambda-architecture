@@ -33,7 +33,7 @@ export class MigrateFocusModeTagsToProjects1768535079000 implements MigrationInt
       SELECT
         fmt.id,
         fmt.user_id,
-        fmt.text,
+        COALESCE(fmt.text, 'Untitled Project'),
         CASE
           WHEN fmt.external_project_metadata IS NOT NULL
           THEN 'Migrated from external project: ' || COALESCE(fmt.external_project_id, 'unknown')
@@ -42,7 +42,6 @@ export class MigrateFocusModeTagsToProjects1768535079000 implements MigrationInt
         fmt.created_at,
         fmt.updated_at
       FROM "focus_mode_tags" fmt
-      WHERE fmt.deleted_at IS NULL
       ON CONFLICT ("id") DO NOTHING
     `);
 
@@ -80,7 +79,6 @@ export class MigrateFocusModeTagsToProjects1768535079000 implements MigrationInt
           FROM "to_do_tags_focus_mode_tags" ttf
           JOIN "focus_mode_tags" fmt ON ttf."focusModeTagsId" = fmt.id
           WHERE ttf."toDoId" = t.id
-          AND fmt.deleted_at IS NULL
           ORDER BY fmt.created_at ASC
           LIMIT 1
         )

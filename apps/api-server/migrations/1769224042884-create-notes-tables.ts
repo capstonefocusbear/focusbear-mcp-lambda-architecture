@@ -10,7 +10,8 @@ export class CreateNotesTables1769224042884 implements MigrationInterface {
         "user_id" uuid NOT NULL,
         "text" varchar(255) NOT NULL,
         "color" varchar(7) DEFAULT '#808080',
-        CONSTRAINT "PK_note_tags" PRIMARY KEY ("id")
+        CONSTRAINT "PK_note_tags" PRIMARY KEY ("id"),
+        CONSTRAINT "FK_note_tags_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
       )
     `);
 

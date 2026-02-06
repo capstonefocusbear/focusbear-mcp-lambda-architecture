@@ -47,9 +47,12 @@ import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
 import { AccountabilityBuddyModule } from './modules/accountability-buddy/accountability-buddy.module';
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
+import { ProjectModule } from './modules/project/project.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
 import { NoteModule } from './modules/note/note.module';
+import { GeofenceModule } from './modules/geofence/geofence.module';
 
 @Module({
   imports: [
@@ -120,9 +123,12 @@ import { NoteModule } from './modules/note/note.module';
     ZohoDeskModule,
     ObservabilityModule,
     AccountabilityBuddyModule,
+    ProjectModule,
+    WebhookModule,
     AnnouncementsModule,
     AppVersionsModule,
     NoteModule,
+    GeofenceModule,
   ],
   controllers: [AppController],
   providers: [

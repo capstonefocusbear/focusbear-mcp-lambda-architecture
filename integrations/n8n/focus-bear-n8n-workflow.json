@@ -1,0 +1,211 @@
+{
+  "name": "Focus Bear Integration",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "focus-bear-webhook",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "webhook-receiver",
+      "name": "Focus Bear Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "webhookId": "focus-bear-events"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"event_type\"]}}",
+              "operation": "equals",
+              "value2": "habit.completed"
+            }
+          ]
+        }
+      },
+      "id": "habit-completed-filter",
+      "name": "Habit Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"event_type\"]}}",
+              "operation": "equals",
+              "value2": "routine.completed"
+            }
+          ]
+        }
+      },
+      "id": "routine-completed-filter",
+      "name": "Routine Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 350]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"event_type\"]}}",
+              "operation": "equals",
+              "value2": "focus_session.started"
+            }
+          ]
+        }
+      },
+      "id": "focus-started-filter",
+      "name": "Focus Session Started?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"event_type\"]}}",
+              "operation": "equals",
+              "value2": "focus_session.completed"
+            }
+          ]
+        }
+      },
+      "id": "focus-completed-filter",
+      "name": "Focus Session Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 650]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=Habit '{{$json[\"data\"][\"habit_name\"]}}' completed in routine '{{$json[\"data\"][\"routine_name\"]}}'"
+            }
+          ]
+        }
+      },
+      "id": "habit-message",
+      "name": "Format Habit Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=Routine '{{$json[\"data\"][\"routine_name\"]}}' completed with {{$json[\"data\"][\"completed_habits_count\"]}} habits"
+            }
+          ]
+        }
+      },
+      "id": "routine-message",
+      "name": "Format Routine Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [850, 350]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=Focus session '{{$json[\"data\"][\"focus_mode_name\"]}}' started. Intention: {{$json[\"data\"][\"intention\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "focus-started-message",
+      "name": "Format Focus Started Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=Focus session '{{$json[\"data\"][\"focus_mode_name\"]}}' completed. Duration: {{Math.round($json[\"data\"][\"duration_seconds\"] / 60)}} minutes"
+            }
+          ]
+        }
+      },
+      "id": "focus-completed-message",
+      "name": "Format Focus Completed Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [850, 650]
+    }
+  ],
+  "connections": {
+    "Focus Bear Webhook": {
+      "main": [
+        [
+          {"node": "Habit Completed?", "type": "main", "index": 0},
+          {"node": "Routine Completed?", "type": "main", "index": 0},
+          {"node": "Focus Session Started?", "type": "main", "index": 0},
+          {"node": "Focus Session Completed?", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Habit Completed?": {
+      "main": [
+        [{"node": "Format Habit Message", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Routine Completed?": {
+      "main": [
+        [{"node": "Format Routine Message", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Focus Session Started?": {
+      "main": [
+        [{"node": "Format Focus Started Message", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Focus Session Completed?": {
+      "main": [
+        [{"node": "Format Focus Completed Message", "type": "main", "index": 0}],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["Focus Bear", "Productivity", "Habits"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T00:00:00.000Z",
+  "versionId": "1"
+}

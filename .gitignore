@@ -54,3 +54,5 @@ todo.txt
 package-lock.json
 
 .cursor
+
+*.csv

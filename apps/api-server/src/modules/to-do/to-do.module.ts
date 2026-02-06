@@ -5,8 +5,17 @@ import { OpenAIModule } from '@app/openai';
 import { R2Module } from '@app/r2';
 import { UserModule } from '../user/user.module';
 import { TodoController } from './controllers/to-do.controller';
+import { TaskCommentController } from './controllers/task-comment.controller';
+import { TaskAttachmentController } from './controllers/task-attachment.controller';
+import { CommentAttachmentController } from './controllers/comment-attachment.controller';
 import { ToDoService } from './services/to-do.service';
+import { TaskCommentService } from './services/task-comment.service';
+import { TaskAttachmentService } from './services/task-attachment.service';
+import { CommentAttachmentService } from './services/comment-attachment.service';
 import { ToDoRepository } from './repositories/to-do.repository';
+import { TaskCommentRepository } from './repositories/task-comment.repository';
+import { TaskAttachmentRepository } from './repositories/task-attachment.repository';
+import { CommentAttachmentRepository } from './repositories/comment-attachment.repository';
 import { TaskTimeLogsRepository } from './repositories/task-time-logs.repository';
 import { TimeLogsConsumer } from './consumers/time-logs.consumer';
 import { TodoImageConsumer } from './consumers/todo-image.consumer';
@@ -16,6 +25,7 @@ import { SyncedProjectsController } from './controllers/synced-projects.controll
 import { SyncedProjectsService } from './services/synced-projects.service';
 import { IntegrationModule } from '../integration/integration.module';
 import { FocusModeModule } from '../focus-mode/focus-mode.module';
+import { ProjectModule } from '../project/project.module';
 import { PlatformIntegrationRepository } from '../platform-integrations/repositories/platform-integration.repository';
 import { AsyncTaskModule } from '../async-task/async-task.module';
 import { BullQueues } from '../../shared/utils/constants';
@@ -23,8 +33,14 @@ import { BullQueues } from '../../shared/utils/constants';
 @Module({
   providers: [
     ToDoService,
+    TaskCommentService,
+    TaskAttachmentService,
+    CommentAttachmentService,
     PlatformIntegrationRepository,
     ToDoRepository,
+    TaskCommentRepository,
+    TaskAttachmentRepository,
+    CommentAttachmentRepository,
     TaskTimeLogsRepository,
     TimeLogsConsumer,
     TodoImageConsumer,
@@ -32,7 +48,18 @@ import { BullQueues } from '../../shared/utils/constants';
     SyncedProjectsRepository,
     SyncedProjectsService,
   ],
-  exports: [ToDoRepository, ToDoService, SyncedProjectsRepository, SyncedProjectsService],
+  exports: [
+    ToDoRepository,
+    ToDoService,
+    TaskCommentRepository,
+    TaskCommentService,
+    TaskAttachmentRepository,
+    TaskAttachmentService,
+    CommentAttachmentRepository,
+    CommentAttachmentService,
+    SyncedProjectsRepository,
+    SyncedProjectsService,
+  ],
   imports: [
     forwardRef(() => UserModule),
     forwardRef(() => IntegrationModule),
@@ -65,7 +92,14 @@ import { BullQueues } from '../../shared/utils/constants';
       useFactory: (configService: ConfigService): any => configService.get('openai'),
     }),
     forwardRef(() => FocusModeModule),
+    forwardRef(() => ProjectModule),
   ],
-  controllers: [TodoController, SyncedProjectsController],
+  controllers: [
+    TodoController,
+    TaskCommentController,
+    TaskAttachmentController,
+    CommentAttachmentController,
+    SyncedProjectsController,
+  ],
 })
 export class ToDoModule {}

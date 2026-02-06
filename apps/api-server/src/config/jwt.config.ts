@@ -17,7 +17,7 @@ export const tokensConfig = registerAs('tokens', (): { [key: string]: IJwtOption
   password_reset: {
     secret: process.env.PASSWORD_RESET_SECRET,
     signOptions: {
-      expiresIn: '7 days',
+      expiresIn: '1 hour',
     },
   },
   accountability_buddy_invitation: {

@@ -52,6 +52,7 @@ import { StudyParticipant } from '../apps/api-server/src/modules/user/entities/s
 import { HabitLibraryRequest } from '../apps/api-server/src/modules/activity-template/entity/habit-library-request.entity';
 import { AccountabilityBuddy } from '../apps/api-server/src/modules/accountability-buddy/entities/accountability-buddy.entity';
 import { UnlockRequest } from '../apps/api-server/src/modules/accountability-buddy/entities/unlock-request.entity';
+import { Geofence } from '../apps/api-server/src/modules/geofence/entities/geofence.entity';
 
 
 export const CronJobDataSource = new DataSource({
@@ -117,6 +118,7 @@ export const CronJobDataSource = new DataSource({
     HabitLibraryRequest,
     AccountabilityBuddy,
     UnlockRequest,
+    Geofence,
   ],
   subscribers: [],
   migrations: [],

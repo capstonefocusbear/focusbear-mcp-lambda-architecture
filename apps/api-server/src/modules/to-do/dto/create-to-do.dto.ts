@@ -74,4 +74,16 @@ export class CreateToDoDto {
   @Min(1)
   @Max(10)
   outcome?: number;
+
+  @IsOptional()
+  @IsUUID()
+  project_id?: string;
+
+  @IsOptional()
+  @IsUUID()
+  assignee_id?: string;
+
+  @IsOptional()
+  @IsString()
+  custom_status_id?: string;
 }

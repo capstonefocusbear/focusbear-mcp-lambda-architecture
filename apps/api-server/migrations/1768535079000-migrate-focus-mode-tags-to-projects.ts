@@ -33,7 +33,7 @@ export class MigrateFocusModeTagsToProjects1768535079000 implements MigrationInt
       SELECT
         fmt.id,
         fmt.user_id,
-        fmt.text,
+        COALESCE(fmt.text, 'Untitled Project'),
         CASE
           WHEN fmt.external_project_metadata IS NOT NULL
           THEN 'Migrated from external project: ' || COALESCE(fmt.external_project_id, 'unknown')

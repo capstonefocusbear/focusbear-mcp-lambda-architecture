@@ -53,6 +53,11 @@ import { HabitLibraryRequest } from '../apps/api-server/src/modules/activity-tem
 import { AccountabilityBuddy } from '../apps/api-server/src/modules/accountability-buddy/entities/accountability-buddy.entity';
 import { UnlockRequest } from '../apps/api-server/src/modules/accountability-buddy/entities/unlock-request.entity';
 import { Geofence } from '../apps/api-server/src/modules/geofence/entities/geofence.entity';
+import { Project } from '../apps/api-server/src/modules/project/entities/project.entity';
+import { ProjectMember } from '../apps/api-server/src/modules/project/entities/project-member.entity';
+import { TaskComment } from '../apps/api-server/src/modules/to-do/entities/task-comment.entity';
+import { TaskAttachment } from '../apps/api-server/src/modules/to-do/entities/task-attachment.entity';
+import { CommentAttachment } from '../apps/api-server/src/modules/to-do/entities/comment-attachment.entity';
 
 
 export const CronJobDataSource = new DataSource({
@@ -119,6 +124,11 @@ export const CronJobDataSource = new DataSource({
     AccountabilityBuddy,
     UnlockRequest,
     Geofence,
+    Project,
+    ProjectMember,
+    TaskComment,
+    TaskAttachment,
+    CommentAttachment,
   ],
   subscribers: [],
   migrations: [],

@@ -25,7 +25,14 @@ export class NoteTagRepository extends BaseRepository<NoteTag> {
       return existingTag;
     }
 
-    const newTag = new NoteTag({ user_id: userId, text, color }, { generateId: true });
-    return this.orm.save(newTag);
+    try {
+      const newTag = new NoteTag({ user_id: userId, text, color }, { generateId: true });
+      return await this.orm.save(newTag);
+    } catch (error) {
+      if (error?.code === '23505') {
+        return this.orm.findOne({ where: { user_id: userId, text } });
+      }
+      throw error;
+    }
   }
 }

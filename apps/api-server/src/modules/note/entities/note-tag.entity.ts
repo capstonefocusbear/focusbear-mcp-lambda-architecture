@@ -1,5 +1,6 @@
-import { Column, Entity, Index, ManyToMany, Unique } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToMany, ManyToOne, Unique } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
+import { User } from '../../user/entities/user.entity';
 import { Note } from './note.entity';
 
 @Entity('note_tags')
@@ -16,6 +17,10 @@ export class NoteTag extends BaseEntity {
     nullable: false,
   })
   user_id?: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user?: User;
 
   @Column({
     type: 'varchar',

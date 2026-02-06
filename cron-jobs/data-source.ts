@@ -53,7 +53,8 @@ import { HabitLibraryRequest } from '../apps/api-server/src/modules/activity-tem
 import { AccountabilityBuddy } from '../apps/api-server/src/modules/accountability-buddy/entities/accountability-buddy.entity';
 import { UnlockRequest } from '../apps/api-server/src/modules/accountability-buddy/entities/unlock-request.entity';
 import { Geofence } from '../apps/api-server/src/modules/geofence/entities/geofence.entity';
-
+import { Note } from '../apps/api-server/src/modules/note/entities/note.entity';
+import { NoteTag } from '../apps/api-server/src/modules/note/entities/note-tag.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -119,6 +120,8 @@ export const CronJobDataSource = new DataSource({
     AccountabilityBuddy,
     UnlockRequest,
     Geofence,
+    Note,
+    NoteTag,
   ],
   subscribers: [],
   migrations: [],

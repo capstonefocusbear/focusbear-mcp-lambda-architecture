@@ -14,6 +14,7 @@ export class CreateNoteDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   body?: string;
 
   @IsOptional()

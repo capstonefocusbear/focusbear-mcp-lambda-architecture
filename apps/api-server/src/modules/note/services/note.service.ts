@@ -3,6 +3,7 @@ import { In } from 'typeorm';
 import { InjectSentry, SentryService } from '@app/observability';
 import { NoteRepository } from '../repositories/note.repository';
 import { NoteTagRepository } from '../repositories/note-tag.repository';
+import { CompletedActivityRepository } from '../../activity/repositories/completed-activity.repository';
 import { CreateNoteDto } from '../dto/create-note.dto';
 import { GetNotesQueryDto } from '../dto/get-notes-query.dto';
 import { SearchNotesDto } from '../dto/search-notes.dto';
@@ -19,6 +20,7 @@ export class NoteService {
     private readonly noteRepository: NoteRepository,
     private readonly noteTagRepository: NoteTagRepository,
     private readonly toDoRepository: ToDoRepository,
+    private readonly completedActivityRepository: CompletedActivityRepository,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -57,6 +59,15 @@ export class NoteService {
 
     const tags = await this.processNoteTags(userId, createNoteDto.tags);
 
+    if (createNoteDto.completed_activity_id) {
+      const activity = await this.completedActivityRepository.orm.findOne({
+        where: { id: createNoteDto.completed_activity_id, user_id: userId },
+      });
+      if (!activity) {
+        throw new NotFoundException(`Completed activity with ID: ${createNoteDto.completed_activity_id} not found!`);
+      }
+    }
+
     let embeddedTodos = [];
     if (createNoteDto.embedded_todo_ids?.length) {
       embeddedTodos = await this.toDoRepository.orm.find({
@@ -91,12 +102,7 @@ export class NoteService {
     return new PaginationDto(
       mappedNotes,
       new PaginationMetaDto({
-        paginationOptionsDto: {
-          page: queryDto.page,
-          order: queryDto.order,
-          skip: queryDto.skip,
-          take: queryDto.take,
-        },
+        paginationOptionsDto: queryDto,
         itemCount: total,
       }),
     );

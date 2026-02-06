@@ -82,6 +82,7 @@ export class NoteRepository extends BaseRepository<Note> {
         'activity.activity_data',
       ])
       .where('note.user_id = :user_id', { user_id: userId })
+      .take(500)
       .getMany();
 
     if (!query) {

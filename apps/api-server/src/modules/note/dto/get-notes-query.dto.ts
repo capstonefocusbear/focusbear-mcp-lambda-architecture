@@ -1,29 +1,11 @@
-import { Type } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 import { PageOrder } from '../../../shared/domain/page-order.enum';
+import { PaginationOptionsDto } from '../../../shared/pagination/pagination-options.dto';
 
-export class GetNotesQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  page?: number = 1;
+export class GetNotesQueryDto extends PaginationOptionsDto {
+  readonly take?: number = 20;
 
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  take?: number = 20;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  skip?: number = 0;
-
-  @IsOptional()
-  @IsEnum(PageOrder)
-  order?: PageOrder = PageOrder.DESC;
+  readonly order?: PageOrder = PageOrder.DESC;
 
   @IsOptional()
   @IsUUID()

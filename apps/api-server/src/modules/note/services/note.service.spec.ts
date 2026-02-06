@@ -3,6 +3,7 @@ import { SENTRY_TOKEN } from '@app/observability';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
+  CompletedActivityRepositoryMock,
   NoteRepositoryMock,
   NoteTagRepositoryMock,
   SentryServiceMock,
@@ -11,6 +12,7 @@ import {
 import { NoteService } from './note.service';
 import { NoteRepository } from '../repositories/note.repository';
 import { NoteTagRepository } from '../repositories/note-tag.repository';
+import { CompletedActivityRepository } from '../../activity/repositories/completed-activity.repository';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { Note } from '../entities/note.entity';
 
@@ -19,13 +21,14 @@ describe('NoteService', () => {
   const userId = randomUUID();
   const anotherUserId = randomUUID();
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         NoteService,
         NoteRepository,
         NoteTagRepository,
         ToDoRepository,
+        CompletedActivityRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -38,6 +41,8 @@ describe('NoteService', () => {
       .useValue(NoteTagRepositoryMock)
       .overrideProvider(ToDoRepository)
       .useValue(ToDoRepositoryMock)
+      .overrideProvider(CompletedActivityRepository)
+      .useValue(CompletedActivityRepositoryMock)
       .compile();
 
     noteService = moduleRef.get<NoteService>(NoteService);
@@ -148,6 +153,26 @@ describe('NoteService', () => {
         expect.stringContaining('SECURITY: Unauthorized note update attempt'),
         'warning',
       );
+    });
+
+    it('negative: should throw NotFoundException when completed_activity_id does not belong to user', async () => {
+      const completedActivityId = randomUUID();
+
+      CompletedActivityRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      let exception;
+      try {
+        await noteService.upsertNote(userId, {
+          ...noteDummy,
+          completed_activity_id: completedActivityId,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toContain('Completed activity');
+      expect(NoteRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
 
     it('positive: should always set user_id to authenticated user regardless of input', async () => {

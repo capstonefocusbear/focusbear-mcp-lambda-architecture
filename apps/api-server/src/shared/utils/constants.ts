@@ -351,6 +351,12 @@ export const S3_BUCKET_TODO_IMAGES = 'todo-images';
 export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
 export const S3_BUCKET_HABIT_IMPORTS = 'habit-imports';
 export const S3_BUCKET_PROFILE_IMAGES = 'profile-images';
+export const S3_BUCKET_TASK_ATTACHMENTS = 'task-attachments';
+export const S3_BUCKET_COMMENT_ATTACHMENTS = 'comment-attachments';
+export const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+export const MAX_TASK_ATTACHMENTS = 20;
+export const MAX_COMMENT_ATTACHMENTS = 5;
+export const FIFTEEN_MINUTES_IN_SECONDS = 900;
 
 export const ACITIVITY_EMOJI_MAP = {
   yoga: '🧘',

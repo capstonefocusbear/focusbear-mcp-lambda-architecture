@@ -38,7 +38,7 @@ jobs:
           claude_args: |
             --model claude-opus-4-5-20251101
             --mcp-config '{"mcpServers": {"context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp@latest"]}}}'
-            --allowedTools mcp__context7__resolve-library-id,mcp__context7__query-docs
+            --allowedTools mcp__context7__resolve-library-id,mcp__context7__query-docs,Bash(npm install),Bash(npm run test),Bash(npm ci)
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |

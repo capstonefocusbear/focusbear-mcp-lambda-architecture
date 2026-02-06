@@ -28,8 +28,6 @@ export class ProjectService {
         name: dto.name,
         description: dto.description,
         custom_statuses: dto.custom_statuses || DEFAULT_PROJECT_STATUSES,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       },
       { generateId: true },
     );
@@ -44,8 +42,6 @@ export class ProjectService {
         role: ProjectMemberRole.OWNER,
         invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
         invitation_responded_at: new Date(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       },
       { generateId: true },
     );
@@ -71,7 +67,7 @@ export class ProjectService {
     }
 
     // Check if user has access to this project
-    const hasAccess = await this.userHasAccessToProject(userId, projectId);
+    const hasAccess = await this.userHasAccessToProject(userId, project);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this project');
     }
@@ -86,15 +82,13 @@ export class ProjectService {
       throw new NotFoundException(`Project with id ${projectId} not found`);
     }
 
-    // Check if user has admin access
-    const hasAdminAccess = await this.userHasAdminAccess(userId, projectId);
+    const hasAdminAccess = await this.userHasAdminAccess(userId, project);
     if (!hasAdminAccess) {
       throw new ForbiddenException('You do not have permission to update this project');
     }
 
     const updatedProject = await this.projectRepository.update(projectId, {
       ...dto,
-      updated_at: new Date().toISOString(),
     });
 
     return this.mapProjectToResponse(updatedProject);
@@ -126,10 +120,14 @@ export class ProjectService {
       throw new NotFoundException(`Project with id ${projectId} not found`);
     }
 
-    // Check if user has admin access
-    const hasAdminAccess = await this.userHasAdminAccess(userId, projectId);
+    const hasAdminAccess = await this.userHasAdminAccess(userId, project);
     if (!hasAdminAccess) {
       throw new ForbiddenException('You do not have permission to invite members to this project');
+    }
+
+    // Prevent inviting with owner role
+    if (dto.role === ProjectMemberRole.OWNER) {
+      throw new BadRequestException('Cannot invite a member with owner role');
     }
 
     // Check if member already exists
@@ -145,15 +143,13 @@ export class ProjectService {
         role: dto.role || ProjectMemberRole.MEMBER,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
         invitation_sent_at: new Date(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       },
       { generateId: true },
     );
 
     const savedMember = await this.projectMemberRepository.orm.save(member);
 
-    // TODO: Send invitation email
+    // TODO: Send invitation email using SendGrid integration
 
     return this.mapMemberToResponse(savedMember);
   }
@@ -177,7 +173,7 @@ export class ProjectService {
     }
 
     // Check if user has admin access or is removing themselves
-    const hasAdminAccess = await this.userHasAdminAccess(userId, projectId);
+    const hasAdminAccess = await this.userHasAdminAccess(userId, project);
     const isRemovingSelf = member.user_id === userId;
 
     if (!hasAdminAccess && !isRemovingSelf) {
@@ -215,23 +211,30 @@ export class ProjectService {
       throw new BadRequestException('Cannot assign owner role to a member');
     }
 
-    // Check if user has admin access
-    const hasAdminAccess = await this.userHasAdminAccess(userId, projectId);
+    const hasAdminAccess = await this.userHasAdminAccess(userId, project);
     if (!hasAdminAccess) {
       throw new ForbiddenException('You do not have permission to update member roles');
     }
 
     const updatedMember = await this.projectMemberRepository.update(memberId, {
       role: dto.role,
-      updated_at: new Date().toISOString(),
     });
 
     return this.mapMemberToResponse(updatedMember);
   }
 
-  async acceptInvitation(userId: string, projectId: string): Promise<ProjectMemberResponseDto> {
-    // Find pending invitation for this user
-    const member = await this.projectMemberRepository.getMemberByProjectAndUser(projectId, userId);
+  async acceptInvitation(userId: string, projectId: string, userEmail?: string): Promise<ProjectMemberResponseDto> {
+    // First try to find by user_id (already linked)
+    let member = await this.projectMemberRepository.getMemberByProjectAndUser(projectId, userId);
+
+    // If not found by user_id, try by email as fallback (invitation may not be linked yet)
+    if (!member && userEmail) {
+      member = await this.projectMemberRepository.getMemberByProjectAndEmail(projectId, userEmail);
+      if (member) {
+        // Link the user to this invitation
+        await this.projectMemberRepository.linkUserToInvitation(member.id, userId);
+      }
+    }
 
     if (!member) {
       throw new NotFoundException('No invitation found for this project');
@@ -246,8 +249,17 @@ export class ProjectService {
     return this.mapMemberToResponse(updatedMember);
   }
 
-  async declineInvitation(userId: string, projectId: string): Promise<void> {
-    const member = await this.projectMemberRepository.getMemberByProjectAndUser(projectId, userId);
+  async declineInvitation(userId: string, projectId: string, userEmail?: string): Promise<void> {
+    // First try to find by user_id (already linked)
+    let member = await this.projectMemberRepository.getMemberByProjectAndUser(projectId, userId);
+
+    // If not found by user_id, try by email as fallback
+    if (!member && userEmail) {
+      member = await this.projectMemberRepository.getMemberByProjectAndEmail(projectId, userEmail);
+      if (member) {
+        await this.projectMemberRepository.linkUserToInvitation(member.id, userId);
+      }
+    }
 
     if (!member) {
       throw new NotFoundException('No invitation found for this project');
@@ -275,9 +287,7 @@ export class ProjectService {
       .map((invitation) => this.mapProjectToResponse(invitation.project));
   }
 
-  private async userHasAccessToProject(userId: string, projectId: string): Promise<boolean> {
-    const project = await this.projectRepository.getProjectById(projectId);
-
+  private async userHasAccessToProject(userId: string, project: Project): Promise<boolean> {
     if (!project) {
       return false;
     }
@@ -286,13 +296,11 @@ export class ProjectService {
       return true;
     }
 
-    const member = await this.projectMemberRepository.getMemberByProjectAndUser(projectId, userId);
+    const member = await this.projectMemberRepository.getMemberByProjectAndUser(project.id, userId);
     return member?.invitation_status === ProjectMemberInvitationStatus.ACCEPTED;
   }
 
-  private async userHasAdminAccess(userId: string, projectId: string): Promise<boolean> {
-    const project = await this.projectRepository.getProjectById(projectId);
-
+  private async userHasAdminAccess(userId: string, project: Project): Promise<boolean> {
     if (!project) {
       return false;
     }
@@ -301,7 +309,7 @@ export class ProjectService {
       return true;
     }
 
-    const member = await this.projectMemberRepository.getMemberByProjectAndUser(projectId, userId);
+    const member = await this.projectMemberRepository.getMemberByProjectAndUser(project.id, userId);
     return (
       member?.invitation_status === ProjectMemberInvitationStatus.ACCEPTED &&
       (member.role === ProjectMemberRole.OWNER || member.role === ProjectMemberRole.ADMIN)

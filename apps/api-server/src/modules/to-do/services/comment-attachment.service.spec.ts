@@ -6,6 +6,8 @@ import { CommentAttachmentService } from './comment-attachment.service';
 import { CommentAttachmentRepository } from '../repositories/comment-attachment.repository';
 import { TaskCommentRepository } from '../repositories/task-comment.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
+import { ProjectMemberRepository } from '../../project/repositories/project-member.repository';
+import { ProjectMemberInvitationStatus } from '../../project/domain/project-member-invitation-status.enum';
 
 const CommentAttachmentRepositoryMock = {
   orm: {
@@ -32,6 +34,10 @@ const R2ServiceMock = {
   getPresignedUrl: jest.fn(),
   getObjectMetadata: jest.fn(),
   deleteObject: jest.fn(),
+};
+
+const ProjectMemberRepositoryMock = {
+  getMemberByProjectAndUser: jest.fn(),
 };
 
 describe('CommentAttachmentService', () => {
@@ -75,6 +81,7 @@ describe('CommentAttachmentService', () => {
         TaskCommentRepository,
         ToDoRepository,
         R2Service,
+        ProjectMemberRepository,
       ],
     })
       .overrideProvider(CommentAttachmentRepository)
@@ -85,6 +92,8 @@ describe('CommentAttachmentService', () => {
       .useValue(ToDoRepositoryMock)
       .overrideProvider(R2Service)
       .useValue(R2ServiceMock)
+      .overrideProvider(ProjectMemberRepository)
+      .useValue(ProjectMemberRepositoryMock)
       .compile();
 
     commentAttachmentService = moduleRef.get<CommentAttachmentService>(CommentAttachmentService);
@@ -126,9 +135,43 @@ describe('CommentAttachmentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access to task', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
+
+      await expect(
+        commentAttachmentService.generateUploadUrl(userDummy.id, taskDummy.id, commentDummy.id, {
+          file_name: 'test.pdf',
+          content_type: 'application/pdf',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('positive: should allow project member to generate upload URL', async () => {
+      const projectId = randomUUID();
+      const projectTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: projectId };
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce({
+        invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
+      });
+      R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce('https://r2.example.com/upload');
+
+      const result = await commentAttachmentService.generateUploadUrl(userDummy.id, taskDummy.id, commentDummy.id, {
+        file_name: 'test-file.pdf',
+        content_type: 'application/pdf',
+      });
+
+      expect(result.uploadUrl).toBe('https://r2.example.com/upload');
+      expect(ProjectMemberRepositoryMock.getMemberByProjectAndUser).toHaveBeenCalledWith(projectId, userDummy.id);
+    });
+
+    it('negative: should throw ForbiddenException when user is not a project member', async () => {
+      const projectId = randomUUID();
+      const projectTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: projectId };
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
 
       await expect(
         commentAttachmentService.generateUploadUrl(userDummy.id, taskDummy.id, commentDummy.id, {
@@ -157,6 +200,7 @@ describe('CommentAttachmentService', () => {
     it('positive: should create a new attachment', async () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      CommentAttachmentRepositoryMock.getAttachmentsByCommentId.mockResolvedValueOnce([]);
       R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'application/pdf' });
       CommentAttachmentRepositoryMock.orm.save.mockResolvedValueOnce(attachmentDummy);
       CommentAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
@@ -189,7 +233,7 @@ describe('CommentAttachmentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access to task', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
@@ -201,6 +245,21 @@ describe('CommentAttachmentService', () => {
           file_size: 1024,
         }),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('negative: should throw BadRequestException when max attachments exceeded', async () => {
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      CommentAttachmentRepositoryMock.getAttachmentsByCommentId.mockResolvedValueOnce(Array(5).fill(attachmentDummy));
+
+      await expect(
+        commentAttachmentService.createAttachment(userDummy.id, taskDummy.id, commentDummy.id, {
+          file_name: 'test-file.pdf',
+          file_key: attachmentDummy.file_key,
+          content_type: 'application/pdf',
+          file_size: 1024,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('negative: should throw BadRequestException when file_key does not match expected format', async () => {
@@ -265,6 +324,7 @@ describe('CommentAttachmentService', () => {
     it('negative: should throw BadRequestException when file not found in R2 storage', async () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      CommentAttachmentRepositoryMock.getAttachmentsByCommentId.mockResolvedValueOnce([]);
       R2ServiceMock.getObjectMetadata.mockRejectedValueOnce(new Error('Not found'));
 
       await expect(
@@ -280,6 +340,7 @@ describe('CommentAttachmentService', () => {
     it('negative: should throw BadRequestException and delete file when actual R2 file size exceeds limit', async () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      CommentAttachmentRepositoryMock.getAttachmentsByCommentId.mockResolvedValueOnce([]);
       const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
       R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
         contentLength: oversizedFileSize,
@@ -304,6 +365,7 @@ describe('CommentAttachmentService', () => {
       const actualFileSize = 2048;
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      CommentAttachmentRepositoryMock.getAttachmentsByCommentId.mockResolvedValueOnce([]);
       R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
         contentLength: actualFileSize,
         contentType: 'application/pdf',
@@ -364,7 +426,7 @@ describe('CommentAttachmentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 

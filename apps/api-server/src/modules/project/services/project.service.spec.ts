@@ -176,8 +176,6 @@ describe('ProjectService', () => {
   describe('updateProject', () => {
     it('positive: should update project when user has admin access', async () => {
       const updatedProject = { ...projectDummy, name: 'Updated Name' };
-      // First call for updateProject, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectRepositoryMock.update.mockResolvedValueOnce(updatedProject);
 
@@ -197,8 +195,6 @@ describe('ProjectService', () => {
     it('negative: should throw ForbiddenException when user has no admin access', async () => {
       const otherUserId = randomUUID();
       const otherProject = { ...projectDummy, owner_id: otherUserId };
-      // First call for updateProject, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(otherProject);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(otherProject);
       ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
 
@@ -242,8 +238,6 @@ describe('ProjectService', () => {
         role: ProjectMemberRole.MEMBER,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
       };
-      // First call for inviteMember, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
       ProjectMemberRepositoryMock.orm.save.mockResolvedValueOnce(newMember);
@@ -257,8 +251,6 @@ describe('ProjectService', () => {
     });
 
     it('negative: should throw BadRequestException when email already invited', async () => {
-      // First call for inviteMember, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(memberDummy);
 
@@ -267,11 +259,20 @@ describe('ProjectService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('negative: should throw BadRequestException when inviting with owner role', async () => {
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
+
+      await expect(
+        projectService.inviteMember(userDummy.id, projectDummy.id, {
+          email: 'new@example.com',
+          role: ProjectMemberRole.OWNER,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('negative: should throw ForbiddenException when user has no admin access', async () => {
       const otherUserId = randomUUID();
       const otherProject = { ...projectDummy, owner_id: otherUserId };
-      // First call for inviteMember, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(otherProject);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(otherProject);
       ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
 
@@ -289,8 +290,6 @@ describe('ProjectService', () => {
         role: ProjectMemberRole.MEMBER,
         user_id: randomUUID(),
       };
-      // First call for removeMember, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(memberToRemove);
       ProjectMemberRepositoryMock.removeMember.mockResolvedValueOnce(undefined);
@@ -308,8 +307,6 @@ describe('ProjectService', () => {
         user_id: userDummy.id,
       };
       const otherProject = { ...projectDummy, owner_id: randomUUID() };
-      // First call for removeMember, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(otherProject);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(otherProject);
       ProjectMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(selfMember);
       ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(selfMember);
@@ -349,8 +346,6 @@ describe('ProjectService', () => {
         user_id: randomUUID(),
       };
       const updatedMember = { ...memberToUpdate, role: ProjectMemberRole.ADMIN };
-      // First call for updateMemberRole, second call for userHasAdminAccess
-      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(memberToUpdate);
       ProjectMemberRepositoryMock.update.mockResolvedValueOnce(updatedMember);

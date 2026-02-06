@@ -3,11 +3,17 @@ import { R2Service } from '@app/r2';
 import { CommentAttachmentRepository } from '../repositories/comment-attachment.repository';
 import { TaskCommentRepository } from '../repositories/task-comment.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
+import { ProjectMemberRepository } from '../../project/repositories/project-member.repository';
+import { ProjectMemberInvitationStatus } from '../../project/domain/project-member-invitation-status.enum';
 import { CommentAttachment } from '../entities/comment-attachment.entity';
 import { CreateCommentAttachmentDto } from '../dto/create-comment-attachment.dto';
 import { CommentAttachmentResponseDto } from '../dto/comment-attachment-response.dto';
 import { GenerateUploadCommentAttachmentUrlDto } from '../dto/generate-upload-comment-attachment-url.dto';
-import { S3_BUCKET_COMMENT_ATTACHMENTS, MAX_ATTACHMENT_SIZE_BYTES } from '../../../shared/utils/constants';
+import {
+  S3_BUCKET_COMMENT_ATTACHMENTS,
+  MAX_ATTACHMENT_SIZE_BYTES,
+  MAX_COMMENT_ATTACHMENTS,
+} from '../../../shared/utils/constants';
 
 @Injectable()
 export class CommentAttachmentService {
@@ -18,6 +24,7 @@ export class CommentAttachmentService {
     private readonly taskCommentRepository: TaskCommentRepository,
     private readonly toDoRepository: ToDoRepository,
     private readonly r2Service: R2Service,
+    private readonly projectMemberRepository: ProjectMemberRepository,
   ) {}
 
   async generateUploadUrl(
@@ -42,7 +49,7 @@ export class CommentAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = this.userHasAccessToTask(userId, task);
+    const hasAccess = await this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this comment');
     }
@@ -79,7 +86,7 @@ export class CommentAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = this.userHasAccessToTask(userId, task);
+    const hasAccess = await this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this comment');
     }
@@ -90,6 +97,11 @@ export class CommentAttachmentService {
 
     if (dto.file_size > MAX_ATTACHMENT_SIZE_BYTES) {
       throw new BadRequestException('File size exceeds maximum allowed size of 20 MB');
+    }
+
+    const existingAttachments = await this.commentAttachmentRepository.getAttachmentsByCommentId(commentId);
+    if (existingAttachments.length >= MAX_COMMENT_ATTACHMENTS) {
+      throw new BadRequestException(`Maximum of ${MAX_COMMENT_ATTACHMENTS} attachments per comment exceeded`);
     }
 
     let actualFileSize: number;
@@ -148,7 +160,7 @@ export class CommentAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = this.userHasAccessToTask(userId, task);
+    const hasAccess = await this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this comment');
     }
@@ -179,7 +191,7 @@ export class CommentAttachmentService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    const hasAccess = this.userHasAccessToTask(userId, task);
+    const hasAccess = await this.userHasAccessToTask(userId, task);
     if (!hasAccess) {
       throw new ForbiddenException('You do not have access to this comment');
     }
@@ -222,8 +234,20 @@ export class CommentAttachmentService {
     await this.commentAttachmentRepository.deleteAttachment(attachmentId);
   }
 
-  private userHasAccessToTask(userId: string, task: { user_id?: string; assignee_id?: string }): boolean {
-    return task.user_id === userId || task.assignee_id === userId;
+  private async userHasAccessToTask(
+    userId: string,
+    task: { user_id?: string; assignee_id?: string; project_id?: string },
+  ): Promise<boolean> {
+    if (task.user_id === userId || task.assignee_id === userId) {
+      return true;
+    }
+
+    if (task.project_id) {
+      const member = await this.projectMemberRepository.getMemberByProjectAndUser(task.project_id, userId);
+      return member?.invitation_status === ProjectMemberInvitationStatus.ACCEPTED;
+    }
+
+    return false;
   }
 
   private async mapAttachmentToResponse(attachment: CommentAttachment): Promise<CommentAttachmentResponseDto> {
@@ -241,6 +265,7 @@ export class CommentAttachmentService {
       user: attachment.user
         ? {
             id: attachment.user.id,
+            username: attachment.user.username,
           }
         : undefined,
       created_at: attachment.created_at,

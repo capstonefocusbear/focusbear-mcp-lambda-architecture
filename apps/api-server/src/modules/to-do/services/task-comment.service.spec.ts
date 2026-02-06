@@ -144,9 +144,9 @@ describe('TaskCommentService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
       ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
 
-      await expect(
-        taskCommentService.createComment(userDummy.id, projectTask.id, { content: 'Test' }),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(taskCommentService.createComment(userDummy.id, projectTask.id, { content: 'Test' })).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('negative: should throw ForbiddenException when project member invitation is pending', async () => {
@@ -157,9 +157,9 @@ describe('TaskCommentService', () => {
         invitation_status: ProjectMemberInvitationStatus.PENDING,
       });
 
-      await expect(
-        taskCommentService.createComment(userDummy.id, projectTask.id, { content: 'Test' }),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(taskCommentService.createComment(userDummy.id, projectTask.id, { content: 'Test' })).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 

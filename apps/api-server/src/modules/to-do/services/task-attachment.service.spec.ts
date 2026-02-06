@@ -5,6 +5,8 @@ import { R2Service } from '@app/r2';
 import { TaskAttachmentService } from './task-attachment.service';
 import { TaskAttachmentRepository } from '../repositories/task-attachment.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
+import { ProjectMemberRepository } from '../../project/repositories/project-member.repository';
+import { ProjectMemberInvitationStatus } from '../../project/domain/project-member-invitation-status.enum';
 
 const TaskAttachmentRepositoryMock = {
   orm: {
@@ -27,6 +29,10 @@ const R2ServiceMock = {
   getPresignedUrl: jest.fn(),
   getObjectMetadata: jest.fn(),
   deleteObject: jest.fn(),
+};
+
+const ProjectMemberRepositoryMock = {
+  getMemberByProjectAndUser: jest.fn(),
 };
 
 describe('TaskAttachmentService', () => {
@@ -57,7 +63,7 @@ describe('TaskAttachmentService', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [TaskAttachmentService, TaskAttachmentRepository, ToDoRepository, R2Service],
+      providers: [TaskAttachmentService, TaskAttachmentRepository, ToDoRepository, R2Service, ProjectMemberRepository],
     })
       .overrideProvider(TaskAttachmentRepository)
       .useValue(TaskAttachmentRepositoryMock)
@@ -65,6 +71,8 @@ describe('TaskAttachmentService', () => {
       .useValue(ToDoRepositoryMock)
       .overrideProvider(R2Service)
       .useValue(R2ServiceMock)
+      .overrideProvider(ProjectMemberRepository)
+      .useValue(ProjectMemberRepositoryMock)
       .compile();
 
     taskAttachmentService = moduleRef.get<TaskAttachmentService>(TaskAttachmentService);
@@ -105,7 +113,7 @@ describe('TaskAttachmentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access to task', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
       await expect(
@@ -128,11 +136,44 @@ describe('TaskAttachmentService', () => {
 
       expect(result.uploadUrl).toBe('https://r2.example.com/upload');
     });
+
+    it('positive: should allow project member to generate upload URL', async () => {
+      const projectId = randomUUID();
+      const projectTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: projectId };
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce({
+        invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
+      });
+      R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce('https://r2.example.com/upload');
+
+      const result = await taskAttachmentService.generateUploadUrl(userDummy.id, projectTask.id, {
+        file_name: 'test-file.pdf',
+        content_type: 'application/pdf',
+      });
+
+      expect(result.uploadUrl).toBe('https://r2.example.com/upload');
+      expect(ProjectMemberRepositoryMock.getMemberByProjectAndUser).toHaveBeenCalledWith(projectId, userDummy.id);
+    });
+
+    it('negative: should throw ForbiddenException when user is not a project member', async () => {
+      const projectId = randomUUID();
+      const projectTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: projectId };
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(projectTask);
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
+
+      await expect(
+        taskAttachmentService.generateUploadUrl(userDummy.id, projectTask.id, {
+          file_name: 'test.pdf',
+          content_type: 'application/pdf',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('createAttachment', () => {
     it('positive: should create a new attachment', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskAttachmentRepositoryMock.getAttachmentsByTaskId.mockResolvedValueOnce([]);
       R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'application/pdf' });
       TaskAttachmentRepositoryMock.orm.save.mockResolvedValueOnce(attachmentDummy);
       TaskAttachmentRepositoryMock.getAttachmentById.mockResolvedValueOnce(attachmentDummy);
@@ -165,7 +206,7 @@ describe('TaskAttachmentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access to task', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
       await expect(
@@ -233,8 +274,23 @@ describe('TaskAttachmentService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('negative: should throw BadRequestException when max attachments exceeded', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskAttachmentRepositoryMock.getAttachmentsByTaskId.mockResolvedValueOnce(Array(20).fill(attachmentDummy));
+
+      await expect(
+        taskAttachmentService.createAttachment(userDummy.id, taskDummy.id, {
+          file_name: 'test-file.pdf',
+          file_key: attachmentDummy.file_key,
+          content_type: 'application/pdf',
+          file_size: 1024,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('negative: should throw BadRequestException when file not found in R2 storage', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskAttachmentRepositoryMock.getAttachmentsByTaskId.mockResolvedValueOnce([]);
       R2ServiceMock.getObjectMetadata.mockRejectedValueOnce(new Error('Not found'));
 
       await expect(
@@ -249,6 +305,7 @@ describe('TaskAttachmentService', () => {
 
     it('negative: should throw BadRequestException and delete file when actual R2 file size exceeds limit', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskAttachmentRepositoryMock.getAttachmentsByTaskId.mockResolvedValueOnce([]);
       const oversizedFileSize = 21 * 1024 * 1024; // 21 MB
       R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
         contentLength: oversizedFileSize,
@@ -272,6 +329,7 @@ describe('TaskAttachmentService', () => {
     it('positive: should use actual file size from R2 instead of client-supplied size', async () => {
       const actualFileSize = 2048;
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskAttachmentRepositoryMock.getAttachmentsByTaskId.mockResolvedValueOnce([]);
       R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
         contentLength: actualFileSize,
         contentType: 'application/pdf',
@@ -322,7 +380,7 @@ describe('TaskAttachmentService', () => {
     });
 
     it('negative: should throw ForbiddenException when user has no access', async () => {
-      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null };
+      const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
       await expect(taskAttachmentService.getAttachmentsByTaskId(userDummy.id, otherTask.id)).rejects.toThrow(

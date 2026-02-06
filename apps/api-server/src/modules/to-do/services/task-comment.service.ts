@@ -140,6 +140,7 @@ export class TaskCommentService {
       user: comment.user
         ? {
             id: comment.user.id,
+            username: comment.user.username,
           }
         : undefined,
       created_at: comment.created_at,

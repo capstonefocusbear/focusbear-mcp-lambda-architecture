@@ -25,9 +25,11 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMember> {
   }
 
   async getMemberByProjectAndEmail(projectId: string, email: string): Promise<ProjectMember | null> {
-    return this.orm.findOne({
-      where: { project_id: projectId, email },
-    });
+    // Email field is encrypted with non-deterministic AES-256-CBC, so we cannot
+    // use a direct WHERE clause. Fetch all members for this project and filter
+    // in-memory after decryption (matching TeamToMember pattern).
+    const members = await this.orm.find({ where: { project_id: projectId } });
+    return members.find((m) => m.email?.toLowerCase() === email.toLowerCase()) || null;
   }
 
   async getPendingInvitationsForUser(userId: string): Promise<ProjectMember[]> {
@@ -38,10 +40,13 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMember> {
   }
 
   async getPendingInvitationsForEmail(email: string): Promise<ProjectMember[]> {
-    return this.orm.find({
-      where: { email, invitation_status: ProjectMemberInvitationStatus.PENDING },
+    // Email field is encrypted with non-deterministic AES-256-CBC, so we cannot
+    // use a direct WHERE clause. Fetch all pending invitations and filter in-memory.
+    const pendingInvitations = await this.orm.find({
+      where: { invitation_status: ProjectMemberInvitationStatus.PENDING },
       relations: ['project', 'project.owner'],
     });
+    return pendingInvitations.filter((m) => m.email?.toLowerCase() === email.toLowerCase());
   }
 
   async acceptInvitation(memberId: string): Promise<ProjectMember> {

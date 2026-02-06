@@ -10,7 +10,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 import { R2_MODULE_OPTIONS } from '../r2.constants';
 import { IR2Options } from '../interfaces';
-import { ONE_WEEK_IN_SECONDS } from '../../../../apps/api-server/src/shared/utils/constants';
+import {
+  ONE_WEEK_IN_SECONDS,
+  FIFTEEN_MINUTES_IN_SECONDS,
+} from '../../../../apps/api-server/src/shared/utils/constants';
 
 @Injectable()
 export class R2Service {
@@ -74,7 +77,7 @@ export class R2Service {
     });
 
     try {
-      const url = await getSignedUrl(this.s3Client, command, { expiresIn: ONE_WEEK_IN_SECONDS });
+      const url = await getSignedUrl(this.s3Client, command, { expiresIn: FIFTEEN_MINUTES_IN_SECONDS });
       return url;
     } catch (error) {
       throw new Error(`Could not get presigned URL: ${error.message}`);

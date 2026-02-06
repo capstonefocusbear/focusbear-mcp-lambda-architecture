@@ -82,7 +82,7 @@ describe('FocusModeService', () => {
       await focusModeService.createFocusMode(user_id, createFocusModeDto);
 
       expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
-        new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray() }),
+        new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray(), is_ai_enabled: true }),
       );
     });
 

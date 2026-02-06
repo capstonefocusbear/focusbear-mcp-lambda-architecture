@@ -1,6 +1,5 @@
 prompts:
-  - id: task-suggestion-app
-    file: prompt.md
+  - file://prompt.md
 
 providers:
   - id: openai:gpt-4o-mini
@@ -13,3 +12,148 @@ providers:
 output:
   - debug
   - json
+
+# Note: LLM evals can be flaky even at low temperature; rerun if you see a single failure.
+tests:
+  # Test 1: Terminal with "Coding" task - SHOULD match (Terminal is commonly used for coding)
+  - description: "Terminal with Coding task - should match existing task"
+    vars:
+      app_name: "Terminal"
+      focus_mode: "Deep Work"
+      current_tasks_list: |
+        - task_name: "Coding"
+          task_id: "task-coding-123"
+        - task_name: "Email correspondence"
+          task_id: "task-email-456"
+        - task_name: "Documentation for voice call system"
+          task_id: "task-docs-789"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-coding-123"
+      existing_task_ids: ["task-coding-123", "task-email-456", "task-docs-789"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 2: Terminal with unrelated "documentation for voice call system" task - should NOT match
+  - description: "Terminal with unrelated documentation task - should suggest new task"
+    vars:
+      app_name: "Terminal"
+      focus_mode: "Deep Work"
+      current_tasks_list: |
+        - task_name: "Documentation for voice call system"
+          task_id: "task-docs-789"
+        - task_name: "Email correspondence"
+          task_id: "task-email-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-docs-789", "task-email-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 3: Figma with Design task - SHOULD match (specialized app)
+  - description: "Figma with Design task - should match existing task"
+    vars:
+      app_name: "Figma"
+      focus_mode: "Deep Work"
+      current_tasks_list: |
+        - task_name: "Design new landing page"
+          task_id: "task-design-123"
+        - task_name: "Write unit tests"
+          task_id: "task-tests-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-design-123"
+      existing_task_ids: ["task-design-123", "task-tests-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 4: Slack with Communication task - SHOULD match (specialized app)
+  - description: "Slack with team communication task - should match existing task"
+    vars:
+      app_name: "Slack"
+      focus_mode: "Work"
+      current_tasks_list: |
+        - task_name: "Team standup meeting"
+          task_id: "task-standup-123"
+        - task_name: "Code review"
+          task_id: "task-review-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-standup-123"
+      existing_task_ids: ["task-standup-123", "task-review-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 5: VS Code with Development task - SHOULD match (commonly used for coding)
+  - description: "VS Code with Development task - should match existing task"
+    vars:
+      app_name: "Visual Studio Code"
+      focus_mode: "Deep Work"
+      current_tasks_list: |
+        - task_name: "Development work"
+          task_id: "task-dev-123"
+        - task_name: "Schedule meetings"
+          task_id: "task-meetings-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-dev-123"
+      existing_task_ids: ["task-dev-123", "task-meetings-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 6: Safari with only unrelated tasks - should suggest new task
+  - description: "Safari with only unrelated tasks - should suggest new task"
+    vars:
+      app_name: "Safari"
+      focus_mode: "Work"
+      current_tasks_list: |
+        - task_name: "Water the plants"
+          task_id: "task-plants-123"
+        - task_name: "Call mom"
+          task_id: "task-call-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-plants-123", "task-call-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 7: Xcode with iOS development task - SHOULD match (specialized app)
+  - description: "Xcode with iOS development task - should match existing task"
+    vars:
+      app_name: "Xcode"
+      focus_mode: "Deep Work"
+      current_tasks_list: |
+        - task_name: "iOS app development"
+          task_id: "task-ios-123"
+        - task_name: "Write blog post"
+          task_id: "task-blog-456"
+      input_wrapper: "```"
+      should_match_existing: true
+      expected_task_id: "task-ios-123"
+      existing_task_ids: ["task-ios-123", "task-blog-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js
+
+  # Test 8: Notes app with only coding tasks - should suggest new task
+  - description: "Notes app with only coding tasks - should suggest new task"
+    vars:
+      app_name: "Notes"
+      focus_mode: "Work"
+      current_tasks_list: |
+        - task_name: "Fix backend API bug"
+          task_id: "task-bug-123"
+        - task_name: "Deploy to production"
+          task_id: "task-deploy-456"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-bug-123", "task-deploy-456"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js

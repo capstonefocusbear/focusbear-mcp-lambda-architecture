@@ -140,6 +140,10 @@ export const TeamToAdminRepositoryMock = {
   getTeamAdmins: jest.fn(),
 };
 
+export const TeamJoinCodeRepositoryMock = {
+  ...BaseRepositoryMock,
+};
+
 export const HabitPackRepositoryMock = {
   ...BaseRepositoryMock,
   getHabitPack: jest.fn(),

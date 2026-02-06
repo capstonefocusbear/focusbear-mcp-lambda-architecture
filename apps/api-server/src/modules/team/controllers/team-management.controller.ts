@@ -76,10 +76,7 @@ export class TeamManagementController {
   @ApiResponse({ status: 200, description: 'User is already a member of this team' })
   @ApiResponse({ status: 400, description: 'Invalid team_id or team has reached its member limit' })
   @ApiResponse({ status: 404, description: 'Team not found' })
-  async joinTeam(
-    @Body() { team_id }: JoinTeamDto,
-    @AuthContext() { user: { id: userId } }: Passport,
-  ): Promise<any> {
+  async joinTeam(@Body() { team_id }: JoinTeamDto, @AuthContext() { user: { id: userId } }: Passport): Promise<any> {
     const result = await this.teamManagementService.joinTeam(userId, team_id);
     return result;
   }

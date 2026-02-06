@@ -1645,4 +1645,150 @@ describe('TeamManagementService', () => {
       );
     });
   });
+
+  describe('joinTeam', () => {
+    const userId = randomUUID();
+
+    it('negative: if team does not exist, throw NotFoundException with "Team not found"', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, TeamWithMembersDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual('Team not found');
+    });
+
+    it('negative: if team is expired, throw NotFoundException with "Team not found"', async () => {
+      const expiredTeam = {
+        ...TeamWithMembersDummy,
+        expires_date: new Date('2020-01-01'),
+      };
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(expiredTeam);
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, TeamWithMembersDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual('Team not found');
+    });
+
+    it('positive: if user is already a member, return 200 idempotent response', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
+
+      const result = await teamManagementService.joinTeam(TeamMemberDummy.member_id, TeamWithMembersDummy.id);
+
+      expect(result).toEqual({
+        message: 'User is already a member of this team',
+        statusCode: 200,
+      });
+      // Should NOT create a new member record
+      expect(TeamToMemberRepositoryMock.orm.create).not.toHaveBeenCalled();
+    });
+
+    it('negative: if team has reached its member limit, throw BadRequestException', async () => {
+      const fullTeam = {
+        ...TeamWithMembersDummy,
+        team_size_limit: 2,
+      };
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(fullTeam);
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([TeamMemberDummy, TeamMemberFake]);
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, TeamWithMembersDummy.id);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('Team has reached its member limit');
+    });
+
+    it('positive: user should be added as standard member with correct fields', async () => {
+      const teamWithCapacity = {
+        ...TeamWithMembersDummy,
+        team_size_limit: 10,
+      };
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(teamWithCapacity);
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([TeamMemberDummy]);
+      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+
+      const result = await teamManagementService.joinTeam(userId, TeamWithMembersDummy.id);
+
+      expect(result).toEqual({
+        message: 'Successfully joined team',
+        team_id: TeamWithMembersDummy.id,
+        team_name: TeamWithMembersDummy.name,
+        statusCode: 201,
+      });
+
+      expect(TeamToMemberRepositoryMock.orm.create).toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        member_id: userId,
+        member_expiry_date: teamWithCapacity.expires_date,
+        invitation_status: InvitationStatus.ACCEPTED,
+        invitation_sent_at: null,
+        invitation_send_count: 0,
+        invitation_responded_at: null,
+      });
+
+      expect(TeamToMemberRepositoryMock.orm.save).toHaveBeenCalled();
+      expect(RevenueCatServiceMock.grantTeamMembership).toHaveBeenCalledWith(
+        userId,
+        Entitlement.team_member,
+        teamWithCapacity.expires_date,
+      );
+    });
+
+    it('positive: user should be added when team has no team_size_limit (null)', async () => {
+      const teamNoLimit = {
+        ...TeamWithMembersDummy,
+        team_size_limit: null,
+      };
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(teamNoLimit);
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([TeamMemberDummy]);
+      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+
+      const result = await teamManagementService.joinTeam(userId, TeamWithMembersDummy.id);
+
+      expect(result.statusCode).toBe(201);
+      expect(result.message).toBe('Successfully joined team');
+    });
+
+    it('positive: member_expiry_date should be null if team has no expires_date', async () => {
+      const teamNoExpiry = {
+        ...TeamWithMembersDummy,
+        expires_date: null,
+        team_size_limit: 10,
+      };
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(teamNoExpiry);
+      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([]);
+      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+
+      await teamManagementService.joinTeam(userId, TeamWithMembersDummy.id);
+
+      expect(TeamToMemberRepositoryMock.orm.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          member_expiry_date: null,
+        }),
+      );
+    });
+  });
 });

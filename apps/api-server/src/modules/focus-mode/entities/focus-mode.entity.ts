@@ -59,9 +59,10 @@ export class FocusMode extends BaseEntity {
 
   @Column({
     type: 'boolean',
+    nullable: false,
     default: true,
   })
-  is_ai_enabled?: boolean;
+  is_ai_enabled!: boolean;
 
   @Index()
   @Column({

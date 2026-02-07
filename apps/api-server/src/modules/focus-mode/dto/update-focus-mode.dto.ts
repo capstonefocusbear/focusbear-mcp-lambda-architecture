@@ -34,8 +34,12 @@ export class UpdateFocusModeDto {
   @IsArray()
   tags?: CreateFocusModeTagDto[];
 
+  @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
-  @IsOptional()
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    description: 'Enable or disable AI-powered URL and app evaluation for this focus mode',
+    default: true,
+  })
   is_ai_enabled?: boolean;
 }

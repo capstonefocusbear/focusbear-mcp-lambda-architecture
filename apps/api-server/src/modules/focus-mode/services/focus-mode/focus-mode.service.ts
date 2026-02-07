@@ -144,7 +144,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     }
   }
 
-  async validateFocusModeName(name: string, userId: string, existingFocusModes: FocusMode[]) {
+  async validateFocusModeName(name: string, userId: string, existingFocusModes: Array<Pick<FocusMode, 'name'>>) {
     const focusModeNames = existingFocusModes.map((focusMode) => focusMode.name.toLowerCase());
     if (focusModeNames.includes(name?.toLowerCase())) {
       throw new HttpException(`Focus mode with name: ${name} already exists for user with ID: ${userId}!`, 422);

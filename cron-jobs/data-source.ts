@@ -58,7 +58,8 @@ import { ProjectMember } from '../apps/api-server/src/modules/project/entities/p
 import { TaskComment } from '../apps/api-server/src/modules/to-do/entities/task-comment.entity';
 import { TaskAttachment } from '../apps/api-server/src/modules/to-do/entities/task-attachment.entity';
 import { CommentAttachment } from '../apps/api-server/src/modules/to-do/entities/comment-attachment.entity';
-
+import { Note } from '../apps/api-server/src/modules/note/entities/note.entity';
+import { NoteTag } from '../apps/api-server/src/modules/note/entities/note-tag.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -129,6 +130,8 @@ export const CronJobDataSource = new DataSource({
     TaskComment,
     TaskAttachment,
     CommentAttachment,
+    Note,
+    NoteTag,
   ],
   subscribers: [],
   migrations: [],

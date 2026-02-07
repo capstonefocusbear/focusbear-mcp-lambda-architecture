@@ -67,6 +67,8 @@ import { ProjectMember } from '../modules/project/entities/project-member.entity
 import { TaskComment } from '../modules/to-do/entities/task-comment.entity';
 import { TaskAttachment } from '../modules/to-do/entities/task-attachment.entity';
 import { CommentAttachment } from '../modules/to-do/entities/comment-attachment.entity';
+import { Note } from '../modules/note/entities/note.entity';
+import { NoteTag } from '../modules/note/entities/note-tag.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -151,6 +153,8 @@ export const typeormConfig = registerAs(
       TaskComment,
       TaskAttachment,
       CommentAttachment,
+      Note,
+      NoteTag,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}')],
   }),

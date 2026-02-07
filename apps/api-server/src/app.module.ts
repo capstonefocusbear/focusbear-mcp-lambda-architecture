@@ -51,6 +51,7 @@ import { ProjectModule } from './modules/project/project.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
+import { NoteModule } from './modules/note/note.module';
 import { GeofenceModule } from './modules/geofence/geofence.module';
 
 @Module({
@@ -126,6 +127,7 @@ import { GeofenceModule } from './modules/geofence/geofence.module';
     WebhookModule,
     AnnouncementsModule,
     AppVersionsModule,
+    NoteModule,
     GeofenceModule,
   ],
   controllers: [AppController],

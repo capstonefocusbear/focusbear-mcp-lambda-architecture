@@ -29,7 +29,7 @@ export class CreateNotesTables1769224042884 implements MigrationInterface {
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         "user_id" uuid NOT NULL,
-        "title" varchar(500) NOT NULL,
+        "title" text NOT NULL,
         "body" text,
         "completed_activity_id" uuid,
         CONSTRAINT "PK_notes" PRIMARY KEY ("id"),

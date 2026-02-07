@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { In } from 'typeorm';
 import { InjectSentry, SentryService } from '@app/observability';
 import { NoteRepository } from '../repositories/note.repository';
@@ -24,6 +24,10 @@ export class NoteService {
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
+  private static hasDtoProperty<T extends object>(obj: T, prop: keyof any): boolean {
+    return Object.prototype.hasOwnProperty.call(obj, prop);
+  }
+
   private mapNoteToResponse(note: Note): NoteResponseDto {
     const activityData = note.completed_activity?.activity?.activity_data;
     return {
@@ -42,6 +46,8 @@ export class NoteService {
   }
 
   async upsertNote(userId: string, createNoteDto: CreateNoteDto): Promise<NoteResponseDto> {
+    let existingNoteForUpdate: Note | null = null;
+
     if (createNoteDto.id) {
       const existingNote = await this.noteRepository.orm.findOne({ where: { id: createNoteDto.id } });
       if (existingNote && existingNote.user_id !== userId) {
@@ -55,11 +61,24 @@ export class NoteService {
           `User with ID: ${userId} is not allowed to edit note with ID: ${existingNote.id}!`,
         );
       }
+
+      if (existingNote) {
+        existingNoteForUpdate = await this.noteRepository.getNoteById(existingNote.id, userId);
+      }
     }
 
-    const tags = await this.processNoteTags(userId, createNoteDto.tags);
+    const isCreate = !existingNoteForUpdate;
+    if (isCreate && !createNoteDto.title) {
+      throw new BadRequestException('title is required when creating a note');
+    }
 
-    if (createNoteDto.completed_activity_id) {
+    const shouldUpdateTags = NoteService.hasDtoProperty(createNoteDto, 'tags');
+    const tags = shouldUpdateTags
+      ? await this.processNoteTags(userId, createNoteDto.tags)
+      : existingNoteForUpdate?.tags ?? [];
+
+    const shouldUpdateCompletedActivity = NoteService.hasDtoProperty(createNoteDto, 'completed_activity_id');
+    if (shouldUpdateCompletedActivity && createNoteDto.completed_activity_id) {
       const activity = await this.completedActivityRepository.orm.findOne({
         where: { id: createNoteDto.completed_activity_id, user_id: userId },
       });
@@ -68,20 +87,33 @@ export class NoteService {
       }
     }
 
-    let embeddedTodos = [];
-    if (createNoteDto.embedded_todo_ids?.length) {
+    let embeddedTodos = existingNoteForUpdate?.embedded_todos ?? [];
+    const shouldUpdateEmbeddedTodos = NoteService.hasDtoProperty(createNoteDto, 'embedded_todo_ids');
+    if (shouldUpdateEmbeddedTodos && createNoteDto.embedded_todo_ids?.length) {
       embeddedTodos = await this.toDoRepository.orm.find({
         where: {
           id: In(createNoteDto.embedded_todo_ids),
           user_id: userId,
         },
       });
+    } else if (shouldUpdateEmbeddedTodos) {
+      embeddedTodos = [];
     }
+
+    const shouldUpdateBody = NoteService.hasDtoProperty(createNoteDto, 'body');
+    const title = createNoteDto.title ?? existingNoteForUpdate?.title;
+    const body = shouldUpdateBody ? createNoteDto.body : existingNoteForUpdate?.body;
+    const completedActivityId = shouldUpdateCompletedActivity
+      ? createNoteDto.completed_activity_id
+      : existingNoteForUpdate?.completed_activity_id;
 
     const note = new Note(
       {
-        ...createNoteDto,
+        ...(createNoteDto.id ? { id: createNoteDto.id } : {}),
         user_id: userId,
+        title,
+        body,
+        completed_activity_id: completedActivityId,
         updated_at: new Date().toISOString(),
         tags,
         embedded_todos: embeddedTodos,

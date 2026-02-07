@@ -20,8 +20,7 @@ export class Note extends BaseEntity {
   user_id?: string;
 
   @Column({
-    type: 'varchar',
-    length: 500,
+    type: 'text',
     nullable: false,
     transformer: BaseEntity.encryptField('note_title'),
   })

@@ -7,10 +7,11 @@ export class CreateNoteDto {
   @IsUUID()
   id?: string;
 
+  @IsOptional()
   @IsNotEmpty()
   @IsString()
   @MaxLength(500)
-  title: string;
+  title?: string;
 
   @IsOptional()
   @IsString()

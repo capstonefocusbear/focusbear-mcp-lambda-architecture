@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@app/observability';
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   CompletedActivityRepositoryMock,
@@ -86,11 +86,15 @@ describe('NoteService', () => {
 
     it('positive: should allow user to update their own note', async () => {
       const noteId = randomUUID();
-      const existingNote = {
+      const existingNote = new Note({
         id: noteId,
         user_id: userId,
         ...noteDummy,
-      };
+        tags: [],
+        embedded_todos: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
 
       const updatedNote = new Note({
         ...existingNote,
@@ -102,6 +106,7 @@ describe('NoteService', () => {
       });
 
       NoteRepositoryMock.orm.findOne.mockResolvedValueOnce(existingNote);
+      NoteRepositoryMock.getNoteById.mockResolvedValueOnce(existingNote);
       NoteRepositoryMock.orm.save.mockResolvedValueOnce(updatedNote);
       NoteRepositoryMock.getNoteById.mockResolvedValueOnce(updatedNote);
 
@@ -109,6 +114,42 @@ describe('NoteService', () => {
 
       expect(NoteRepositoryMock.orm.save).toHaveBeenCalled();
       expect(result.title).toBe('Updated Title');
+    });
+
+    it('positive: should preserve tags and embedded todos when omitted in update payload', async () => {
+      const noteId = randomUUID();
+      const existingNote = new Note({
+        id: noteId,
+        user_id: userId,
+        title: noteDummy.title,
+        body: noteDummy.body,
+        tags: [{ id: randomUUID(), text: 'keep-tag', color: '#808080' } as any],
+        embedded_todos: [{ id: randomUUID(), title: 'keep-todo' } as any],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      const updatedNote = new Note({
+        ...existingNote,
+        title: 'Updated Title',
+        updated_at: new Date().toISOString(),
+      });
+
+      NoteRepositoryMock.orm.findOne.mockResolvedValueOnce({ id: noteId, user_id: userId });
+      NoteRepositoryMock.getNoteById.mockResolvedValueOnce(existingNote);
+      NoteRepositoryMock.orm.save.mockResolvedValueOnce(updatedNote);
+      NoteRepositoryMock.getNoteById.mockResolvedValueOnce(updatedNote);
+
+      await noteService.upsertNote(userId, { id: noteId, title: 'Updated Title' });
+
+      expect(NoteRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tags: existingNote.tags,
+          embedded_todos: existingNote.embedded_todos,
+        }),
+      );
+      expect(NoteTagRepositoryMock.findOrCreateTag).not.toHaveBeenCalled();
+      expect(ToDoRepositoryMock.orm.find).not.toHaveBeenCalled();
     });
 
     it('negative: should throw UnauthorizedException when user tries to update another users note', async () => {
@@ -172,6 +213,19 @@ describe('NoteService', () => {
 
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toContain('Completed activity');
+      expect(NoteRepositoryMock.orm.save).not.toHaveBeenCalled();
+    });
+
+    it('negative: should throw BadRequestException when creating note without title', async () => {
+      let exception;
+      try {
+        await noteService.upsertNote(userId, { body: noteDummy.body });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toContain('title is required');
       expect(NoteRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
 

@@ -31,6 +31,7 @@ import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dt
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UserTypes } from '../../user/domain/user-types.enum';
 import { AdminTaskResponseDto } from '../dto/admin-task-response.dto';
+import { ProjectRepository } from '../../project/repositories/project.repository';
 
 @Injectable()
 export class ToDoService {
@@ -44,6 +45,7 @@ export class ToDoService {
     private readonly openAIService: OpenAIService,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly userRepository: UserRepository,
+    private readonly projectRepository: ProjectRepository,
   ) {}
 
   /**
@@ -95,6 +97,19 @@ export class ToDoService {
     if (updatedToDo.id) {
       toDoFromDB = await this.validateUpdatingToDo(userId, updatedToDo);
     }
+    if (updatedToDo.custom_status_id && updatedToDo.project_id) {
+      const project = await this.projectRepository.getProjectById(updatedToDo.project_id);
+      if (!project) {
+        throw new BadRequestException(`Project with id ${updatedToDo.project_id} not found`);
+      }
+      const validStatus = project.custom_statuses?.some((s) => s.id === updatedToDo.custom_status_id);
+      if (!validStatus) {
+        throw new BadRequestException(
+          `Invalid custom_status_id: ${updatedToDo.custom_status_id} does not exist in the project's custom statuses`,
+        );
+      }
+    }
+
     const DEFAULT_STATUSES: string[] = [ToDoStatus.NOT_STARTED, ToDoStatus.IN_PROGRESS, ToDoStatus.COMPLETED];
     const tags = updatedToDo?.tags?.map((tag) => new FocusModeTag({ ...tag, user_id: userId }));
     if (DEFAULT_STATUSES.includes(updatedToDo.status)) {

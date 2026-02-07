@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class SearchNotesDto {
   @IsOptional()
@@ -10,5 +10,6 @@ export class SearchNotesDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  @Max(100)
   take?: number = 20;
 }

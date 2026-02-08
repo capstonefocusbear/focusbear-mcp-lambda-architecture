@@ -6,4 +6,5 @@ export const TEST_EVENING_ACTIVITY_SEQUENCE_ID = 'd73a5642-e1b0-4782-a53d-5e8f65
 export const TEST_MORNING_ACTIVITY_ID = 'f3c02045-12ed-4029-b6c7-1ffa16c14fa9';
 export const TEST_EVENING_ACTIVITY_ID = '15b87c8a-6a21-4a64-898e-def533eabcb9';
 export const TEST_DEVICE_ID = '65cbbc6c-4f77-49c4-b761-f79e2608775e';
+export const TEST_COMPLETED_ACTIVITY_ID = 'a7e6f2e9-d783-4443-864e-22071b853700';
 export const TEST_Tags = ['Build healthy habits', 'Stay focused at work', 'Sleep better'];

@@ -37,6 +37,7 @@ import { CompletedActivitySequenceRepository } from '../activity/repositories/co
     FocusModeService,
     BlockingScheduleService,
     CompletedFocusBlockRepository,
+    FocusModeManagerService,
   ],
   imports: [
     forwardRef(() => UserModule),

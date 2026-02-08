@@ -216,7 +216,7 @@ export class UserController {
 
   @Get('/motivational-summary')
   @Sse()
-  @UseGuards(UserThrottlerGuard, IsAuth)
+  @UseGuards(IsAuth, UserThrottlerGuard)
   @Throttle({ default: { ttl: ONE_DAY_SECONDS * 1000, limit: 5 } })
   @ApiSecurity('Auth0AccessToken')
   async getMotivationalSummary(

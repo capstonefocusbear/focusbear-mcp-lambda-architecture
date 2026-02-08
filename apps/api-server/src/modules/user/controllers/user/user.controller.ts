@@ -3,7 +3,8 @@ import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@app/observability';
 import { Throttle } from '@nestjs/throttler';
-import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS } from '../../../../shared/utils/constants';
+import { TRIAL_LENGTH_DAYS, ONE_HOUR_MILLISECONDS, ONE_DAY_SECONDS } from '../../../../shared/utils/constants';
+import { UserThrottlerGuard } from '../../../auth/guards/user-throttler/user-throttler.guard';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { CurrentActivityProps } from '../../../activity/domain/current-activity-props.model';
 import { CompletedActivity } from '../../../activity/entities/completed-activity.entity';
@@ -215,7 +216,8 @@ export class UserController {
 
   @Get('/motivational-summary')
   @Sse()
-  @UseGuards(IsAuth)
+  @UseGuards(IsAuth, UserThrottlerGuard)
+  @Throttle({ default: { ttl: ONE_DAY_SECONDS * 1000, limit: 5 } })
   @ApiSecurity('Auth0AccessToken')
   async getMotivationalSummary(
     @Res() response: FastifyReply,

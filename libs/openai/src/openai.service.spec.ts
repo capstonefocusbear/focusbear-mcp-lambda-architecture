@@ -358,6 +358,52 @@ describe('OpenAIService', () => {
       getMetadataSpy.mockRestore();
     });
 
+    it('should pass currentTaskInToDoPlayer to suggestTaskForUrl when provided', async () => {
+      const getMetadataSpy = jest.spyOn<any, any>(service as any, 'getMetadata').mockResolvedValueOnce({
+        title: 'Sign Document',
+        description: 'Electronic signature service',
+      });
+
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.4,"reason":"Not aligned"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForUrl').mockResolvedValueOnce({
+        task_name: 'sign documents',
+        task_id: 'suggested-123',
+      });
+
+      const dto = {
+        url: 'https://sign.zoho.com/signrequest',
+        meta_description: 'Electronic signature',
+        tab_title: 'Sign Document',
+        focus_mode: 'Deep Work',
+        intention: 'review actions',
+        currentTaskInToDoPlayer: 'aws infra for BearlyMail',
+        current_tasks: [
+          { task_name: 'aws infra for BearlyMail', task_id: 'task-aws-123' },
+          { task_name: 'Code review', task_id: 'task-review-456' },
+        ],
+        language: 'en',
+      };
+
+      await service.checkIfUrlIsSafeToUse(dto, 'en');
+
+      expect(suggestTaskSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        dto.current_tasks,
+        'en',
+        'aws infra for BearlyMail',
+      );
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+      getMetadataSpy.mockRestore();
+    });
+
     it('should not suggest a task when alignment score >= 70%', async () => {
       const completionsSpy = jest
         .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
@@ -995,6 +1041,38 @@ describe('OpenAIService', () => {
       expect(result.suggested_task).toBe('coding project');
       expect(result.suggested_task_id).toBe('task-789');
       expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en', undefined);
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+    });
+
+    it('should pass currentTaskInToDoPlayer to suggestTaskForApp when provided', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.5,"reason":"Low alignment"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForApp').mockResolvedValueOnce({
+        task_name: 'check team comms',
+        task_id: 'task-comms-123',
+      });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'communication',
+        appName: 'Slack',
+        currentTaskInToDoPlayer: 'check team comms',
+        current_tasks: [
+          { task_name: 'check team comms', task_id: 'task-comms-123' },
+          { task_name: 'Code review', task_id: 'task-review-456' },
+        ],
+        language: 'en',
+      };
+
+      const result = await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      expect(result.allowed_probability).toBe(0.5);
+      expect(suggestTaskSpy).toHaveBeenCalledWith('Slack', 'work', dto.current_tasks, 'en', 'check team comms');
       completionsSpy.mockRestore();
       suggestTaskSpy.mockRestore();
     });

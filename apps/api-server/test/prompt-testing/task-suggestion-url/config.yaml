@@ -21,6 +21,7 @@ tests:
       url: "https://github.com/user/repo"
       tab_title: "user/repo - GitHub"
       meta_description: "A code repository"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Coding"
           task_id: "task-coding-123"
@@ -42,6 +43,7 @@ tests:
       url: "https://www.google.com"
       tab_title: "Google"
       meta_description: "Search the world's information"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Documentation for voice call system"
           task_id: "task-docs-789"
@@ -60,6 +62,7 @@ tests:
       url: "https://company.atlassian.net/browse/PROJ-123"
       tab_title: "PROJ-123 - Fix login bug - Jira"
       meta_description: "Jira issue tracker"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Project management"
           task_id: "task-pm-123"
@@ -79,6 +82,7 @@ tests:
       url: "https://www.figma.com/file/abc123"
       tab_title: "Landing Page Design - Figma"
       meta_description: "Figma design file"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Design new landing page"
           task_id: "task-design-123"
@@ -98,6 +102,7 @@ tests:
       url: "https://stackoverflow.com/questions/12345"
       tab_title: "How to fix React error - Stack Overflow"
       meta_description: "Stack Overflow question about React"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Development work"
           task_id: "task-dev-123"
@@ -117,6 +122,7 @@ tests:
       url: "https://twitter.com/home"
       tab_title: "Home / Twitter"
       meta_description: "See what's happening in the world right now"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Fix backend API bug"
           task_id: "task-bug-123"
@@ -135,6 +141,7 @@ tests:
       url: "https://mail.google.com/mail/u/0/#inbox"
       tab_title: "Inbox - Gmail"
       meta_description: "Gmail email inbox"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Write unit tests"
           task_id: "task-tests-123"
@@ -153,6 +160,7 @@ tests:
       url: "https://mail.google.com/mail/u/0/#inbox"
       tab_title: "Inbox - Gmail"
       meta_description: "Gmail email inbox"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Email correspondence"
           task_id: "task-email-123"

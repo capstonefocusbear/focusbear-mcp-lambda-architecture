@@ -13,7 +13,7 @@ Please analyze the app and determine the most appropriate task:
 
 IMPORTANT: Only select an existing task if there is a STRONG, SPECIFIC connection between the app and the task. Be careful with generic/multi-purpose apps - they should only match tasks that are clearly related to what the app is commonly used for.
 
-CONTEXT: The system has flagged this app as potentially not aligned with the current task. However, you should make your own independent assessment. If you genuinely believe the app IS strongly aligned with the current task, you may suggest it. But be careful - only suggest the current task if there is a clear, direct connection (e.g., Slack for "check team comms", Xcode for "iOS development").
+CONTEXT: The system has determined this app is not sufficiently aligned with the current task (alignment score below 70%). However, you should make your own independent assessment. If you genuinely believe the app IS strongly aligned with the current task, you may suggest it. But be careful - only suggest the current task if there is a clear, direct connection (e.g., Slack for "check team comms", Xcode for "iOS development").
 
 Guidelines for matching:
 - If the app is clearly specialized for a specific purpose (e.g., Figma for design, Slack for communication, Xcode for iOS development), it MAY match a related task

@@ -14,7 +14,7 @@ Please analyze the website content and determine the most appropriate task:
 
 IMPORTANT: Only select an existing task if there is a STRONG, SPECIFIC connection between the website content and the task. Be careful with generic websites - they should only match tasks that are clearly related to what the website is commonly used for.
 
-CONTEXT: The system has flagged this website as potentially not aligned with the current task. However, you should make your own independent assessment. If you genuinely believe the website IS strongly aligned with the current task, you may suggest it. But be careful - only suggest the current task if there is a clear, direct connection (e.g., Slack for "check team comms", GitHub for "coding work").
+CONTEXT: The system has determined this website is not sufficiently aligned with the current task (alignment score below 70%). However, you should make your own independent assessment. If you genuinely believe the website IS strongly aligned with the current task, you may suggest it. But be careful - only suggest the current task if there is a clear, direct connection (e.g., Slack for "check team comms", GitHub for "coding work").
 
 Guidelines for matching:
 - If the website is clearly specialized for a specific purpose (e.g., Jira for project management, Figma for design, a specific documentation page), it MAY match a related task

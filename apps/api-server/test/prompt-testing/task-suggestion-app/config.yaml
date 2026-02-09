@@ -20,6 +20,7 @@ tests:
     vars:
       app_name: "Terminal"
       focus_mode: "Deep Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Coding"
           task_id: "task-coding-123"
@@ -40,6 +41,7 @@ tests:
     vars:
       app_name: "Terminal"
       focus_mode: "Deep Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Documentation for voice call system"
           task_id: "task-docs-789"
@@ -57,6 +59,7 @@ tests:
     vars:
       app_name: "Figma"
       focus_mode: "Deep Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Design new landing page"
           task_id: "task-design-123"
@@ -75,6 +78,7 @@ tests:
     vars:
       app_name: "Slack"
       focus_mode: "Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Team standup meeting"
           task_id: "task-standup-123"
@@ -93,6 +97,7 @@ tests:
     vars:
       app_name: "Visual Studio Code"
       focus_mode: "Deep Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Development work"
           task_id: "task-dev-123"
@@ -111,6 +116,7 @@ tests:
     vars:
       app_name: "Safari"
       focus_mode: "Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Water the plants"
           task_id: "task-plants-123"
@@ -128,6 +134,7 @@ tests:
     vars:
       app_name: "Xcode"
       focus_mode: "Deep Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "iOS app development"
           task_id: "task-ios-123"
@@ -146,6 +153,7 @@ tests:
     vars:
       app_name: "Notes"
       focus_mode: "Work"
+      current_task_in_todo_player: ""
       current_tasks_list: |
         - task_name: "Fix backend API bug"
           task_id: "task-bug-123"

@@ -44,11 +44,10 @@ export interface TestResult {
     imageFetchMs: number;
     extractionMs: number;
     ragMatchingMs: number;
-    // Detailed RAG breakdown:
-    embeddingMs: number;
-    vectorSearchMs: number;
-    templateFetchMs: number;
-    llmRerankMs: number;
+    // Detailed RAG breakdown (from service telemetry):
+    ragRetrieveMs: number; // embedding + vector search
+    ragTemplateFetchMs: number;
+    ragRerankMs: number;
     totalMs: number;
   };
   errors: string[];

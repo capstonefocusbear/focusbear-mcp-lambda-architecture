@@ -255,7 +255,7 @@ describe('HabitImportExtractionService', () => {
       expect(routineSuggestionGeneratorServiceMock.generateSuggestions).toHaveBeenCalledWith(
         'Morning meditation',
         expect.any(Array),
-        { limit: 1, minMatchScore: 0.9 },
+        { limit: 1, minMatchScore: 0.9, includeTelemetry: true },
       );
     });
   });

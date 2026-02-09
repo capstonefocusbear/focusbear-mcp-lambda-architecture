@@ -9,6 +9,8 @@ import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
 @Injectable()
 export class HabitImportAsyncService {
+  private static readonly TASK_TYPE = 'habit-import';
+
   constructor(
     private readonly asyncTaskService: AsyncTaskService,
     @InjectQueue(BullQueues.HABIT_IMPORT) private readonly habitImportQueue: Queue,
@@ -21,9 +23,17 @@ export class HabitImportAsyncService {
     source?: string,
   ): Promise<{ asyncTaskId: string }> {
     const requestHash = this.computeRequestHash(dto, userId);
+    const existingTask = await this.asyncTaskService.findActiveTaskByRequestHash(
+      HabitImportAsyncService.TASK_TYPE,
+      userId,
+      requestHash,
+    );
+    if (existingTask?.id) {
+      return { asyncTaskId: existingTask.id };
+    }
 
     const metadata = {
-      taskType: 'habit-import',
+      taskType: HabitImportAsyncService.TASK_TYPE,
       userId,
       mediaType: dto.mediaType,
       mediaKey: dto.mediaKey,
@@ -48,7 +58,7 @@ export class HabitImportAsyncService {
           requestHash,
         } satisfies HabitImportJobData,
         {
-          jobId: asyncTask.id,
+          jobId: `${HabitImportAsyncService.TASK_TYPE}:${requestHash}`,
           removeOnComplete: true,
           removeOnFail: false,
           timeout: 180000, // 3 minutes for image/audio processing

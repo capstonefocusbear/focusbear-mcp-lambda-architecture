@@ -16,6 +16,8 @@ export interface HabitCreationJobData {
 
 @Injectable()
 export class HabitCreationAsyncService {
+  private static readonly TASK_TYPE = 'habit-creation';
+
   constructor(
     private readonly asyncTaskService: AsyncTaskService,
     @InjectQueue(BullQueues.ROUTINE_SUGGESTIONS) private readonly routineSuggestionsQueue: Queue,
@@ -27,14 +29,24 @@ export class HabitCreationAsyncService {
     userId: string,
     source?: string,
   ): Promise<{ asyncTaskId: string }> {
+    const requestHash = this.computeRequestHash(dto, userId);
+    const existingTask = await this.asyncTaskService.findActiveTaskByRequestHash(
+      HabitCreationAsyncService.TASK_TYPE,
+      userId,
+      requestHash,
+    );
+    if (existingTask?.id) {
+      return { asyncTaskId: existingTask.id };
+    }
+
     const metadata = {
-      taskType: 'habit-creation',
+      taskType: HabitCreationAsyncService.TASK_TYPE,
       userId,
       goalCount: dto.user_goals?.length ?? 0,
       routine: dto.routine ?? null,
       durationMinutes: dto.routine_duration ?? null,
       source: source ?? 'unknown',
-      requestHash: this.computeRequestHash(dto, userId),
+      requestHash,
     };
 
     const asyncTask = await this.asyncTaskService.createAsyncTask({ metadata });
@@ -46,10 +58,10 @@ export class HabitCreationAsyncService {
           asyncTaskId: asyncTask.id,
           userId,
           request: dto,
-          requestHash: metadata.requestHash,
+          requestHash,
         } satisfies HabitCreationJobData,
         {
-          jobId: asyncTask.id,
+          jobId: `${HabitCreationAsyncService.TASK_TYPE}:${requestHash}`,
           removeOnComplete: true,
           removeOnFail: false,
           timeout: 120000,

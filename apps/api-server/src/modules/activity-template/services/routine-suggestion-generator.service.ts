@@ -11,6 +11,10 @@ const DEFAULT_GENERATED_LIMIT = 3;
 const DEFAULT_MINUTES_FALLBACK = 10;
 const DEFAULT_MIN_MATCH_SCORE = 0.5;
 const DEFAULT_SUGGESTION_LIMIT = 5;
+const SHORTCUT_ACCEPT_SIMILARITY_THRESHOLD = 0.9;
+const SHORTCUT_ACCEPT_TOP_FLOOR = 0.75;
+const SHORTCUT_ACCEPT_GAP_THRESHOLD = 0.12;
+const SHORTCUT_REJECT_SIMILARITY_THRESHOLD = 0.25;
 
 const ROUTINE_SUGGESTIONS_RERANK_RESPONSE_FORMAT = {
   type: 'json_schema',
@@ -97,6 +101,20 @@ export interface GeneratedHabitSuggestion {
 export interface GenerateSuggestionsOptions {
   limit?: number;
   minMatchScore?: number;
+  includeTelemetry?: boolean;
+}
+
+export type SuggestionEvaluationPath = 'empty' | 'shortcut_accept' | 'shortcut_reject' | 'llm' | 'fallback';
+
+export interface GenerateSuggestionsTelemetry {
+  evaluationPath: SuggestionEvaluationPath;
+  llmInvoked: boolean;
+  shortcutAccepted: boolean;
+  shortcutRejected: boolean;
+  shortcutReason?: string;
+  topSimilarity?: number;
+  secondSimilarity?: number;
+  similarityGap?: number;
 }
 
 export interface GenerateSuggestionsResponse {
@@ -104,6 +122,7 @@ export interface GenerateSuggestionsResponse {
   rejectedCount: number;
   parsedCount: number;
   minScoreApplied: number;
+  telemetry?: GenerateSuggestionsTelemetry;
 }
 
 @Injectable()
@@ -119,20 +138,76 @@ export class RoutineSuggestionGeneratorService {
   async generateSuggestions(
     goal: string,
     candidates: RoutineSuggestionCandidate[],
-    { limit = DEFAULT_SUGGESTION_LIMIT, minMatchScore }: GenerateSuggestionsOptions = {},
+    { limit = DEFAULT_SUGGESTION_LIMIT, minMatchScore, includeTelemetry = false }: GenerateSuggestionsOptions = {},
   ): Promise<GenerateSuggestionsResponse> {
     if (!candidates.length) {
-      return {
-        accepted: [],
-        rejectedCount: 0,
-        parsedCount: 0,
-        minScoreApplied: this.resolveMinMatchScore(minMatchScore),
-      };
+      return this.withTelemetry(
+        {
+          accepted: [],
+          rejectedCount: 0,
+          parsedCount: 0,
+          minScoreApplied: this.resolveMinMatchScore(minMatchScore),
+        },
+        {
+          evaluationPath: 'empty',
+          llmInvoked: false,
+          shortcutAccepted: false,
+          shortcutRejected: false,
+        },
+        includeTelemetry,
+      );
     }
 
     const normalizedLimit = Math.max(1, limit);
     const sortedCandidates = [...candidates].sort((a, b) => b.similarity - a.similarity);
     const scoreThreshold = this.resolveMinMatchScore(minMatchScore);
+
+    const shortcutDecision = this.evaluateShortcut(sortedCandidates);
+    if (shortcutDecision.decision === 'accept') {
+      const accepted = this.buildFallbackSuggestions(sortedCandidates, goal, normalizedLimit, scoreThreshold);
+      return this.withTelemetry(
+        {
+          accepted,
+          rejectedCount: 0,
+          parsedCount: 0,
+          minScoreApplied: scoreThreshold,
+        },
+        {
+          evaluationPath: 'shortcut_accept',
+          llmInvoked: false,
+          shortcutAccepted: true,
+          shortcutRejected: false,
+          shortcutReason: shortcutDecision.reason,
+          topSimilarity: shortcutDecision.topSimilarity,
+          secondSimilarity: shortcutDecision.secondSimilarity,
+          similarityGap: shortcutDecision.similarityGap,
+        },
+        includeTelemetry,
+      );
+    }
+
+    if (shortcutDecision.decision === 'reject') {
+      return this.withTelemetry(
+        {
+          accepted: [],
+          rejectedCount: sortedCandidates.length,
+          parsedCount: 0,
+          minScoreApplied: scoreThreshold,
+        },
+        {
+          evaluationPath: 'shortcut_reject',
+          llmInvoked: false,
+          shortcutAccepted: false,
+          shortcutRejected: true,
+          shortcutReason: shortcutDecision.reason,
+          topSimilarity: shortcutDecision.topSimilarity,
+          secondSimilarity: shortcutDecision.secondSimilarity,
+          similarityGap: shortcutDecision.similarityGap,
+        },
+        includeTelemetry,
+      );
+    }
+
     const promptContext = this.buildContext(sortedCandidates.slice(0, MAX_CONTEXT_CANDIDATES));
 
     this.logger.debug(
@@ -204,10 +279,28 @@ export class RoutineSuggestionGeneratorService {
       );
 
       if (accepted.length) {
-        return { accepted, rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
+        return this.withTelemetry(
+          { accepted, rejectedCount, parsedCount, minScoreApplied: scoreThreshold },
+          {
+            evaluationPath: 'llm',
+            llmInvoked: true,
+            shortcutAccepted: false,
+            shortcutRejected: false,
+          },
+          includeTelemetry,
+        );
       }
       if (parsedCount > 0) {
-        return { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
+        return this.withTelemetry(
+          { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold },
+          {
+            evaluationPath: 'llm',
+            llmInvoked: true,
+            shortcutAccepted: false,
+            shortcutRejected: false,
+          },
+          includeTelemetry,
+        );
       }
     } catch (error) {
       const goalHash = this.hashGoal(goal);
@@ -228,9 +321,27 @@ export class RoutineSuggestionGeneratorService {
 
     const fallback = this.buildFallbackSuggestions(sortedCandidates, goal, normalizedLimit, scoreThreshold);
     if (fallback.length) {
-      return { accepted: fallback, rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold };
+      return this.withTelemetry(
+        { accepted: fallback, rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold },
+        {
+          evaluationPath: 'fallback',
+          llmInvoked: true,
+          shortcutAccepted: false,
+          shortcutRejected: false,
+        },
+        includeTelemetry,
+      );
     }
-    return { accepted: [], rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold };
+    return this.withTelemetry(
+      { accepted: [], rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold },
+      {
+        evaluationPath: 'fallback',
+        llmInvoked: true,
+        shortcutAccepted: false,
+        shortcutRejected: false,
+      },
+      includeTelemetry,
+    );
   }
 
   private resolveMinMatchScore(override: number | undefined): number {
@@ -240,6 +351,77 @@ export class RoutineSuggestionGeneratorService {
 
     // Use the default threshold (0.5) – if nothing meets this, we generate instead
     return DEFAULT_MIN_MATCH_SCORE;
+  }
+
+  private withTelemetry(
+    response: Omit<GenerateSuggestionsResponse, 'telemetry'>,
+    telemetry: GenerateSuggestionsTelemetry,
+    includeTelemetry: boolean,
+  ): GenerateSuggestionsResponse {
+    if (!includeTelemetry) {
+      return response;
+    }
+    return {
+      ...response,
+      telemetry,
+    };
+  }
+
+  private evaluateShortcut(candidates: RoutineSuggestionCandidate[]): {
+    decision: 'accept' | 'reject' | 'none';
+    reason?: string;
+    topSimilarity?: number;
+    secondSimilarity?: number;
+    similarityGap?: number;
+  } {
+    if (!candidates.length) {
+      return { decision: 'none' };
+    }
+
+    const topSimilarity = this.normalizeScore(candidates[0]?.similarity ?? 0);
+    const secondSimilarity = this.normalizeScore(candidates[1]?.similarity ?? 0);
+    const similarityGap = Number((topSimilarity - secondSimilarity).toFixed(4));
+
+    if (topSimilarity < SHORTCUT_REJECT_SIMILARITY_THRESHOLD) {
+      return {
+        decision: 'reject',
+        reason: 'low_top_similarity',
+        topSimilarity,
+        secondSimilarity,
+        similarityGap,
+      };
+    }
+
+    if (topSimilarity >= SHORTCUT_ACCEPT_SIMILARITY_THRESHOLD) {
+      return {
+        decision: 'accept',
+        reason: 'high_top_similarity',
+        topSimilarity,
+        secondSimilarity,
+        similarityGap,
+      };
+    }
+
+    if (
+      candidates.length > 1 &&
+      topSimilarity >= SHORTCUT_ACCEPT_TOP_FLOOR &&
+      similarityGap >= SHORTCUT_ACCEPT_GAP_THRESHOLD
+    ) {
+      return {
+        decision: 'accept',
+        reason: 'strong_similarity_gap',
+        topSimilarity,
+        secondSimilarity,
+        similarityGap,
+      };
+    }
+
+    return {
+      decision: 'none',
+      topSimilarity,
+      secondSimilarity,
+      similarityGap,
+    };
   }
 
   private buildContext(candidates: RoutineSuggestionCandidate[]): string {

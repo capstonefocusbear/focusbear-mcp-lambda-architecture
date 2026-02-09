@@ -28,4 +28,25 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
   async findById(id: string): Promise<AsyncTask> {
     return this.orm.findOneBy({ id });
   }
+
+  async findLatestActiveByRequestHash(
+    taskType: string,
+    userId: string,
+    requestHash: string,
+  ): Promise<AsyncTask | null> {
+    if (!taskType || !userId || !requestHash) {
+      return null;
+    }
+
+    return this.orm
+      .createQueryBuilder('async_task')
+      .where('async_task.status IN (:...statuses)', {
+        statuses: [AsyncTaskStatus.PENDING, AsyncTaskStatus.PROCESSING],
+      })
+      .andWhere("async_task.metadata ->> 'taskType' = :taskType", { taskType })
+      .andWhere("async_task.metadata ->> 'userId' = :userId", { userId })
+      .andWhere("async_task.metadata ->> 'requestHash' = :requestHash", { requestHash })
+      .orderBy('async_task.created_at', 'DESC')
+      .getOne();
+  }
 }

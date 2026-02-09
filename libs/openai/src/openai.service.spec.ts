@@ -179,7 +179,7 @@ describe('OpenAIService', () => {
       const result = await service.createEmbedding(goal);
 
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-        input: goal,
+        input: [goal],
         model: DEFAULT_EMBEDDING_MODEL,
       });
       expect(result).toEqual(expectedEmbedding);
@@ -191,6 +191,24 @@ describe('OpenAIService', () => {
       const result = await service.createEmbedding('No result');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('createEmbeddings', () => {
+    it('returns all embedding vectors in order', async () => {
+      const first = [0.1, 0.2];
+      const second = [0.3, 0.4];
+      mockEmbeddingsCreate.mockResolvedValueOnce({
+        data: [{ embedding: first }, { embedding: second }],
+      });
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+        input: ['first', 'second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(result).toEqual([first, second]);
     });
   });
 

@@ -12,6 +12,7 @@ describe('HabitCreationAsyncService', () => {
   let service: HabitCreationAsyncService;
   const asyncTaskServiceMock = {
     createAsyncTask: jest.fn(),
+    findActiveTaskByRequestHash: jest.fn(),
   } as unknown as jest.Mocked<AsyncTaskService>;
   const queueMock = {
     add: jest.fn(),
@@ -47,6 +48,7 @@ describe('HabitCreationAsyncService', () => {
       routine: 'morning',
       user_goals: ['mobility'],
     };
+    asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
     asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-1', metadata: {} } as any);
 
     const result = await service.enqueueHabitCreation(dto, 'user-7', 'api');
@@ -60,12 +62,29 @@ describe('HabitCreationAsyncService', () => {
         request: dto,
       }),
       expect.objectContaining({
-        jobId: 'task-1',
+        jobId: expect.stringMatching(/^habit-creation:/),
         removeOnComplete: true,
         removeOnFail: false,
         timeout: 120000,
       }),
     );
     expect(result).toEqual({ asyncTaskId: 'task-1' });
+  });
+
+  it('returns existing active task for duplicate habit creation requests', async () => {
+    const dto: CreateHabitWithAiDto = {
+      prompt: 'Create a mobility habit',
+      routine_duration: 10,
+      routine: 'morning',
+      user_goals: ['mobility'],
+    };
+
+    asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce({ id: 'existing-task-22' } as any);
+
+    const result = await service.enqueueHabitCreation(dto, 'user-7', 'api');
+
+    expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
+    expect(queueMock.add).not.toHaveBeenCalled();
+    expect(result).toEqual({ asyncTaskId: 'existing-task-22' });
   });
 });

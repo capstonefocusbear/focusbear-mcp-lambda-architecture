@@ -16,6 +16,8 @@ export interface RoutineSuggestionsJobData {
 
 @Injectable()
 export class RoutineSuggestionsAsyncService {
+  private static readonly TASK_TYPE = 'routine-suggestions';
+
   constructor(
     private readonly asyncTaskService: AsyncTaskService,
     @InjectQueue(BullQueues.ROUTINE_SUGGESTIONS) private readonly routineSuggestionsQueue: Queue,
@@ -27,16 +29,26 @@ export class RoutineSuggestionsAsyncService {
     userId: string,
     source?: string,
   ): Promise<{ asyncTaskId: string }> {
+    const requestHash = this.computeRequestHash(dto, userId);
+    const existingTask = await this.asyncTaskService.findActiveTaskByRequestHash(
+      RoutineSuggestionsAsyncService.TASK_TYPE,
+      userId,
+      requestHash,
+    );
+    if (existingTask?.id) {
+      return { asyncTaskId: existingTask.id };
+    }
+
     const normalizedGoalCount = dto.user_goals?.length ?? 0;
     const metadata = {
-      taskType: 'routine-suggestions',
+      taskType: RoutineSuggestionsAsyncService.TASK_TYPE,
       userId,
       goalCount: normalizedGoalCount,
       routine: dto.routine ?? null,
       durationMinutes: dto.routine_duration ?? null,
       groupByGoals: dto.groupByGoals ?? false,
       source: source ?? 'unknown',
-      requestHash: this.computeRequestHash(dto, userId),
+      requestHash,
     };
 
     const asyncTask = await this.asyncTaskService.createAsyncTask({ metadata });
@@ -48,10 +60,10 @@ export class RoutineSuggestionsAsyncService {
           asyncTaskId: asyncTask.id,
           userId,
           request: dto,
-          requestHash: metadata.requestHash,
+          requestHash,
         } satisfies RoutineSuggestionsJobData,
         {
-          jobId: asyncTask.id,
+          jobId: `${RoutineSuggestionsAsyncService.TASK_TYPE}:${requestHash}`,
           removeOnComplete: true,
           removeOnFail: false,
           timeout: 120000,

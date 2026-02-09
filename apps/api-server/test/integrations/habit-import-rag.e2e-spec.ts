@@ -170,6 +170,9 @@ describe('Habit Import RAG Pipeline E2E', () => {
         'Image Fetch (ms)',
         'Extraction (ms)',
         'RAG Matching (ms)',
+        'RAG Retrieve (ms)',
+        'RAG Template Fetch (ms)',
+        'RAG Rerank (ms)',
         'Total (ms)',
         'Extracted Habits',
         'Matched Habits',
@@ -193,6 +196,9 @@ describe('Habit Import RAG Pipeline E2E', () => {
           escapeCSV(r.latency.imageFetchMs),
           escapeCSV(r.latency.extractionMs),
           escapeCSV(r.latency.ragMatchingMs),
+          escapeCSV(r.latency.ragRetrieveMs),
+          escapeCSV(r.latency.ragTemplateFetchMs),
+          escapeCSV(r.latency.ragRerankMs),
           escapeCSV(r.latency.totalMs),
           escapeCSV(r.extractedHabits.join('; ')),
           escapeCSV(r.matchedHabits.map((m) => `${m.extracted} → ${m.matched} (${m.score.toFixed(2)})`).join('; ')),
@@ -259,7 +265,15 @@ describe('Habit Import RAG Pipeline E2E', () => {
           matchedHabits: [],
           matchedCount: 0,
           unmatchedHabits: [],
-          latency: { imageFetchMs: 0, extractionMs: 0, ragMatchingMs: 0, totalMs: 0 },
+          latency: {
+            imageFetchMs: 0,
+            extractionMs: 0,
+            ragMatchingMs: 0,
+            ragRetrieveMs: 0,
+            ragTemplateFetchMs: 0,
+            ragRerankMs: 0,
+            totalMs: 0,
+          },
           errors: [],
         };
 
@@ -295,10 +309,14 @@ describe('Habit Import RAG Pipeline E2E', () => {
 
           // 3. RAG matching
           const ragStart = Date.now();
-          const matchResults = await habitImportExtractionService.matchExtractedHabits(extractedHabits, {
-            routineType: testCase.routineType,
-          });
+          const { results: matchResults, telemetry } =
+            await habitImportExtractionService.matchExtractedHabitsWithTelemetry(extractedHabits, {
+              routineType: testCase.routineType,
+            });
           result.latency.ragMatchingMs = Date.now() - ragStart;
+          result.latency.ragRetrieveMs = telemetry.ragRetrieveMs;
+          result.latency.ragTemplateFetchMs = telemetry.ragTemplateFetchMs;
+          result.latency.ragRerankMs = telemetry.ragRerankMs;
 
           // Collect match data
           result.matchedHabits = matchResults

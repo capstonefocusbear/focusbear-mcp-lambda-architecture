@@ -1029,16 +1029,32 @@ export class OpenAIService {
       type = OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING,
     }: { model?: string; type?: OpenAIKeyType } = {},
   ): Promise<number[]> {
+    const inputs = Array.isArray(input) ? input : [input];
+    const embeddings = await this.createEmbeddings(inputs, { model, type });
+    return embeddings[0] ?? [];
+  }
+
+  async createEmbeddings(
+    inputs: string[],
+    {
+      model = DEFAULT_EMBEDDING_MODEL,
+      type = OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING,
+    }: { model?: string; type?: OpenAIKeyType } = {},
+  ): Promise<number[][]> {
+    if (!inputs?.length) {
+      return [];
+    }
+
     try {
       const openai = this.getOpenAIInstance(type);
       const response = await openai.embeddings.create({
-        input,
+        input: inputs,
         model,
       });
-      return response.data?.[0]?.embedding ?? [];
+      return response.data?.map((item) => item.embedding ?? []) ?? [];
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      return [];
+      return inputs.map(() => []);
     }
   }
 

@@ -13,6 +13,7 @@ describe('RoutineSuggestionsAsyncService', () => {
   let service: RoutineSuggestionsAsyncService;
   const asyncTaskServiceMock = {
     createAsyncTask: jest.fn(),
+    findActiveTaskByRequestHash: jest.fn(),
   } as unknown as jest.Mocked<AsyncTaskService>;
   const queueMock = {
     add: jest.fn(),
@@ -60,6 +61,7 @@ describe('RoutineSuggestionsAsyncService', () => {
       metadata: {},
     });
 
+    (asyncTaskServiceMock.findActiveTaskByRequestHash as jest.Mock).mockResolvedValueOnce(null);
     (asyncTaskServiceMock.createAsyncTask as jest.Mock).mockResolvedValue(asyncTask);
 
     const result = await service.enqueueRoutineSuggestions(dto, 'user-42', 'app');
@@ -89,7 +91,7 @@ describe('RoutineSuggestionsAsyncService', () => {
         requestHash: metadata.requestHash,
       },
       expect.objectContaining({
-        jobId: 'async-task-123',
+        jobId: `routine-suggestions:${metadata.requestHash}`,
         removeOnComplete: true,
         removeOnFail: false,
         timeout: 120000,
@@ -97,5 +99,24 @@ describe('RoutineSuggestionsAsyncService', () => {
     );
 
     expect(result).toEqual({ asyncTaskId: 'async-task-123' });
+  });
+
+  it('returns existing active async task and skips enqueue for duplicate request', async () => {
+    const dto: GetRoutineSuggestionsDto = {
+      user_goals: [{ goal: 'be healthier', isCustom: false }],
+      routine_duration: 30,
+      routine: 'morning',
+      groupByGoals: false,
+    };
+
+    (asyncTaskServiceMock.findActiveTaskByRequestHash as jest.Mock).mockResolvedValueOnce({
+      id: 'existing-task-1',
+    });
+
+    const result = await service.enqueueRoutineSuggestions(dto, 'user-42', 'app');
+
+    expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
+    expect(queueMock.add).not.toHaveBeenCalled();
+    expect(result).toEqual({ asyncTaskId: 'existing-task-1' });
   });
 });

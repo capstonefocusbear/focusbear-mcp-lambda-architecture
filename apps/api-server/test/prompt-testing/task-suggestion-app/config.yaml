@@ -1,5 +1,6 @@
 prompts:
-  - file://prompt.md
+  - id: task-suggestion-app
+    file: prompt.md
 
 providers:
   - id: openai:gpt-4o-mini

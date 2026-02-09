@@ -319,12 +319,16 @@ export class EmailTemplateCompilerService {
       }
     });
 
-    Handlebars.registerHelper('eq', (a: any, b: any) => {
+    Handlebars.registerHelper('eq', function (a: any, b: any, options: any) {
       try {
         const result = a === b;
+        // Support block usage: {{#eq a b}}...{{/eq}}
+        if (options && options.fn) {
+          return result ? options.fn(this) : options.inverse(this);
+        }
+        // Support value usage: {{eq a b}}
         return result;
       } catch (error) {
-        this.logger.error({ error: error.message, a, b }, 'EQ helper error');
         return false;
       }
     });

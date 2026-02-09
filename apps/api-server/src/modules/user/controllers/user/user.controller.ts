@@ -375,7 +375,7 @@ export class UserController {
         token: token ? 'present' : 'missing',
         timestamp: new Date().toISOString(),
       });
-      response.status(500).send(`Error loading preferences page: ${error.message}`);
+      response.status(500).send('Error loading preferences page');
     }
   }
 

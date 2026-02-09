@@ -339,6 +339,7 @@ export class UserController {
 
   @Post('email-preferences/unsubscribe')
   @ApiOperation({ summary: 'Unsubscribe from emails using token' })
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   async unsubscribeFromEmails(@Body() dto: UnsubscribeEmailDto): Promise<{ message: string }> {
     await this.userEmailPreferencesService.unsubscribeFromEmails(dto);
     return { message: 'Successfully unsubscribed from emails' };
@@ -381,6 +382,7 @@ export class UserController {
 
   @Post('email-preferences/manage')
   @ApiOperation({ summary: 'Update email preferences using token' })
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   async updateEmailPreferencesWithToken(@Body() dto: UpdateEmailPreferencesWithTokenDto): Promise<{ message: string }> {
     await this.userEmailPreferencesService.updateEmailPreferencesWithToken(dto.token, dto.email_frequency);
     return { message: 'Email preferences updated successfully' };

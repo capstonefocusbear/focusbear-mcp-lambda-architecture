@@ -48,6 +48,7 @@ import { UnsubscribeEmailDto } from '../../dto/unsubscribe-email.dto';
 import { UserEmailPreferencesService } from '../../services/user-email-preferences/user-email-preferences.service';
 import { EmailTemplateCompilerService } from '../../../email/services/email-template-compiler/email-template-compiler.service';
 import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-preferences-with-token.dto';
+import { RequestEmailPreferencesLinkDto } from '../../dto/request-email-preferences-link.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -323,9 +324,11 @@ export class UserController {
   @ApiOperation({ summary: 'Unsubscribe confirmation page' })
   async getUnsubscribePage(@Query('token') token: string, @Res() response: FastifyReply): Promise<void> {
     try {
+      const showEmailForm = !token || token.trim() === '';
       const html = await this.emailTemplateCompilerService.compilePage('unsubscribe', {
-        token,
+        token: token || '',
         apiUrl: process.env.API_URL,
+        showEmailForm,
       });
 
       response.type('text/html');
@@ -338,6 +341,7 @@ export class UserController {
 
   @Post('email-preferences/unsubscribe')
   @ApiOperation({ summary: 'Unsubscribe from emails using token' })
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   async unsubscribeFromEmails(@Body() dto: UnsubscribeEmailDto): Promise<{ message: string }> {
     await this.userEmailPreferencesService.unsubscribeFromEmails(dto);
     return { message: 'Successfully unsubscribed from emails' };
@@ -374,14 +378,23 @@ export class UserController {
         token: token ? 'present' : 'missing',
         timestamp: new Date().toISOString(),
       });
-      response.status(500).send(`Error loading preferences page: ${error.message}`);
+      response.status(500).send('Error loading preferences page');
     }
   }
 
   @Post('email-preferences/manage')
   @ApiOperation({ summary: 'Update email preferences using token' })
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   async updateEmailPreferencesWithToken(@Body() dto: UpdateEmailPreferencesWithTokenDto): Promise<{ message: string }> {
     await this.userEmailPreferencesService.updateEmailPreferencesWithToken(dto.token, dto.email_frequency);
     return { message: 'Email preferences updated successfully' };
+  }
+
+  @Post('email-preferences/request-link')
+  @ApiOperation({ summary: 'Request email preferences link via email' })
+  @Throttle({ default: { ttl: 60, limit: 5 } })
+  async requestEmailPreferencesLink(@Body() dto: RequestEmailPreferencesLinkDto): Promise<{ message: string }> {
+    await this.userEmailPreferencesService.sendEmailPreferencesLink(dto.email);
+    return { message: 'If your email is registered, you will receive a link to manage your preferences.' };
   }
 }

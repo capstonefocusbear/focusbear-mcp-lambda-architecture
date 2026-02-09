@@ -321,13 +321,10 @@ export class EmailTemplateCompilerService {
 
     Handlebars.registerHelper('eq', function (a: any, b: any, options: any) {
       try {
-        const result = a === b;
-        // Support block usage: {{#eq a b}}...{{/eq}}
         if (options && options.fn) {
-          return result ? options.fn(this) : options.inverse(this);
+          return a === b ? options.fn(this) : options.inverse(this);
         }
-        // Support value usage: {{eq a b}}
-        return result;
+        return a === b;
       } catch (error) {
         return false;
       }

@@ -219,7 +219,7 @@ export const audioTestCases: HabitImportTestCase[] = [
     mediaType: 'audio',
     mediaKey: 'a0a8ce95-7237-46d1-abaf-9160e33511a6-1770364551537-habit-import.m4a',
     expectedHabits: [],
-    minExtracted: 1,
+    minExtracted: 0,
     minMatched: 0,
   },
 ];

@@ -9,6 +9,7 @@ export const TEST_CONSTANTS = {
 };
 export const MAX_WORD_LENGTH = {
   brainDump: 1000,
+  audioTranscript: 20000,
   intention: 500,
   default: 200,
   longTermGoal: 200,
@@ -198,7 +199,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   habitImportExtraction: {
     model: GPT_5_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
     response_format: { type: 'json_object' },

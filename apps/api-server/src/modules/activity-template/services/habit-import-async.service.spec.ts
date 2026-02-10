@@ -18,6 +18,7 @@ describe('HabitImportAsyncService', () => {
 
   const queueMock = {
     add: jest.fn(),
+    getJob: jest.fn(),
   } as unknown as jest.Mocked<Queue>;
 
   beforeEach(async () => {
@@ -226,6 +227,48 @@ describe('HabitImportAsyncService', () => {
       expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
       expect(queueMock.add).not.toHaveBeenCalled();
       expect(result).toEqual({ asyncTaskId: 'existing-task-9' });
+    });
+
+    it('should reuse in-flight job asyncTaskId from queue and skip creating new task', async () => {
+      const dto: HabitImportUploadedDto = {
+        mediaKey: 'same-key.png',
+        mediaType: 'image',
+      };
+
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
+      queueMock.getJob.mockResolvedValueOnce({
+        data: { asyncTaskId: 'job-owned-task-1' },
+        getState: jest.fn().mockResolvedValue('active'),
+      } as any);
+
+      const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
+
+      expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
+      expect(queueMock.add).not.toHaveBeenCalled();
+      expect(result).toEqual({ asyncTaskId: 'job-owned-task-1' });
+    });
+
+    it('should remove terminal duplicate job before enqueueing a new one', async () => {
+      const dto: HabitImportUploadedDto = {
+        mediaKey: 'same-key.png',
+        mediaType: 'image',
+      };
+
+      const remove = jest.fn().mockResolvedValue(undefined);
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
+      queueMock.getJob.mockResolvedValueOnce({
+        data: { asyncTaskId: 'old-task-1' },
+        getState: jest.fn().mockResolvedValue('failed'),
+        remove,
+      } as any);
+      asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-new-1', metadata: {} } as any);
+
+      const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
+
+      expect(remove).toHaveBeenCalled();
+      expect(asyncTaskServiceMock.createAsyncTask).toHaveBeenCalled();
+      expect(queueMock.add).toHaveBeenCalled();
+      expect(result).toEqual({ asyncTaskId: 'task-new-1' });
     });
   });
 });

@@ -16,6 +16,7 @@ describe('HabitCreationAsyncService', () => {
   } as unknown as jest.Mocked<AsyncTaskService>;
   const queueMock = {
     add: jest.fn(),
+    getJob: jest.fn(),
   } as unknown as jest.Mocked<Queue>;
 
   beforeEach(async () => {

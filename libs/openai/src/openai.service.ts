@@ -1439,7 +1439,7 @@ export class OpenAIService {
 
   async createDraftTodosFromTranscript(transcript: string): Promise<BraindumpTaskDto[]> {
     try {
-      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.brainDump, 'audio_transcript')) {
+      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.audioTranscript, 'audio_transcript')) {
         throw new Error('Invalid input');
       }
 
@@ -1582,7 +1582,7 @@ export class OpenAIService {
     transcript: string,
   ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
     try {
-      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.brainDump, 'habit_import_transcript')) {
+      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.audioTranscript, 'habit_import_transcript')) {
         throw new Error('Invalid input');
       }
 
@@ -1608,8 +1608,18 @@ export class OpenAIService {
       const habits = content ? JSON.parse(content).habits : [];
       return Array.isArray(habits) ? habits : [];
     } catch (error) {
+      this.logger.error(
+        `OpenAI:extractHabitsFromTranscript error ${JSON.stringify({
+          transcriptLength: transcript?.length ?? 0,
+          errorMessage: error?.message ?? null,
+          errorName: error?.name ?? null,
+          errorCode: (error as any)?.code ?? null,
+          errorStatus: (error as any)?.status ?? null,
+          errorType: (error as any)?.type ?? null,
+        })}`,
+      );
       this.sentryService.instance().captureException(error, { level: 'error' });
-      throw new Error('Failed to extract habits from transcript');
+      throw new Error(`Failed to extract habits from transcript: ${error.message}`);
     }
   }
 

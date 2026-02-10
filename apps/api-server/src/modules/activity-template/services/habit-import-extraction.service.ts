@@ -13,7 +13,7 @@ import { ExtractedHabit, HabitSuggestionResult } from '../dto/import-habits-from
 
 const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_MATCH_THRESHOLD = 0.5;
-const CONCURRENT_MATCH_LIMIT = 3;
+const CONCURRENT_MATCH_LIMIT = 7;
 
 export interface MatchExtractedHabitsTelemetry {
   embeddingBatchCalls: number;

@@ -96,7 +96,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
   it('returns parsed suggestions with AI-provided name when OpenAI response contains valid JSON', async () => {
     promptCacheServiceMock.getPrompt.mockReturnValue(null);
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.89);
+    const candidate = buildCandidate(template, 0.69);
     const openAIResponse = {
       choices: [
         {
@@ -128,7 +128,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
           name: 'Goal-Aligned Morning Stretch',
           description: template.activity_data?.text_instructions,
           justification: 'Supports muscle growth.',
-          matchScore: 0.89,
+          matchScore: 0.69,
           template,
         },
       ],
@@ -177,7 +177,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
 
   it('builds chat completion messages using the shared prompt template when available', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.89);
+    const candidate = buildCandidate(template, 0.69);
     promptCacheServiceMock.getPrompt.mockReturnValue('Prompt header\nUser goal: {{goal}}\nHabit options:\n{{habits}}');
 
     const openAIResponse = {
@@ -360,7 +360,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
 
   it('uses the default minimum score when no override is provided', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.78);
+    const candidate = buildCandidate(template, 0.68);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [
         {
@@ -385,14 +385,14 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     expect(result.accepted[0]).toMatchObject({
       habitId: template.id,
       justification: 'Strong alignment.',
-      matchScore: 0.76,
+      matchScore: 0.68,
     });
     expect(result.minScoreApplied).toBe(0.5);
   });
 
   it('falls back to similarity ranking when OpenAI response is invalid JSON', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.88);
+    const candidate = buildCandidate(template, 0.68);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [{ message: { content: 'Not JSON' } }],
     });
@@ -406,7 +406,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
           name: template.activity_data?.name,
           description: template.activity_data?.text_instructions,
           justification: expect.stringContaining('High semantic match'),
-          matchScore: 0.88,
+          matchScore: 0.68,
           template,
         },
       ],

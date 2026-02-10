@@ -433,6 +433,7 @@ export class OpenAIService {
             finalDescription,
             current_tasks,
             prefLanguage,
+            currentTaskInToDoPlayer,
           );
           if (suggestedTask) {
             response.suggested_task = suggestedTask.task_name;
@@ -564,7 +565,13 @@ export class OpenAIService {
     if (response) {
       // If alignment score < 70%, suggest a task
       if (response.allowed_probability < 0.7) {
-        const suggestedTask = await this.suggestTaskForApp(appName, focusMode, current_tasks, prefLanguage);
+        const suggestedTask = await this.suggestTaskForApp(
+          appName,
+          focusMode,
+          current_tasks,
+          prefLanguage,
+          currentTaskInToDoPlayer,
+        );
         if (suggestedTask) {
           response.suggested_task = suggestedTask.task_name;
           response.suggested_task_id = suggestedTask.task_id;
@@ -591,6 +598,7 @@ export class OpenAIService {
     metaDescription: string,
     currentTasks: Array<{ task_name: string; task_id: string }> | undefined,
     prefLanguage: string,
+    currentTaskInToDoPlayer?: string,
   ): Promise<{ task_name: string; task_id: string } | null> {
     try {
       // Build a prompt to suggest a task
@@ -606,6 +614,7 @@ export class OpenAIService {
         tab_title: tabTitle,
         meta_description: metaDescription,
         current_tasks_list: currentTasksList,
+        current_task_in_todo_player: currentTaskInToDoPlayer || '',
       });
 
       const messages: ChatCompletionMessageParam[] = [
@@ -651,6 +660,7 @@ export class OpenAIService {
     focusMode: string,
     currentTasks: Array<{ task_name: string; task_id: string }> | undefined,
     prefLanguage: string,
+    currentTaskInToDoPlayer?: string,
   ): Promise<{ task_name: string; task_id: string } | null> {
     try {
       // Build a prompt to suggest a task
@@ -665,6 +675,7 @@ export class OpenAIService {
         app_name: appName,
         focus_mode: focusMode,
         current_tasks_list: currentTasksList,
+        current_task_in_todo_player: currentTaskInToDoPlayer || '',
       });
 
       const messages: ChatCompletionMessageParam[] = [

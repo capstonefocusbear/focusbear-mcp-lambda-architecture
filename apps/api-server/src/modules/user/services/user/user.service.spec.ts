@@ -73,7 +73,13 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import {
+  BullQueues,
+  BullWorkers,
+  EMAIL_SUBJECTS,
+  FOCUS_BEAR_EMAILS,
+  MAX_ATTACHMENT_SIZE_BYTES,
+} from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 import { DeviceService } from '../../../device/services/device/device.service';
@@ -1185,6 +1191,68 @@ describe('UserService', () => {
           has_received_inactivity_warning: false,
         }),
       );
+    });
+
+    it('positive: should validate R2 profile image and save metadata when image is valid', async () => {
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      const r2PublicUrl = 'https://r2-public.example.com';
+      const profileImageKey = `${userDummy.id}/profile.jpg`;
+      const profileImageDummy = `${r2PublicUrl}/profile-images/${profileImageKey}`;
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
+      configService.set('r2.publicUrl', r2PublicUrl);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'image/jpeg' });
+
+      await userService.updateMetadata({ profile_image: profileImageDummy }, userDummy.id);
+
+      expect(R2ServiceMock.getObjectMetadata).toHaveBeenCalledWith('profile-images', profileImageKey);
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          metadata: { profile_image: profileImageDummy },
+        }),
+      );
+    });
+
+    it('negative: should delete invalid profile image and throw BadRequestException when mime type is invalid', async () => {
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      const r2PublicUrl = 'https://r2-public.example.com';
+      const profileImageKey = `${userDummy.id}/profile.jpg`;
+      const profileImageDummy = `${r2PublicUrl}/profile-images/${profileImageKey}`;
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
+      configService.set('r2.publicUrl', r2PublicUrl);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'text/plain' });
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
+
+      await expect(userService.updateMetadata({ profile_image: profileImageDummy }, userDummy.id)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('profile-images', profileImageKey);
+      expect(UserRepositoryMock.orm.update).not.toHaveBeenCalled();
+    });
+
+    it('negative: should delete oversized profile image and throw BadRequestException', async () => {
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      const r2PublicUrl = 'https://r2-public.example.com';
+      const profileImageKey = `${userDummy.id}/profile.jpg`;
+      const profileImageDummy = `${r2PublicUrl}/profile-images/${profileImageKey}`;
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
+      configService.set('r2.publicUrl', r2PublicUrl);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
+        contentLength: MAX_ATTACHMENT_SIZE_BYTES + 1,
+        contentType: 'image/jpeg',
+      });
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
+
+      await expect(userService.updateMetadata({ profile_image: profileImageDummy }, userDummy.id)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('profile-images', profileImageKey);
+      expect(UserRepositoryMock.orm.update).not.toHaveBeenCalled();
     });
   });
 

@@ -1702,11 +1702,18 @@ describe('UserService', () => {
     });
 
     it('should return upload URL and public URL for valid user', async () => {
+      const mockPresignedUrl = 'https://r2.example.com/presigned-upload-url';
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce(mockPresignedUrl);
 
       const result = await userService.getProfileImageUploadUrl(userDummy.id, 'profile.jpg', 'image/jpeg');
 
-      expect(result).toHaveProperty('uploadUrl');
+      expect(R2ServiceMock.getPresignedUploadUrl).toHaveBeenCalledWith(
+        'profile-images',
+        expect.stringContaining(userDummy.id),
+        'image/jpeg',
+      );
+      expect(result.uploadUrl).toBe(mockPresignedUrl);
       expect(result).toHaveProperty('publicUrl');
       expect(result.publicUrl).toContain(userDummy.id);
       expect(result.publicUrl).toContain('profile.jpg');

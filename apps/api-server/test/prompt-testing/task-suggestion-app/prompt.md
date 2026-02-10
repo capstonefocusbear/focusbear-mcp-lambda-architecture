@@ -3,6 +3,9 @@ Based on the following app information, suggest what task the user might be work
 App Name: {{input_wrapper}}{{app_name}}{{input_wrapper}}
 Focus Mode: {{input_wrapper}}{{focus_mode}}{{input_wrapper}}
 
+Current task the user is working on:
+{{input_wrapper}}{{current_task_in_todo_player}}{{input_wrapper}}
+
 Current available tasks:
 {{input_wrapper}}{{current_tasks_list}}{{input_wrapper}}
 
@@ -10,15 +13,19 @@ Please analyze the app and determine the most appropriate task:
 
 IMPORTANT: Only select an existing task if there is a STRONG, SPECIFIC connection between the app and the task. Be careful with generic/multi-purpose apps - they should only match tasks that are clearly related to what the app is commonly used for.
 
+CONTEXT: The system has determined this app is not sufficiently aligned with the current task (alignment score below 70%). However, you should make your own independent assessment. If you genuinely believe the app IS strongly aligned with the current task, you may suggest it. But be careful - only suggest the current task if there is a clear, direct connection (e.g., Slack for "check team comms", Xcode for "iOS development").
+
 Guidelines for matching:
 - If the app is clearly specialized for a specific purpose (e.g., Figma for design, Slack for communication, Xcode for iOS development), it MAY match a related task
 - If the app is generic/multi-purpose (e.g., Terminal, VS Code, Finder, Notes, Safari), only match an existing task if the task is CLEARLY related to what the app is commonly used for. For example: Terminal CAN match a task like "Coding" or "Development work" since Terminal is commonly used for coding. But Terminal should NOT match "documentation for voice call system" just because you could theoretically write docs in Terminal.
 - When in doubt, suggest a NEW task rather than forcing a poor match
+- Do NOT suggest the current task unless the app is CLEARLY and DIRECTLY related to it
 
 Decision process:
-1. First, determine if the app is specialized or generic/multi-purpose
+1. Determine if the app is specialized or generic/multi-purpose
 2. If an existing task has a STRONG, DIRECT connection to the app (considering what the app is commonly used for), return that task (use its exact task_name and task_id)
-3. Otherwise, suggest a new task name that would be appropriate for this app
+3. Only suggest the current task if the app is clearly and directly related to it (e.g., a team communication app for a "team comms" task)
+4. Otherwise, suggest a new task name that would be appropriate for this app
 
 Return your response as a JSON object with this exact format:
 {

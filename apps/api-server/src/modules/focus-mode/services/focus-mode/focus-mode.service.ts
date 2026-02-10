@@ -124,6 +124,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         allowed_apps: focusModeDto.allowed_apps,
         allowed_urls: focusModeDto.allowed_urls,
         tags: focusModeTags,
+        is_ai_enabled: focusModeDto.is_ai_enabled ?? true,
       });
       const savedFocusMode = await this.focusModeRepository.orm.save(createdFocusMode);
       // check that focus mode is not one created by default when installing one of the apps
@@ -143,7 +144,7 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     }
   }
 
-  async validateFocusModeName(name: string, userId: string, existingFocusModes: FocusMode[]) {
+  async validateFocusModeName(name: string, userId: string, existingFocusModes: Array<Pick<FocusMode, 'name'>>) {
     const focusModeNames = existingFocusModes.map((focusMode) => focusMode.name.toLowerCase());
     if (focusModeNames.includes(name?.toLowerCase())) {
       throw new HttpException(`Focus mode with name: ${name} already exists for user with ID: ${userId}!`, 422);

@@ -60,6 +60,13 @@ import { TaskAttachment } from '../apps/api-server/src/modules/to-do/entities/ta
 import { CommentAttachment } from '../apps/api-server/src/modules/to-do/entities/comment-attachment.entity';
 import { Note } from '../apps/api-server/src/modules/note/entities/note.entity';
 import { NoteTag } from '../apps/api-server/src/modules/note/entities/note-tag.entity';
+import { UsageData } from '../apps/api-server/src/modules/user/entities/usage-data.entity';
+import { HealthMetrics } from '../apps/api-server/src/modules/user/entities/health-metrics.entity';
+import { FlankerTest } from '../apps/api-server/src/modules/user/entities/flanker-test.entity';
+import { AsyncTask } from '../apps/api-server/src/modules/async-task/entities/async-task.entity';
+import { AppVersionEntity } from '../apps/api-server/src/modules/app-versions/entities/app-versions.entity';
+import { AnnouncementEntity } from '../apps/api-server/src/modules/announcements/entities/announcements.entity';
+import { AnnouncementViewEntity } from '../apps/api-server/src/modules/announcements/entities/announcement-views.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -132,6 +139,13 @@ export const CronJobDataSource = new DataSource({
     CommentAttachment,
     Note,
     NoteTag,
+    UsageData,
+    HealthMetrics,
+    FlankerTest,
+    AsyncTask,
+    AppVersionEntity,
+    AnnouncementEntity,
+    AnnouncementViewEntity,
   ],
   subscribers: [],
   migrations: [],

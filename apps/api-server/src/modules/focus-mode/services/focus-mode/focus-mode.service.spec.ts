@@ -82,7 +82,17 @@ describe('FocusModeService', () => {
       await focusModeService.createFocusMode(user_id, createFocusModeDto);
 
       expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
-        new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray() }),
+        new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray(), is_ai_enabled: true }),
+      );
+    });
+
+    it('positive: should persist is_ai_enabled as false when explicitly provided', async () => {
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      await focusModeService.createFocusMode(user_id, { ...createFocusModeDto, is_ai_enabled: false });
+
+      expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
+        new FocusMode({ ...createFocusModeDto, user_id, tags: expect.toBeArray(), is_ai_enabled: false }),
       );
     });
 
@@ -141,6 +151,26 @@ describe('FocusModeService', () => {
 
       expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
         new FocusMode({ ...FocusModeDummy, ...updateFocusModeDto, user_id, tags: expect.toBeArray() }),
+      );
+    });
+
+    it('positive: should persist is_ai_enabled as false when explicitly provided on update', async () => {
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
+      FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      await focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, {
+        ...updateFocusModeDto,
+        is_ai_enabled: false,
+      });
+
+      expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
+        new FocusMode({
+          ...FocusModeDummy,
+          ...updateFocusModeDto,
+          user_id,
+          tags: expect.toBeArray(),
+          is_ai_enabled: false,
+        }),
       );
     });
   });

@@ -893,6 +893,50 @@ describe('CompletedActivitySequenceService', () => {
       });
     });
 
+    it('should correctly populate skipped_habit_ids with all skip metadata variants', async () => {
+      const userId = userDummy.id;
+      const eveningSequence = {
+        ...ActivitySequenceDummy,
+        id: 'evening-seq-id',
+        type: ActivityType.evening,
+        activity_ids: ['e1', 'e2', 'e3', 'e4'],
+      };
+
+      const user = {
+        ...userDummy,
+        current_activity_sequence_id: null,
+      };
+
+      const completedEvening = {
+        activity_sequence_id: 'evening-seq-id',
+        is_completed: false,
+        completed_activity_logs: [
+          { activity_id: 'e1' }, // regular completion
+          { activity_id: 'e2', metadata: { is_skipped: true } }, // skipped (is_skipped)
+          { activity_id: 'e3', metadata: { skipped_did_not_complete: true } }, // skipped (did not complete)
+          { activity_id: 'e4', metadata: { skipped_did_complete: true } }, // "already did it" (counts as completion)
+        ],
+      };
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(user);
+      ActivitySequenceRepositoryMock.orm.find.mockResolvedValueOnce([eveningSequence]);
+      CompletedActivitySequenceRepositoryMock.getTodaySequences.mockResolvedValueOnce([completedEvening]);
+
+      const result = await completedActivitySequenceService.getRoutinesProgress(userId, 'UTC');
+
+      expect(result).toEqual({
+        morning_routine: null,
+        evening_routine: {
+          sequence_id: 'evening-seq-id',
+          status: 'postponed',
+          completed_habit_ids: ['e1', 'e2', 'e3', 'e4'],
+          skipped_habit_ids: ['e2', 'e3'], // e4 is NOT skipped since skipped_did_complete counts as completion
+        },
+        custom_routines: [],
+        standalone_routines: [],
+      });
+    });
+
     it('should exclude routines that have no progress and are not active', async () => {
       const userId = userDummy.id;
       const idleSequence = {

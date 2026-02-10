@@ -587,9 +587,9 @@ export class CompletedActivitySequenceService {
         if (inProgressSequence?.completed_activity_logs) {
           // Include all activity IDs (including skipped) for consistency with current_sequence_completed_activities
           completedHabitIds = inProgressSequence.completed_activity_logs.map((log) => log.activity_id).filter(Boolean);
-          // Track skipped activities separately
+          // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
           skippedHabitIds = inProgressSequence.completed_activity_logs
-            .filter((log) => log.metadata?.is_skipped)
+            .filter((log) => log.metadata?.is_skipped || log.metadata?.skipped_did_not_complete)
             .map((log) => log.activity_id)
             .filter(Boolean);
         } else {
@@ -606,9 +606,9 @@ export class CompletedActivitySequenceService {
 
           // Include all activity IDs (including skipped) for consistency with current_sequence_completed_activities
           completedHabitIds = activities.map((log) => log.activity_id).filter(Boolean);
-          // Track skipped activities separately
+          // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
           skippedHabitIds = activities
-            .filter((log) => log.metadata?.is_skipped)
+            .filter((log) => log.metadata?.is_skipped || log.metadata?.skipped_did_not_complete)
             .map((log) => log.activity_id)
             .filter(Boolean);
         }
@@ -617,7 +617,7 @@ export class CompletedActivitySequenceService {
         const completedActivityLogs = completedSequence?.completed_activity_logs || [];
         completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
         skippedHabitIds = completedActivityLogs
-          .filter((log) => log.metadata?.is_skipped)
+          .filter((log) => log.metadata?.is_skipped || log.metadata?.skipped_did_not_complete)
           .map((log) => log.activity_id)
           .filter(Boolean);
       }

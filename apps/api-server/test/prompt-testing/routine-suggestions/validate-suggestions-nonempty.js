@@ -2,13 +2,19 @@ module.exports = (output) => {
   try {
     const raw = typeof output === 'object' ? JSON.stringify(output) : String(output);
     const cleaned = raw.replace(/```json\n?/i, '').replace(/```/g, '').trim();
-    const data = typeof output === 'object' && Array.isArray(output) ? output : JSON.parse(cleaned);
+    const parsed = typeof output === 'object' ? output : JSON.parse(cleaned);
 
-    if (!Array.isArray(data)) {
+    // Handle both new object format { suggestions: [...] } and legacy array format
+    let data;
+    if (Array.isArray(parsed)) {
+      data = parsed;
+    } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.suggestions)) {
+      data = parsed.suggestions;
+    } else {
       return {
         pass: false,
         score: 0,
-        reason: 'Output is not an array',
+        reason: 'Output is not an array or object with suggestions array',
       };
     }
 

@@ -1,6 +1,6 @@
 /* eslint-disable linebreak-style */
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
@@ -10,7 +10,7 @@ import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { configsArray } from './config';
 import { AuthModule } from './modules/auth/auth.module';
@@ -47,8 +47,12 @@ import { ZohoDeskModule } from './modules/zoho-desk/zoho-desk.module';
 import { AccountabilityBuddyModule } from './modules/accountability-buddy/accountability-buddy.module';
 import { DEFAULT_THROTTLE_OPTIONS } from './shared/utils/constants';
 import { ObservabilityModule } from './observability/observability.module';
+import { ProjectModule } from './modules/project/project.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
+import { NoteModule } from './modules/note/note.module';
+import { GeofenceModule } from './modules/geofence/geofence.module';
 
 @Module({
   imports: [
@@ -119,14 +123,22 @@ import { AppVersionsModule } from './modules/app-versions/app-versions.module';
     ZohoDeskModule,
     ObservabilityModule,
     AccountabilityBuddyModule,
+    ProjectModule,
+    WebhookModule,
     AnnouncementsModule,
     AppVersionsModule,
+    NoteModule,
+    GeofenceModule,
   ],
   controllers: [AppController],
   providers: [
     {
       provide: APP_FILTER,
       useClass: SentryGlobalFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

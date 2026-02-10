@@ -69,9 +69,11 @@ import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consu
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
 import { FlankerTestService } from './services/flanker-test/flanker-test.service';
 import { FlankerTest } from './entities/flanker-test.entity';
+import { MetricsInterceptor } from '../../shared/interceptors/metrics.interceptor';
 
 @Module({
   providers: [
+    MetricsInterceptor,
     UserSettingsService,
     UserRepository,
     UserService,

@@ -44,13 +44,15 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                justification: 'Too generic.',
-                matchScore: 0.48,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  justification: 'Too generic.',
+                  matchScore: 0.48,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -99,14 +101,16 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                name: 'Goal-Aligned Morning Stretch',
-                justification: 'Supports muscle growth.',
-                matchScore: 0.91,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  name: 'Goal-Aligned Morning Stretch',
+                  justification: 'Supports muscle growth.',
+                  matchScore: 0.91,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -143,14 +147,16 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                name: 'Refined Habit',
-                justification: 'Strong alignment.',
-                matchScore: 0.92,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  name: 'Refined Habit',
+                  justification: 'Strong alignment.',
+                  matchScore: 0.92,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -179,13 +185,15 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                justification: 'Solid alignment.',
-                matchScore: 0.59,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  justification: 'Solid alignment.',
+                  matchScore: 0.59,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -221,13 +229,15 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                justification: 'Weak alignment.',
-                matchScore: 0.62,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  justification: 'Weak alignment.',
+                  matchScore: 0.62,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -251,13 +261,15 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                justification: 'Helpful for posture.',
-                matchScore: 0.9,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  justification: 'Helpful for posture.',
+                  matchScore: 0.9,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -281,13 +293,15 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                justification: 'Weak alignment.',
-                matchScore: 0.48,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  justification: 'Weak alignment.',
+                  matchScore: 0.48,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -313,13 +327,15 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                habitId: template.id,
-                justification: 'Strong alignment.',
-                matchScore: 0.76,
-              },
-            ]),
+            content: JSON.stringify({
+              suggestions: [
+                {
+                  habitId: template.id,
+                  justification: 'Strong alignment.',
+                  matchScore: 0.76,
+                },
+              ],
+            }),
           },
         },
       ],
@@ -367,15 +383,17 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       choices: [
         {
           message: {
-            content: JSON.stringify([
-              {
-                name: 'Buff Morning Circuit',
-                description: 'Strength routine tailored to building muscle.',
-                routineType: ActivityType.morning,
-                durationMinutes: 20,
-                justification: 'Directly builds strength for the goal.',
-              },
-            ]),
+            content: JSON.stringify({
+              habits: [
+                {
+                  name: 'Buff Morning Circuit',
+                  description: 'Strength routine tailored to building muscle.',
+                  routineType: ActivityType.morning,
+                  durationMinutes: 20,
+                  justification: 'Directly builds strength for the goal.',
+                },
+              ],
+            }),
           },
         },
       ],

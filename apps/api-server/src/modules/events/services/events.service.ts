@@ -67,7 +67,12 @@ export class EventsService {
       });
 
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
-      if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
+
+      // If user doesn't exist in DB, return early without saving anything.
+      // This endpoint is deprecated and only used by old app versions, so it's safe to ignore these events.
+      if (!user) {
+        return;
+      }
 
       await this.eventsQueue.add(BullWorkers.TRACK_EVENT, {
         user_id,

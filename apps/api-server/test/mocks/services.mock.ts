@@ -380,3 +380,7 @@ export const CalendarServiceMock = {
 export const GoogleAuthServiceMock = {
   refreshToken: jest.fn(),
 };
+
+export const WebhookDispatcherServiceMock = {
+  dispatchEvent: jest.fn(() => Promise.resolve()),
+};

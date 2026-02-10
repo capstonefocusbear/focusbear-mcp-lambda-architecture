@@ -44,6 +44,7 @@ import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 import { TrackEvent } from '../modules/events/entities/track-event.entity';
 import { Tutorial } from '../modules/activity/entities/tutorial.entity';
+import { Geofence } from '../modules/geofence/entities/geofence.entity';
 import { Feedback } from '../../../../libs/stripe/src/entities/feedback.entity';
 import { Survey } from '../modules/survey/entities/survey.entity';
 import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
@@ -61,6 +62,13 @@ import { UnlockRequest } from '../modules/accountability-buddy/entities/unlock-r
 import { AppVersionEntity } from '../modules/app-versions/entities/app-versions.entity';
 import { AnnouncementEntity } from '../modules/announcements/entities/announcements.entity';
 import { AnnouncementViewEntity } from '../modules/announcements/entities/announcement-views.entity';
+import { Project } from '../modules/project/entities/project.entity';
+import { ProjectMember } from '../modules/project/entities/project-member.entity';
+import { TaskComment } from '../modules/to-do/entities/task-comment.entity';
+import { TaskAttachment } from '../modules/to-do/entities/task-attachment.entity';
+import { CommentAttachment } from '../modules/to-do/entities/comment-attachment.entity';
+import { Note } from '../modules/note/entities/note.entity';
+import { NoteTag } from '../modules/note/entities/note-tag.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -123,6 +131,7 @@ export const typeormConfig = registerAs(
       Calendar,
       TrackEvent,
       Tutorial,
+      Geofence,
       Feedback,
       Survey,
       SurveyAnswer,
@@ -139,6 +148,13 @@ export const typeormConfig = registerAs(
       AppVersionEntity,
       AnnouncementEntity,
       AnnouncementViewEntity,
+      Project,
+      ProjectMember,
+      TaskComment,
+      TaskAttachment,
+      CommentAttachment,
+      Note,
+      NoteTag,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}')],
   }),

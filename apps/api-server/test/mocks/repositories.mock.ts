@@ -48,6 +48,12 @@ export const ActivitySequenceRepositoryMock = {
   findOneByIdForUser: jest.fn(),
 };
 
+export const GeofenceRepositoryMock = {
+  ...BaseRepositoryMock,
+  findByUserId: jest.fn(),
+  findByIdAndUserId: jest.fn(),
+};
+
 export const ActivityTemplateRepositoryMock = {
   ...BaseRepositoryMock,
   getActivityTemplateIds: jest.fn(),
@@ -302,4 +308,17 @@ export const AnnouncementViewsRepositoryMock = {
   ...BaseRepositoryMock,
   recordView: jest.fn(),
   findViewedAnnouncementIds: jest.fn(),
+};
+
+export const NoteRepositoryMock = {
+  ...BaseRepositoryMock,
+  getUserNotes: jest.fn(),
+  searchUserNotes: jest.fn(),
+  getNoteById: jest.fn(),
+};
+
+export const NoteTagRepositoryMock = {
+  ...BaseRepositoryMock,
+  getUserTags: jest.fn(),
+  findOrCreateTag: jest.fn(),
 };

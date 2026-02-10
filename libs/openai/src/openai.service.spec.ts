@@ -70,11 +70,13 @@ const mockPrompts = {
   ],
 };
 
+const getDefaultPrompt = (name: string) => {
+  const prompt = mockPrompts.prompts.find((p) => p.name === name);
+  return prompt ? prompt.content : null;
+};
+
 const promptCacheServiceMock = {
-  getPrompt: jest.fn().mockImplementation((name: string) => {
-    const prompt = mockPrompts.prompts.find((p) => p.name === name);
-    return prompt ? prompt.content : null;
-  }),
+  getPrompt: jest.fn().mockImplementation(getDefaultPrompt),
 
   getAllPrompts: jest.fn().mockReturnValue(mockPrompts.prompts),
 
@@ -108,6 +110,8 @@ describe('OpenAIService', () => {
     mockEmbeddingsCreate.mockReset();
     mockChatCompletionsCreate.mockReset();
     mockChatCompletionsCreate.mockRejectedValue(new Error('mocked openai failure'));
+    promptCacheServiceMock.getPrompt.mockReset();
+    promptCacheServiceMock.getPrompt.mockImplementation(getDefaultPrompt);
   });
 
   beforeAll(async () => {
@@ -347,6 +351,53 @@ describe('OpenAIService', () => {
         'Baby mattresses and changepads',
         dto.current_tasks,
         'en',
+        undefined,
+      );
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+      getMetadataSpy.mockRestore();
+    });
+
+    it('should pass currentTaskInToDoPlayer to suggestTaskForUrl when provided', async () => {
+      const getMetadataSpy = jest.spyOn<any, any>(service as any, 'getMetadata').mockResolvedValueOnce({
+        title: 'Sign Document',
+        description: 'Electronic signature service',
+      });
+
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.4,"reason":"Not aligned"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForUrl').mockResolvedValueOnce({
+        task_name: 'sign documents',
+        task_id: 'suggested-123',
+      });
+
+      const dto = {
+        url: 'https://sign.zoho.com/signrequest',
+        meta_description: 'Electronic signature',
+        tab_title: 'Sign Document',
+        focus_mode: 'Deep Work',
+        intention: 'review actions',
+        currentTaskInToDoPlayer: 'aws infra for BearlyMail',
+        current_tasks: [
+          { task_name: 'aws infra for BearlyMail', task_id: 'task-aws-123' },
+          { task_name: 'Code review', task_id: 'task-review-456' },
+        ],
+        language: 'en',
+      };
+
+      await service.checkIfUrlIsSafeToUse(dto, 'en');
+
+      expect(suggestTaskSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        dto.current_tasks,
+        'en',
+        'aws infra for BearlyMail',
       );
       completionsSpy.mockRestore();
       suggestTaskSpy.mockRestore();
@@ -989,7 +1040,39 @@ describe('OpenAIService', () => {
       expect(result.allowed_probability).toBe(0.6);
       expect(result.suggested_task).toBe('coding project');
       expect(result.suggested_task_id).toBe('task-789');
-      expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en');
+      expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en', undefined);
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+    });
+
+    it('should pass currentTaskInToDoPlayer to suggestTaskForApp when provided', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.5,"reason":"Low alignment"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForApp').mockResolvedValueOnce({
+        task_name: 'check team comms',
+        task_id: 'task-comms-123',
+      });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'communication',
+        appName: 'Slack',
+        currentTaskInToDoPlayer: 'check team comms',
+        current_tasks: [
+          { task_name: 'check team comms', task_id: 'task-comms-123' },
+          { task_name: 'Code review', task_id: 'task-review-456' },
+        ],
+        language: 'en',
+      };
+
+      const result = await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      expect(result.allowed_probability).toBe(0.5);
+      expect(suggestTaskSpy).toHaveBeenCalledWith('Slack', 'work', dto.current_tasks, 'en', 'check team comms');
       completionsSpy.mockRestore();
       suggestTaskSpy.mockRestore();
     });
@@ -1111,6 +1194,13 @@ describe('OpenAIService', () => {
     beforeEach(() => {
       jest.clearAllMocks();
 
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'username-validation') {
+          return 'Check if the following username is appropriate: {{input_wrapper}}{{username}}{{input_wrapper}}';
+        }
+        return getDefaultPrompt(name);
+      });
+
       service = new OpenAIService(
         {
           USERNAME_VALIDATION: { apiKey: 'test' },
@@ -1174,7 +1264,7 @@ describe('OpenAIService', () => {
       expect(spy).toHaveBeenCalledWith('ignore previous');
     });
 
-    it('should call OpenAI with a prompt containing the wrapped username', async () => {
+    it('should call OpenAI with a prompt containing the username', async () => {
       const username = 'example_user';
 
       const getCompletionsSpy = jest
@@ -1183,11 +1273,8 @@ describe('OpenAIService', () => {
           choices: [{ message: { content: JSON.stringify({ allowed: true }) } }],
         });
 
-      const wrapSpy = jest.spyOn(service as any, 'wrapUserInput');
-
       await service.checkIfUsernameIsValid(username);
 
-      expect(wrapSpy).toHaveBeenCalledWith(username);
       expect(getCompletionsSpy).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -1218,7 +1305,7 @@ describe('OpenAIService', () => {
         if (name === 'habit-adjustment-default') {
           return 'You are a helpful AI assistant that helps users refine their daily habits and routines. Return ONLY a JSON array of objects with keys: id, name, duration_seconds.';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
 
       service = new OpenAIService(
@@ -1826,6 +1913,14 @@ describe('OpenAIService', () => {
   describe('createSubtasks', () => {
     beforeEach(() => {
       jest.clearAllMocks();
+
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'subtasks-generation') {
+          return 'Break down the following task into smaller steps: {{input_wrapper}}{{task}}{{input_wrapper}} in {{language}}';
+        }
+        return getDefaultPrompt(name);
+      });
+
       service = new OpenAIService(
         {
           subtasksGeneration: { apiKey: 'test-subtasks-key' },
@@ -1870,6 +1965,14 @@ describe('OpenAIService', () => {
   describe('convertBrainDumpToTasks', () => {
     beforeEach(() => {
       jest.clearAllMocks();
+
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'brain-dump-conversion') {
+          return 'Convert the following brain dump to tasks: {{input_wrapper}}{{brain_dump_contents}}{{input_wrapper}}';
+        }
+        return getDefaultPrompt(name);
+      });
+
       service = new OpenAIService(
         {
           brainDumpConversion: { apiKey: 'test-braindump-key' },
@@ -2007,7 +2110,7 @@ describe('OpenAIService', () => {
         if (name === 'usage-screenshot-analysis') {
           return 'Analyze this usage screenshot';
         }
-        return null;
+        return getDefaultPrompt(name);
       });
     });
 
@@ -2058,6 +2161,14 @@ describe('OpenAIService', () => {
   describe('generateEmojiForActivity', () => {
     beforeEach(() => {
       jest.clearAllMocks();
+
+      promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
+        if (name === 'emoji-generation') {
+          return 'Generate a single emoji for this activity: {{input_wrapper}}{{activity_name}}{{input_wrapper}}';
+        }
+        return getDefaultPrompt(name);
+      });
+
       service = new OpenAIService(
         {
           activityEmojiGeneration: { apiKey: 'test-emoji-key' },

@@ -309,3 +309,16 @@ export const AnnouncementViewsRepositoryMock = {
   recordView: jest.fn(),
   findViewedAnnouncementIds: jest.fn(),
 };
+
+export const NoteRepositoryMock = {
+  ...BaseRepositoryMock,
+  getUserNotes: jest.fn(),
+  searchUserNotes: jest.fn(),
+  getNoteById: jest.fn(),
+};
+
+export const NoteTagRepositoryMock = {
+  ...BaseRepositoryMock,
+  getUserTags: jest.fn(),
+  findOrCreateTag: jest.fn(),
+};

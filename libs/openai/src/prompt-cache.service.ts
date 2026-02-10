@@ -142,6 +142,14 @@ export class PromptCacheService implements OnModuleInit {
           }
           const loadedPrompts: Array<{ id: string; raw: string }> = await Promise.all(
             config.prompts.map(async (prompt) => {
+              if (!prompt.id) {
+                this.logger.error(`Skipping prompt without id in ${configPath}`);
+                this.sentryService.instance().captureMessage('Prompt config entry missing id', {
+                  level: 'error',
+                  extra: { configPath, prompt },
+                });
+                return null;
+              }
               const promptContent = await this.loadPromptContent(prompt, configPath);
               return promptContent ? { id: prompt.id, raw: promptContent } : null;
             }),

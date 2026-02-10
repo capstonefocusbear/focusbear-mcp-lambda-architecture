@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectSentry, SentryService } from '@app/observability';
+import { SendGridService } from '@app/send-grid';
+import { Auth0ManagementService } from '@app/auth0';
 import { DataSource } from 'typeorm';
 import { UserRepository } from '../../repositories/user.repository';
 import { UpdateEmailPreferencesDto } from '../../dto/update-email-preferences.dto';
@@ -16,6 +18,8 @@ export class UserEmailPreferencesService {
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
+    private readonly sendGridService: SendGridService,
+    private readonly auth0ManagementService: Auth0ManagementService,
     @InjectSentry() private readonly sentryService: SentryService,
   ) {}
 
@@ -141,5 +145,121 @@ export class UserEmailPreferencesService {
 
   generateUnsubscribeToken(userId: string): string {
     return this.jwtService.sign({ userId, purpose: 'unsubscribe' }, { expiresIn: '30d' });
+  }
+
+  async sendEmailPreferencesLink(email: string): Promise<void> {
+    try {
+      // Look up user in Auth0 (cached, encrypted)
+      const [auth0User] = await this.auth0ManagementService.getAuth0UsersWithEmail(email);
+      if (!auth0User) {
+        // Anti-enumeration: silently return without revealing if email exists
+        this.logger.log(`Email preferences link requested for non-existent email: ${email.substring(0, 3)}***`);
+        return;
+      }
+
+      // Find local user by auth0_id
+      const user = await this.userRepository.orm.findOne({
+        where: { auth0_id: auth0User.user_id },
+      });
+
+      if (!user) {
+        // Auth0 user exists but no local user record - log for investigation
+        this.logger.warn('Auth0 user found but no local user record', {
+          auth0_id: auth0User.user_id,
+          email_substring: email.substring(0, 3),
+        });
+        return;
+      }
+
+      const token = this.generateUnsubscribeToken(user.id);
+      const apiUrl = process.env.API_URL || 'https://api.focusbear.io';
+      const preferencesLink = `${apiUrl}/user/email-preferences/manage?token=${token}`;
+
+      await this.sendGridService.sendEmail({
+        to: email,
+        from: 'support@focusbear.io',
+        replyTo: 'support@focusbear.io',
+        subject: 'Manage Your Focus Bear Email Preferences',
+        html: this.generatePreferencesEmailHtml(preferencesLink),
+        text: this.generatePreferencesEmailText(preferencesLink),
+      });
+
+      this.sentryService.instance().captureMessage('Email preferences link sent', {
+        level: 'info',
+        extra: { userId: user.id },
+        tags: { email_action: 'preferences_link_sent' },
+      });
+    } catch (error) {
+      this.logger.error('Failed to send email preferences link:', {
+        error: error.message,
+        stack: error.stack,
+        email_substring: email.substring(0, 3),
+      });
+      this.sentryService.instance().captureException(error, {
+        tags: { email_action: 'preferences_link_failed' },
+        extra: {
+          email_substring: email.substring(0, 3),
+          error_name: error.name,
+        },
+      });
+    }
+  }
+
+  private generatePreferencesEmailHtml(preferencesLink: string): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .logo { color: #FF6B35; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+          .button { 
+            display: inline-block; 
+            background: #FF6B35; 
+            color: white; 
+            padding: 12px 24px; 
+            text-decoration: none; 
+            border-radius: 8px; 
+            margin: 20px 0;
+          }
+          .footer { margin-top: 30px; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo">Focus Bear</div>
+          <h2>Manage Your Email Preferences</h2>
+          <p>You requested a link to manage your Focus Bear email preferences.</p>
+          <p>Click the button below to update how often you receive emails from us:</p>
+          <a href="${preferencesLink}" class="button">Manage Email Preferences</a>
+          <p>This link will expire in 30 days.</p>
+          <p>If you didn't request this link, you can safely ignore this email.</p>
+          <div class="footer">
+            <p>Focus Bear - Build better habits, one day at a time.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generatePreferencesEmailText(preferencesLink: string): string {
+    return `
+Focus Bear - Manage Your Email Preferences
+
+You requested a link to manage your Focus Bear email preferences.
+
+Click the link below to update how often you receive emails from us:
+${preferencesLink}
+
+This link will expire in 30 days.
+
+If you didn't request this link, you can safely ignore this email.
+
+---
+Focus Bear - Build better habits, one day at a time.
+    `.trim();
   }
 }

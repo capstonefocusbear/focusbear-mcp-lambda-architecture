@@ -4,6 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -1235,6 +1236,9 @@ export class UserService {
     const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_PROFILE_IMAGES, key, contentType);
 
     const r2PublicUrl = this.config.get<string>('r2.publicUrl');
+    if (!r2PublicUrl) {
+      throw new InternalServerErrorException('R2 public URL is not configured');
+    }
     const publicUrl = `${r2PublicUrl}/${S3_BUCKET_PROFILE_IMAGES}/${key}`;
 
     return { uploadUrl, publicUrl };

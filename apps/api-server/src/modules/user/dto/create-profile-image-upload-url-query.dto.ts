@@ -1,8 +1,11 @@
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsString, Matches } from 'class-validator';
 
 export class CreateProfileImageUploadUrlQueryDto {
   @IsString()
   @IsNotEmpty()
+  @Matches(/^[a-zA-Z0-9_-][a-zA-Z0-9_. -]{0,198}\.[a-zA-Z0-9]{1,10}$/, {
+    message: 'Filename must contain only alphanumeric characters, dashes, underscores, dots, and spaces.',
+  })
   filename: string;
 
   @IsString()

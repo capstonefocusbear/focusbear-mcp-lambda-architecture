@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -97,6 +98,7 @@ jest.mock('@app/observability', () => {
 
 describe('UserService', () => {
   let userService: UserService;
+  let configService: ConfigService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -186,6 +188,7 @@ describe('UserService', () => {
       .useValue(R2ServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
+    configService = moduleRef.get<ConfigService>(ConfigService);
   });
 
   beforeEach(() => {
@@ -1702,14 +1705,34 @@ describe('UserService', () => {
     });
 
     it('should return upload URL and public URL for valid user', async () => {
+      const mockPresignedUrl = 'https://presigned-url.example.com';
+      const mockPublicUrl = 'https://r2-public.example.com';
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce(mockPresignedUrl);
+      configService.set('r2.publicUrl', mockPublicUrl);
 
       const result = await userService.getProfileImageUploadUrl(userDummy.id, 'profile.jpg', 'image/jpeg');
 
-      expect(result).toHaveProperty('uploadUrl');
-      expect(result).toHaveProperty('publicUrl');
+      expect(result.uploadUrl).toBe(mockPresignedUrl);
+      expect(result.publicUrl).toContain(mockPublicUrl);
       expect(result.publicUrl).toContain(userDummy.id);
       expect(result.publicUrl).toContain('profile.jpg');
+      expect(result.publicUrl).toContain('profile-images');
+      expect(R2ServiceMock.getPresignedUploadUrl).toHaveBeenCalledWith(
+        'profile-images',
+        expect.stringContaining(userDummy.id),
+        'image/jpeg',
+      );
+    });
+
+    it('should throw InternalServerErrorException when r2.publicUrl is not configured', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce('https://presigned-url.example.com');
+      configService.set('r2.publicUrl', '');
+
+      await expect(userService.getProfileImageUploadUrl(userDummy.id, 'profile.jpg', 'image/jpeg')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

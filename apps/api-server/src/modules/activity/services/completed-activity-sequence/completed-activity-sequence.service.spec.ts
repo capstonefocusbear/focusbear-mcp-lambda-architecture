@@ -899,7 +899,7 @@ describe('CompletedActivitySequenceService', () => {
         ...ActivitySequenceDummy,
         id: 'evening-seq-id',
         type: ActivityType.evening,
-        activity_ids: ['e1', 'e2', 'e3', 'e4'],
+        activity_ids: ['e1', 'e2', 'e3', 'e4', 'e5'],
       };
 
       const user = {
@@ -915,6 +915,7 @@ describe('CompletedActivitySequenceService', () => {
           { activity_id: 'e2', metadata: { is_skipped: true } }, // skipped (is_skipped)
           { activity_id: 'e3', metadata: { skipped_did_not_complete: true } }, // skipped (did not complete)
           { activity_id: 'e4', metadata: { skipped_did_complete: true } }, // "already did it" (counts as completion)
+          { activity_id: 'e5', metadata: { is_skipped: true, skipped_did_complete: true } }, // conflicting metadata -> treat as completion
         ],
       };
 
@@ -929,8 +930,8 @@ describe('CompletedActivitySequenceService', () => {
         evening_routine: {
           sequence_id: 'evening-seq-id',
           status: 'postponed',
-          completed_habit_ids: ['e1', 'e2', 'e3', 'e4'],
-          skipped_habit_ids: ['e2', 'e3'], // e4 is NOT skipped since skipped_did_complete counts as completion
+          completed_habit_ids: ['e1', 'e2', 'e3', 'e4', 'e5'],
+          skipped_habit_ids: ['e2', 'e3'], // e4/e5 are NOT skipped since skipped_did_complete counts as completion
         },
         custom_routines: [],
         standalone_routines: [],

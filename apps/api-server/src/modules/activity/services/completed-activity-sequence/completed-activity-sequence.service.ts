@@ -15,6 +15,10 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { SequenceStatus } from '../../domain/sequence-status.enum';
+import {
+  countsAsCompletionFromMetadata,
+  isSkippedWithoutCompletionFromMetadata,
+} from '../../domain/completed-activity-metadata.utils';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -159,9 +163,7 @@ export class CompletedActivitySequenceService {
       // Guard: do not auto-complete routines that have zero non-skipped logs
       // Treat "skipped_did_complete" as a completed habit (counts toward routine completion)
       const hasNonSkippedLogs = (uncompletedSequenceLog.completed_activity_logs || []).some((log) => {
-        const m = log?.metadata || {};
-        const countsAsCompletion = m.skipped_did_complete === true || !(m.is_skipped || m.skipped_did_not_complete);
-        return countsAsCompletion;
+        return countsAsCompletionFromMetadata(log?.metadata);
       });
 
       if (!hasNonSkippedLogs) {
@@ -589,7 +591,7 @@ export class CompletedActivitySequenceService {
           completedHabitIds = inProgressSequence.completed_activity_logs.map((log) => log.activity_id).filter(Boolean);
           // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
           skippedHabitIds = inProgressSequence.completed_activity_logs
-            .filter((log) => log.metadata?.is_skipped || log.metadata?.skipped_did_not_complete)
+            .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
             .map((log) => log.activity_id)
             .filter(Boolean);
         } else {
@@ -608,7 +610,7 @@ export class CompletedActivitySequenceService {
           completedHabitIds = activities.map((log) => log.activity_id).filter(Boolean);
           // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
           skippedHabitIds = activities
-            .filter((log) => log.metadata?.is_skipped || log.metadata?.skipped_did_not_complete)
+            .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
             .map((log) => log.activity_id)
             .filter(Boolean);
         }
@@ -617,7 +619,7 @@ export class CompletedActivitySequenceService {
         const completedActivityLogs = completedSequence?.completed_activity_logs || [];
         completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
         skippedHabitIds = completedActivityLogs
-          .filter((log) => log.metadata?.is_skipped || log.metadata?.skipped_did_not_complete)
+          .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
           .map((log) => log.activity_id)
           .filter(Boolean);
       }

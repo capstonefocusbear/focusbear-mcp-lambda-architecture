@@ -74,6 +74,11 @@ import { UserService } from '../../../user/services/user/user.service';
 import { UserTimesResponse } from '../../domain/user-times-response.model';
 import { WebhookDispatcherService } from '../../../webhook/services/webhook-dispatcher.service';
 import { WebhookEventType } from '../../../webhook/domain/webhook-event-type.enum';
+import {
+  countsAsCompletionFromMetadata,
+  isSkippedDidCompleteFromMetadata,
+  isSkippedWithoutCompletionFromMetadata,
+} from '../../domain/completed-activity-metadata.utils';
 
 @Injectable()
 export class CompletedActivityService implements OnModuleInit {
@@ -618,7 +623,7 @@ export class CompletedActivityService implements OnModuleInit {
       }
 
       const choice = choice_id ? await this.activityRepository.orm.findOneBy({ id: choice_id }) : null;
-      const finish_time = metadata?.skipped_did_complete ? start_time : completedActivity.finish_time;
+      const finish_time = isSkippedDidCompleteFromMetadata(metadata) ? start_time : completedActivity.finish_time;
       const createdItem = await this.saveCompletedLog(
         { ...completedActivity, finish_time },
         activity,
@@ -828,7 +833,7 @@ export class CompletedActivityService implements OnModuleInit {
 
     const current_completing_sequence_log_id = nextActivityId ? completingSequenceLog.id : null;
     const skippedActivityIds = updatedUser.current_sequence_skipped_activities ?? [];
-    if (metadata?.is_skipped || metadata?.skipped_did_not_complete) {
+    if (isSkippedWithoutCompletionFromMetadata(metadata)) {
       skippedActivityIds.push(activity_id);
     }
 
@@ -1222,9 +1227,7 @@ export class CompletedActivityService implements OnModuleInit {
 
     // Treat "skipped_did_complete" as a completed habit (counts toward routine completion)
     const hasNonSkippedLogs = (seqLog?.completed_activity_logs || []).some((log) => {
-      const m = log?.metadata || {};
-      const countsAsCompletion = m.skipped_did_complete === true || !(m.is_skipped || m.skipped_did_not_complete);
-      return countsAsCompletion;
+      return countsAsCompletionFromMetadata(log?.metadata);
     });
 
     if (!hasNonSkippedLogs) {

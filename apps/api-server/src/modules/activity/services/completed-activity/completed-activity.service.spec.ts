@@ -1599,6 +1599,38 @@ describe('CompletedActivityService', () => {
         expect.objectContaining({ metadata: { skipped_did_complete: true } }),
       );
     });
+
+    it('positive: if client sends conflicting skip metadata, skipped_did_complete should take precedence', async () => {
+      const previousSkippedId = randomUUID();
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      const user = {
+        ...userDummy,
+        current_sequence_skipped_activities: [previousSkippedId],
+        current_sequence_started_at: new Date().toISOString(),
+      };
+      UserRepositoryMock.orm.findOne.mockResolvedValue(user);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        { activity_id: sequenceWhenThereIsNextActivity.activity_ids[0] },
+      ]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.skipActivity(
+        { ...completedActivity, metadata: { is_skipped: true, skipped_did_complete: true } },
+        { user_id },
+      );
+
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+        user_id,
+        expect.objectContaining({
+          current_sequence_skipped_activities: [previousSkippedId],
+        }),
+      );
+    });
   });
 
   describe('getStatsByActivityPerDay', () => {

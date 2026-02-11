@@ -472,6 +472,7 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       task_must_align_to_focus_intention,
       current_tasks,
+      lastFiveJustificationsInThisFocusSession,
     } = isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
@@ -510,6 +511,7 @@ export class OpenAIService {
       intention: intention || '',
       justificationForThisSpecificApp: justificationForThisSpecificApp || '',
       currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+      lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
       task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
       current_tasks: currentTasksJson,
     });

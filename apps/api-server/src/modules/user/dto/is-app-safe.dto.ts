@@ -42,6 +42,10 @@ export class IsAppSafeDto {
 
   @IsOptional()
   @IsArray()
+  lastFiveJustificationsInThisFocusSession?: any[];
+
+  @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CurrentTaskDto)
   current_tasks?: CurrentTaskDto[];

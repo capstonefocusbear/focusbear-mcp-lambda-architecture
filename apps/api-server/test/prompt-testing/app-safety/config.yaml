@@ -638,7 +638,7 @@ providers:
       temperature: 1
       max_tokens: 1024
       apiKeyEnvar: OPENAI_APP_SAFETY_API_KEY
-      reasoning_effort: minimnal
+      reasoning_effort: minimal
 
 output:
   - debug

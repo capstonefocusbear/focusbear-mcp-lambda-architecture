@@ -482,7 +482,10 @@ export class ActivityLibraryService {
         baseActivity.text_instructions = overrideDescription;
         baseActivity.description = overrideDescription;
       }
-      if (!baseActivity.description && baseActivity.text_instructions) {
+      if (!baseActivity.text_instructions) {
+        baseActivity.text_instructions = baseActivity.name ?? '';
+      }
+      if (!baseActivity.description) {
         baseActivity.description = baseActivity.text_instructions;
       }
       allValidActivities.push(baseActivity);
@@ -864,12 +867,14 @@ export class ActivityLibraryService {
         const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
         const rawDescription = habit.description ?? '';
         const description = this.sanitizeDurationPhrases(rawDescription);
+        const effectiveName = sanitizedName || habit.name;
+        const instructions = description || effectiveName;
 
         const generatedActivity: any = {
           id: randomUUID(),
-          name: sanitizedName || habit.name,
-          text_instructions: description,
-          description,
+          name: effectiveName,
+          text_instructions: instructions,
+          description: instructions,
           duration_seconds: durationSeconds,
           activity_type: activityType,
           ai_generated: true,

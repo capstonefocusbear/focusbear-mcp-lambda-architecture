@@ -320,7 +320,8 @@ export class HabitImportConsumer {
           return null;
         }
 
-        const description = template?.description ? template.description : sourceHabit.description;
+        const rawDescription = template?.description ? template.description : sourceHabit.description;
+        const description = rawDescription || name;
         let activityType: string;
         if (requestedActivityType !== undefined) {
           activityType = String(requestedActivityType);

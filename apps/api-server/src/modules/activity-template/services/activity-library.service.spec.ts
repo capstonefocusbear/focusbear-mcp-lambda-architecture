@@ -216,6 +216,7 @@ describe('ActivityLibraryService', () => {
           ai_goals,
           ai_generated,
           description,
+          text_instructions,
           ...rest
         } = activity;
         return rest;

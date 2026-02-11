@@ -484,7 +484,17 @@ export class OpenAIService {
     const isCurrentTaskValid = currentTaskInToDoPlayer
       ? this.isValidInput(currentTaskInToDoPlayer, MAX_WORD_LENGTH.default)
       : true;
-    if (!isFocusModeValid || !isIntentionValid || !isAppNameValid || !isJustificationValid || !isCurrentTaskValid) {
+    const areRecentJustificationsValid = (lastFiveJustificationsInThisFocusSession || []).every((j) =>
+      this.isValidInput(j, MAX_WORD_LENGTH.justification),
+    );
+    if (
+      !isFocusModeValid ||
+      !isIntentionValid ||
+      !isAppNameValid ||
+      !isJustificationValid ||
+      !isCurrentTaskValid ||
+      !areRecentJustificationsValid
+    ) {
       throw new Error('Invalid input');
     }
 

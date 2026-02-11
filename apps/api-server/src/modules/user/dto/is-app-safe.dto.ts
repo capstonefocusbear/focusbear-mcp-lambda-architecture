@@ -42,7 +42,9 @@ export class IsAppSafeDto {
 
   @IsOptional()
   @IsArray()
-  lastFiveJustificationsInThisFocusSession?: any[];
+  @IsString({ each: true })
+  @MaxLength(MAX_WORD_LENGTH.justification, { each: true })
+  lastFiveJustificationsInThisFocusSession?: string[];
 
   @IsOptional()
   @IsArray()

@@ -17,6 +17,7 @@ import { ExtractedHabit, HabitImportJobData, HabitSuggestionResult } from '../dt
 import { BullQueues, BullWorkers, S3_BUCKET_HABIT_IMPORTS } from '../../../shared/utils/constants';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { ActivityLibraryService } from '../services/activity-library.service';
 
 const MIN_IMAGE_DIMENSION = 768;
 const ONE_MINUTE_SECONDS = 60;
@@ -31,6 +32,7 @@ export class HabitImportConsumer {
     private readonly openAIService: OpenAIService,
     private readonly asyncTaskService: AsyncTaskService,
     private readonly habitImportExtractionService: HabitImportExtractionService,
+    private readonly activityLibraryService: ActivityLibraryService,
   ) {}
 
   @Process(BullWorkers.PROCESS_HABIT_IMPORT)
@@ -373,37 +375,8 @@ export class HabitImportConsumer {
     return undefined;
   }
 
-  private async generateHabitInstructions(habitName: string): Promise<string> {
-    try {
-      const response = await this.openAIService.createChatCompletion([
-        {
-          role: 'system' as const,
-          content:
-            'You generate concise, actionable instructions for habits in a productivity app. Given a habit name, write clear instructions (1-3 sentences) telling the user exactly what to do. Be specific and practical. Return only the instructions text, nothing else.',
-        },
-        {
-          role: 'user' as const,
-          content: `Generate instructions for this habit: "${habitName}"`,
-        },
-      ]);
-      const content = response.choices?.[0]?.message?.content?.trim();
-      return content || habitName;
-    } catch (error) {
-      this.logger.warn(`Failed to generate AI instructions for "${habitName}": ${error.message}`);
-      return habitName;
-    }
-  }
-
   private async ensureHabitsHaveInstructions(habits: UpdateActivityDto[]): Promise<void> {
-    const needsInstructions = habits.filter((h) => !h.text_instructions || h.text_instructions === h.name);
-    if (!needsInstructions.length) return;
-
-    await Promise.all(
-      needsInstructions.map(async (habit) => {
-        const instructions = await this.generateHabitInstructions(habit.name);
-        Object.assign(habit, { text_instructions: instructions });
-      }),
-    );
+    await this.activityLibraryService.ensureHabitsHaveInstructions(habits);
   }
 
   private resolveActivityTypeFromRoutineType(routineType?: string): ActivityType | undefined {

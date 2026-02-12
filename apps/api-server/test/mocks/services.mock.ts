@@ -226,7 +226,9 @@ export const OpenAIServiceMock = {
   checkIfAppIsSafeToUse: jest.fn(),
   generateEmojiForActivity: jest.fn(),
   adjustHabitsWithAi: jest.fn(),
-  createChatCompletion: jest.fn(),
+  createChatCompletion: jest.fn().mockResolvedValue({
+    choices: [{ message: { content: 'AI generated instructions for this habit.' } }],
+  }),
   createEmbedding: jest.fn(),
   transcribeAudioToText: jest.fn(),
   createDraftTodosFromTranscript: jest.fn(),

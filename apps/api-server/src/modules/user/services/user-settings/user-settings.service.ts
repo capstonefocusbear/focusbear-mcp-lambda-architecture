@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   ValidationError,
   forwardRef,
@@ -42,9 +43,19 @@ import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
 import { CustomRoutine } from '../../entities/custom-routine';
 import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 import { UpdateCustomRoutineDto } from '../../dto/update-custom-routine.dto.dto';
+import { timed } from '../../../../shared/utils/helpers';
+
+const PERFORMANCE_BUDGETS = {
+  AUTH0_API_CALL: 500,
+  DB_TRANSACTION: 1000,
+  PUSHER_BROADCAST: 200,
+  TOTAL_UPDATE_SETTINGS: 2000,
+} as const;
 
 @Injectable()
 export class UserSettingsService {
+  private readonly logger = new Logger(UserSettingsService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly activityParserService: ActivityParserService,
@@ -135,6 +146,7 @@ export class UserSettingsService {
     should_update_has_edited_settings: boolean,
     { is_onboarding, device_id }: UpdateSettingsQueryDto,
   ) {
+    const methodStartTime = Date.now();
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
@@ -169,7 +181,12 @@ export class UserSettingsService {
       let mergedSettingsData = updateSettingsData;
       let isFirstLogin = false;
       if (user?.auth0_id) {
-        const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+        const { result: auth0User } = await timed(() => this.auth0ManagementService.getAuth0User(user.auth0_id), {
+          operationName: 'auth0_get_user',
+          budgetMs: PERFORMANCE_BUDGETS.AUTH0_API_CALL,
+          logger: this.logger,
+          context: { user_id },
+        });
         isFirstLogin = (auth0User?.logins_count ?? 0) <= 4; // We support 4 platforms; simultaneous first sign-ins can increment count rapidly
       }
       if (is_onboarding && !isFirstLogin) {
@@ -285,22 +302,51 @@ export class UserSettingsService {
         user_id,
       );
 
-      await this.userRepository.consistentlyUpdateUserSettings(
-        updatedUser,
-        deserializedActivities.concat(deserializeCustomRoutineActivities),
-        logQuantityQuestions,
-        tutorials,
-        customRoutines,
+      await timed(
+        () =>
+          this.userRepository.consistentlyUpdateUserSettings(
+            updatedUser,
+            deserializedActivities.concat(deserializeCustomRoutineActivities),
+            logQuantityQuestions,
+            tutorials,
+            customRoutines,
+          ),
+        {
+          operationName: 'db_transaction',
+          budgetMs: PERFORMANCE_BUDGETS.DB_TRANSACTION,
+          logger: this.logger,
+          context: { user_id },
+        },
       );
       if (typeof verbose_logging === 'boolean') {
         this.userService.clearVerboseLoggingCache(user_id);
       }
       if (should_update_has_edited_settings) {
+        const timedPusherBroadcast = timed(() => this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id), {
+          operationName: 'pusher_broadcast',
+          budgetMs: PERFORMANCE_BUDGETS.PUSHER_BROADCAST,
+          logger: this.logger,
+          context: { user_id, device_id },
+        });
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
-          this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id),
+          timedPusherBroadcast,
         ]);
       }
+
+      const totalDurationMs = Date.now() - methodStartTime;
+      if (totalDurationMs > PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS) {
+        this.logger.warn(
+          `Performance budget exceeded for updateSettings total: ${totalDurationMs}ms (budget: ${PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS}ms)`,
+          {
+            operationName: 'updateSettings_total',
+            budgetMs: PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS,
+            actualMs: totalDurationMs,
+            user_id,
+          },
+        );
+      }
+
       return await this.getSettings({ user_id });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

@@ -50,6 +50,9 @@ npm run format
 # Prompt safety tests
 npm run test:url-prompts
 npm run test:app-prompts
+
+# Smoke tests (requires server running; default http://localhost:5038)
+npm run smoke-test
 ```
 
 ## Database Commands

@@ -60,7 +60,7 @@ export class RoutineSuggestionsAsyncService {
     const asyncTask = await this.asyncTaskService.createAsyncTask({ metadata });
 
     try {
-      await this.routineSuggestionsQueue.add(
+      const queuedJob = await this.routineSuggestionsQueue.add(
         BullWorkers.PROCESS_ROUTINE_SUGGESTIONS,
         {
           asyncTaskId: asyncTask.id,
@@ -75,6 +75,18 @@ export class RoutineSuggestionsAsyncService {
           timeout: 120000,
         },
       );
+
+      const queuedJobId =
+        typeof queuedJob?.id === 'string' || typeof queuedJob?.id === 'number' ? String(queuedJob.id) : jobId;
+      const inFlightAsyncTaskId = await this.getInFlightAsyncTaskIdByJobId(queuedJobId);
+      if (inFlightAsyncTaskId && inFlightAsyncTaskId !== asyncTask.id) {
+        await this.asyncTaskService.updateStatusWithMetadata(asyncTask.id, AsyncTaskStatus.FAILED, metadata, {
+          processingFailed: new Date(),
+          duplicateOfAsyncTaskId: inFlightAsyncTaskId,
+          error: 'Duplicate queue job detected after enqueue',
+        });
+        return { asyncTaskId: inFlightAsyncTaskId };
+      }
     } catch (error) {
       const duplicateQueueTaskId = await this.getInFlightAsyncTaskIdByJobId(jobId);
       if (duplicateQueueTaskId) {

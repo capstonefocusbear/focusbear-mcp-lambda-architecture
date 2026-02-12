@@ -199,7 +199,10 @@ describe('OpenAIService', () => {
       const first = [0.1, 0.2];
       const second = [0.3, 0.4];
       mockEmbeddingsCreate.mockResolvedValueOnce({
-        data: [{ embedding: first }, { embedding: second }],
+        data: [
+          { embedding: first, index: 0 },
+          { embedding: second, index: 1 },
+        ],
       });
 
       const result = await service.createEmbeddings(['first', 'second']);
@@ -209,6 +212,47 @@ describe('OpenAIService', () => {
         model: DEFAULT_EMBEDDING_MODEL,
       });
       expect(result).toEqual([first, second]);
+    });
+
+    it('orders embeddings by response index when response order differs', async () => {
+      const first = [0.1, 0.2];
+      const second = [0.3, 0.4];
+      mockEmbeddingsCreate.mockResolvedValueOnce({
+        data: [
+          { embedding: second, index: 1 },
+          { embedding: first, index: 0 },
+        ],
+      });
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(result).toEqual([first, second]);
+    });
+
+    it('falls back to per-input embedding calls when batch call fails', async () => {
+      const first = [0.1, 0.2];
+      mockEmbeddingsCreate
+        .mockRejectedValueOnce(new Error('batch failed'))
+        .mockResolvedValueOnce({
+          data: [{ embedding: first, index: 0 }],
+        })
+        .mockRejectedValueOnce(new Error('second failed'));
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(1, {
+        input: ['first', 'second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(2, {
+        input: ['first'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(3, {
+        input: ['second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(result).toEqual([first, []]);
     });
   });
 

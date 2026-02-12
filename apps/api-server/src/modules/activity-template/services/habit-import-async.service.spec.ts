@@ -14,6 +14,7 @@ describe('HabitImportAsyncService', () => {
   const asyncTaskServiceMock = {
     createAsyncTask: jest.fn(),
     findActiveTaskByRequestHash: jest.fn(),
+    updateStatusWithMetadata: jest.fn(),
   } as unknown as jest.Mocked<AsyncTaskService>;
 
   const queueMock = {
@@ -90,6 +91,7 @@ describe('HabitImportAsyncService', () => {
         }),
       );
 
+      expect(asyncTaskServiceMock.updateStatusWithMetadata).not.toHaveBeenCalled();
       expect(result).toEqual({ asyncTaskId: 'task-1' });
     });
 
@@ -269,6 +271,37 @@ describe('HabitImportAsyncService', () => {
       expect(asyncTaskServiceMock.createAsyncTask).toHaveBeenCalled();
       expect(queueMock.add).toHaveBeenCalled();
       expect(result).toEqual({ asyncTaskId: 'task-new-1' });
+    });
+
+    it('should fail new async task and return canonical in-flight asyncTaskId when dedup wins after enqueue', async () => {
+      const dto: HabitImportUploadedDto = {
+        mediaKey: 'same-key.png',
+        mediaType: 'image',
+      };
+
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
+      asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-new-2', metadata: {} } as any);
+      queueMock.getJob.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        data: { asyncTaskId: 'task-existing-2' },
+        getState: jest.fn().mockResolvedValue('active'),
+      } as any);
+      queueMock.add.mockResolvedValueOnce({ id: 'habit-import:dedup-hash' } as any);
+
+      const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
+
+      expect(asyncTaskServiceMock.updateStatusWithMetadata).toHaveBeenCalledWith(
+        'task-new-2',
+        'failed',
+        expect.objectContaining({
+          taskType: 'habit-import',
+          userId: 'user-123',
+        }),
+        expect.objectContaining({
+          duplicateOfAsyncTaskId: 'task-existing-2',
+          error: 'Duplicate queue job detected after enqueue',
+        }),
+      );
+      expect(result).toEqual({ asyncTaskId: 'task-existing-2' });
     });
   });
 });

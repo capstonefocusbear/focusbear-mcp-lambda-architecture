@@ -14,6 +14,7 @@ describe('RoutineSuggestionsAsyncService', () => {
   const asyncTaskServiceMock = {
     createAsyncTask: jest.fn(),
     findActiveTaskByRequestHash: jest.fn(),
+    updateStatusWithMetadata: jest.fn(),
   } as unknown as jest.Mocked<AsyncTaskService>;
   const queueMock = {
     add: jest.fn(),
@@ -119,5 +120,38 @@ describe('RoutineSuggestionsAsyncService', () => {
     expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
     expect(queueMock.add).not.toHaveBeenCalled();
     expect(result).toEqual({ asyncTaskId: 'existing-task-1' });
+  });
+
+  it('fails new async task and returns canonical in-flight asyncTaskId when dedup wins after enqueue', async () => {
+    const dto: GetRoutineSuggestionsDto = {
+      user_goals: [{ goal: 'be healthier', isCustom: false }],
+      routine_duration: 30,
+      routine: 'morning',
+      groupByGoals: false,
+    };
+
+    (asyncTaskServiceMock.findActiveTaskByRequestHash as jest.Mock).mockResolvedValueOnce(null);
+    (asyncTaskServiceMock.createAsyncTask as jest.Mock).mockResolvedValueOnce({ id: 'task-new-7' });
+    queueMock.getJob.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      data: { asyncTaskId: 'task-existing-7' },
+      getState: jest.fn().mockResolvedValue('active'),
+    } as any);
+    queueMock.add.mockResolvedValueOnce({ id: 'routine-suggestions:dedup-hash' } as any);
+
+    const result = await service.enqueueRoutineSuggestions(dto, 'user-42', 'app');
+
+    expect(asyncTaskServiceMock.updateStatusWithMetadata).toHaveBeenCalledWith(
+      'task-new-7',
+      'failed',
+      expect.objectContaining({
+        taskType: 'routine-suggestions',
+        userId: 'user-42',
+      }),
+      expect.objectContaining({
+        duplicateOfAsyncTaskId: 'task-existing-7',
+        error: 'Duplicate queue job detected after enqueue',
+      }),
+    );
+    expect(result).toEqual({ asyncTaskId: 'task-existing-7' });
   });
 });

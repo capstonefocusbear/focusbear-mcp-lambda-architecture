@@ -1227,7 +1227,7 @@ export class UserService {
     error?: Error,
   ): Promise<void> {
     const metrics = this.getMetricsConfig();
-    const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
+    const shouldEmitMetrics = Boolean(metrics.emitUserActivityMetrics || metrics.emitQueueMetrics);
 
     if (!shouldEmitMetrics) {
       return;

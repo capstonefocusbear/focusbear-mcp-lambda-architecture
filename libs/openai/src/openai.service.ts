@@ -1068,17 +1068,55 @@ export class OpenAIService {
       return [];
     }
 
+    const openai = this.getOpenAIInstance(type);
     try {
-      const openai = this.getOpenAIInstance(type);
       const response = await openai.embeddings.create({
         input: inputs,
         model,
       });
-      return response.data?.map((item) => item.embedding ?? []) ?? [];
+      return this.mapEmbeddingsToInputOrder(response.data, inputs.length);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      return inputs.map(() => []);
+
+      return Promise.all(
+        inputs.map(async (input, index) => {
+          try {
+            const response = await openai.embeddings.create({
+              input: [input],
+              model,
+            });
+            return this.mapEmbeddingsToInputOrder(response.data, 1)[0] ?? [];
+          } catch (singleError) {
+            this.sentryService.instance().captureException(singleError, {
+              level: 'warning',
+              extra: { index, inputLength: input?.length ?? 0 },
+            });
+            return [];
+          }
+        }),
+      );
     }
+  }
+
+  private mapEmbeddingsToInputOrder(
+    responseData: Array<{ index?: number; embedding?: number[] }> | undefined,
+    expectedLength: number,
+  ): number[][] {
+    const orderedEmbeddings = Array.from({ length: expectedLength }, () => [] as number[]);
+
+    (responseData ?? []).forEach((item, fallbackIndex) => {
+      const rawIndex = item?.index;
+      const resolvedIndex =
+        typeof rawIndex === 'number' && Number.isInteger(rawIndex) && rawIndex >= 0 && rawIndex < expectedLength
+          ? rawIndex
+          : fallbackIndex;
+
+      if (resolvedIndex >= 0 && resolvedIndex < expectedLength) {
+        orderedEmbeddings[resolvedIndex] = Array.isArray(item?.embedding) ? item.embedding : [];
+      }
+    });
+
+    return orderedEmbeddings;
   }
 
   async createChatCompletion(

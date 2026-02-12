@@ -41,6 +41,43 @@ export class ActivityTemplateGoalEmbeddingService {
     return embedding;
   }
 
+  async generateEmbeddings(goals: string[], contexts?: Array<EmbeddingContext | undefined>): Promise<number[][]> {
+    if (!goals?.length) {
+      return [];
+    }
+
+    const prepared = goals
+      .map((goal, index) => {
+        const normalizedGoal = goal?.trim();
+        const textToEmbed = this.buildEmbeddingText(normalizedGoal, contexts?.[index]);
+        return { index, normalizedGoal, textToEmbed };
+      })
+      .filter((entry) => entry.textToEmbed.length > 0);
+
+    if (!prepared.length) {
+      return goals.map(() => []);
+    }
+
+    const startedAt = Date.now();
+    const embeddings = await this.openAIService.createEmbeddings(prepared.map((entry) => entry.textToEmbed));
+    const elapsedMs = Date.now() - startedAt;
+
+    const orderedEmbeddings = goals.map(() => [] as number[]);
+    prepared.forEach((entry, idx) => {
+      orderedEmbeddings[entry.index] = embeddings[idx] ?? [];
+    });
+
+    this.logger.debug(
+      `RoutineSuggestions:embeddingsBatch ${JSON.stringify({
+        goalCount: goals.length,
+        embeddedCount: prepared.length,
+        elapsedMs,
+      })}`,
+    );
+
+    return orderedEmbeddings;
+  }
+
   private buildEmbeddingText(goal: string | undefined | null, context?: EmbeddingContext): string {
     if (context?.rawText) {
       return context.rawText.trim();

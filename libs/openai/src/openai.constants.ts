@@ -121,7 +121,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   activityEmojiGeneration: {
     model: GPT_5_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
   },

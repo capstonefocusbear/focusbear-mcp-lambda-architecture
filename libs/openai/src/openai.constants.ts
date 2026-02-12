@@ -126,7 +126,9 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   convertBrainDumpToTasks: {
     model: GPT_5_MINI,
+    temperature: 0,
     n: 1,
+    max_completion_tokens: 512,
     messages: null,
   },
 

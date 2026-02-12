@@ -444,6 +444,66 @@ describe('ActivityLibraryService', () => {
       expect(response[0].name).toBe('Goal-Aligned Strength Session');
     });
 
+    it('filters non-routine RAG matches and generates morning suggestions when routine is omitted', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+
+      const libraryTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: 'library-template-id',
+        activity_type: ActivityType.library,
+      };
+
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([
+        { activityTemplateId: libraryTemplate.id, similarity: 0.93 },
+      ]);
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([libraryTemplate]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [
+          {
+            habitId: libraryTemplate.id,
+            name: 'Task triage',
+            justification: 'Ranks tasks by impact.',
+            matchScore: 0.9,
+            template: libraryTemplate,
+            description: 'Sort and prioritize tasks.',
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([
+        {
+          name: 'Morning priority plan',
+          description: 'Choose the top 3 tasks for today.',
+          routineType: ActivityType.morning,
+          durationMinutes: 10,
+          justification: 'Creates daily focus.',
+        },
+      ]);
+
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
+        {
+          ...dummyGetRoutineSuggestionsDto,
+          user_goals: ['Organize your tasks using AI'],
+        },
+        userDummy.id,
+      )) as any[];
+
+      expect(response).toHaveLength(1);
+      expect(response[0].activity_type).toBe(ActivityType.morning);
+      expect(response[0].ai_generated).toBe(true);
+      expect(response[0].name).toBe('Morning priority plan');
+      expect(response.some((activity: any) => activity.original_template_id === libraryTemplate.id)).toBe(false);
+      expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).toHaveBeenCalledWith(
+        'Organize your tasks using AI',
+        expect.objectContaining({
+          routineType: ActivityType.morning,
+        }),
+      );
+    });
+
     it('skips the RAG pipeline when explicitly disabled', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);

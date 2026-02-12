@@ -9,7 +9,7 @@ import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
-import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { ActivityType, normalizeRoutineTypeToActivityType } from '../../activity/domain/activity-type.enum';
 import { GetRoutineSuggestionsDto, GetRoutineSuggestionsInput } from '../dto/get-routine-suggestions.dto';
 import { UserGoalDto, UserGoalInput } from '../dto/user-goal.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
@@ -601,7 +601,7 @@ export class ActivityLibraryService {
       goals.map(async ({ goal, isCustom }) => {
         const generationOptions = {
           limit: RAG_RETRIEVAL_LIMIT,
-          routineType: request.routine,
+          routineType: request.routine || ActivityType.morning,
           routineDurationSeconds,
         };
         try {
@@ -829,7 +829,10 @@ export class ActivityLibraryService {
       });
     }
 
-    const aggregatedTemplates = Array.from(templatesAccumulator.values());
+    const aggregatedTemplates = this.filterTemplatesForRoutineScope(
+      Array.from(templatesAccumulator.values()),
+      request.routine,
+    );
 
     this.logger.debug(
       `RoutineSuggestions:beforeDurationFilter ${JSON.stringify({
@@ -879,7 +882,7 @@ export class ActivityLibraryService {
             {
               limit: RAG_RETRIEVAL_LIMIT,
               routineDurationSeconds,
-              routineType: request.routine,
+              routineType: request.routine || ActivityType.morning,
             },
             telemetry,
           ),
@@ -913,6 +916,7 @@ export class ActivityLibraryService {
       });
       combinedTemplates = [...customFirst, ...predefinedNext];
     }
+    combinedTemplates = this.filterTemplatesForRoutineScope(combinedTemplates, request.routine);
 
     let groupedByGoal: Record<string, ActivityTemplate[]> | undefined;
     if (request.groupByGoals) {
@@ -1096,10 +1100,21 @@ export class ActivityLibraryService {
             ? Math.min(rawDurationMinutes, maxDurationMinutes)
             : rawDurationMinutes;
         const sanitizedName = this.sanitizeDurationPhrases(habit.name ?? '');
-        const activityType =
-          typeof habit.routineType === 'string'
-            ? (habit.routineType.toLowerCase() as ActivityType)
-            : (fallbackRoutineType as ActivityType | undefined) ?? ActivityType.morning;
+        const normalizedHabitRoutine = normalizeRoutineTypeToActivityType(
+          typeof habit.routineType === 'string' ? habit.routineType : undefined,
+        );
+        const normalizedFallbackRoutine = normalizeRoutineTypeToActivityType(
+          typeof fallbackRoutineType === 'string' ? fallbackRoutineType : undefined,
+        );
+        const requestedRoutine = this.resolveRequestedRoutineType(fallbackRoutineType);
+        let activityType = (normalizedHabitRoutine ??
+          normalizedFallbackRoutine ??
+          ActivityType.morning) as ActivityType;
+        // On onboarding requests (no explicit routine), coerce non-routine outputs back to morning
+        // so clients always receive visible routine suggestions.
+        if (!requestedRoutine && activityType !== ActivityType.morning && activityType !== ActivityType.evening) {
+          activityType = ActivityType.morning;
+        }
         const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
         const rawDescription = habit.description ?? '';
         const description = this.sanitizeDurationPhrases(rawDescription);
@@ -1123,6 +1138,39 @@ export class ActivityLibraryService {
     });
 
     return { byGoal, flat };
+  }
+
+  private resolveRequestedRoutineType(routine?: ActivityType | string): ActivityType | undefined {
+    if (!routine) {
+      return undefined;
+    }
+    return (normalizeRoutineTypeToActivityType(String(routine)) as ActivityType | undefined) ?? undefined;
+  }
+
+  private isBreakLikeActivityType(activityType?: string): boolean {
+    const normalized = String(activityType ?? '')
+      .trim()
+      .toLowerCase();
+    return normalized === ActivityType.break || normalized === 'break';
+  }
+
+  private filterTemplatesForRoutineScope(
+    templates: ActivityTemplate[],
+    routine?: ActivityType | string,
+  ): ActivityTemplate[] {
+    const requestedRoutine = this.resolveRequestedRoutineType(routine);
+    if (requestedRoutine) {
+      if (requestedRoutine === ActivityType.break) {
+        return templates.filter((template) => this.isBreakLikeActivityType(template.activity_type as any));
+      }
+      return templates.filter((template) => String(template.activity_type).toLowerCase() === requestedRoutine);
+    }
+    // Default onboarding scope: return only morning/evening routines.
+    return templates.filter((template) =>
+      [ActivityType.morning, ActivityType.evening].includes(
+        String(template.activity_type).toLowerCase() as ActivityType,
+      ),
+    );
   }
 
   /**

@@ -128,7 +128,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
           name: 'Goal-Aligned Morning Stretch',
           description: template.activity_data?.text_instructions,
           justification: 'Supports muscle growth.',
-          matchScore: 0.69,
+          matchScore: 0.83,
           template,
         },
       ],
@@ -385,7 +385,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     expect(result.accepted[0]).toMatchObject({
       habitId: template.id,
       justification: 'Strong alignment.',
-      matchScore: 0.68,
+      matchScore: 0.73,
     });
     expect(result.minScoreApplied).toBe(0.5);
   });

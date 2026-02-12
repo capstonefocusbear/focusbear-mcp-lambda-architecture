@@ -15,6 +15,8 @@ const SHORTCUT_ACCEPT_SIMILARITY_THRESHOLD = 0.7;
 const SHORTCUT_ACCEPT_TOP_FLOOR = 0.6;
 const SHORTCUT_ACCEPT_GAP_THRESHOLD = 0.15;
 const SHORTCUT_REJECT_SIMILARITY_THRESHOLD = 0.25;
+const LLM_SCORE_WEIGHT = 0.65;
+const MAX_LLM_UPLIFT_OVER_SIMILARITY = 0.25;
 
 const ROUTINE_SUGGESTIONS_RERANK_RESPONSE_FORMAT = {
   type: 'json_schema',
@@ -491,6 +493,17 @@ Guidance:
     return Math.min(1, Math.max(0, Number(value)));
   }
 
+  private combineCandidateAndLlmScore(candidateSimilarity: number, llmScoreNormalized?: number): number {
+    if (typeof llmScoreNormalized !== 'number') {
+      return candidateSimilarity;
+    }
+
+    const blendedScore =
+      candidateSimilarity * (1 - LLM_SCORE_WEIGHT) + this.normalizeScore(llmScoreNormalized) * LLM_SCORE_WEIGHT;
+    const upliftCappedScore = Math.min(blendedScore, candidateSimilarity + MAX_LLM_UPLIFT_OVER_SIMILARITY);
+    return this.normalizeScore(upliftCappedScore);
+  }
+
   private parseResponse(
     content: string,
     candidates: RoutineSuggestionCandidate[],
@@ -527,11 +540,8 @@ Guidance:
         const llmScore = Number.isFinite(item?.matchScore) ? Number(item.matchScore) : undefined;
         const candidateSimilarity = this.normalizeScore(candidate.similarity);
         const llmScoreNormalized = typeof llmScore === 'number' ? this.normalizeScore(llmScore) : undefined;
-        // Keep the match score grounded in retrieval similarity to avoid unrelated habits sneaking in.
-        const normalizedScore =
-          typeof llmScoreNormalized === 'number'
-            ? Math.min(candidateSimilarity, llmScoreNormalized)
-            : candidateSimilarity;
+        // Blend retrieval + LLM judgment while capping uplift to keep matches grounded in retriever quality.
+        const normalizedScore = this.combineCandidateAndLlmScore(candidateSimilarity, llmScoreNormalized);
 
         if (normalizedScore < minMatchScore) {
           rejectedCount += 1;
@@ -547,7 +557,7 @@ Guidance:
           name,
           description,
           justification,
-          matchScore: normalizedScore,
+          matchScore: Number(normalizedScore.toFixed(2)),
           template: candidate.template,
         });
       });

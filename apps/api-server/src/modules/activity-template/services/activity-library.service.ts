@@ -831,10 +831,48 @@ export class ActivityLibraryService {
       };
     }
 
+    await this.ensureHabitsHaveInstructions(combinedTemplates);
+
     return {
       templates: combinedTemplates,
       groupedByGoal,
     };
+  }
+
+  private async generateHabitInstructions(habitName: string): Promise<string> {
+    try {
+      const response = await this.openAIService.createChatCompletion([
+        {
+          role: 'system' as const,
+          content:
+            'You generate concise, actionable instructions for habits in a productivity app. Given a habit name, write clear instructions (1-3 sentences) telling the user exactly what to do. Be specific and practical. Return only the instructions text, nothing else.',
+        },
+        {
+          role: 'user' as const,
+          content: `Generate instructions for this habit: "${habitName}"`,
+        },
+      ]);
+      const content = response.choices?.[0]?.message?.content?.trim();
+      return content || habitName;
+    } catch (error) {
+      this.logger.warn(`Failed to generate AI instructions for "${habitName}": ${error.message}`);
+      return habitName;
+    }
+  }
+
+  private async ensureHabitsHaveInstructions(habits: any[]): Promise<void> {
+    const needsInstructions = habits.filter((h) => !h.text_instructions || h.text_instructions === h.name);
+    if (!needsInstructions.length) return;
+
+    await Promise.all(
+      needsInstructions.map(async (habit) => {
+        const instructions = await this.generateHabitInstructions(habit.name);
+        Object.assign(habit, { text_instructions: instructions });
+        if (!habit.description || habit.description === habit.name) {
+          Object.assign(habit, { description: instructions });
+        }
+      }),
+    );
   }
 
   private buildGeneratedActivities(

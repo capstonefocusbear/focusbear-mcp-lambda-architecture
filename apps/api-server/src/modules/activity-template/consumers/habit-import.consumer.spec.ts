@@ -53,6 +53,9 @@ describe('HabitImportConsumer', () => {
 
   const openAIServiceMock = {
     transcribeAudioToText: jest.fn(),
+    createChatCompletion: jest.fn().mockResolvedValue({
+      choices: [{ message: { content: 'AI generated instructions for this habit.' } }],
+    }),
   };
 
   beforeEach(async () => {

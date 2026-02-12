@@ -1,9 +1,14 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
+import { SendGridService } from '@app/send-grid';
+import { JwtService } from '@app/jwt';
+import { Auth0ManagementService } from '@app/auth0';
 import { ProjectService } from './project.service';
 import { ProjectRepository } from '../repositories/project.repository';
 import { ProjectMemberRepository } from '../repositories/project-member.repository';
+import { UserRepository } from '../../user/repositories/user.repository';
 import { ProjectMemberRole } from '../domain/project-member-role.enum';
 import { ProjectMemberInvitationStatus } from '../domain/project-member-invitation-status.enum';
 import { DEFAULT_PROJECT_STATUSES } from '../domain/project-status.model';
@@ -37,12 +42,35 @@ const ProjectMemberRepositoryMock = {
   update: jest.fn(),
 };
 
+const UserRepositoryMock = {
+  orm: {
+    findOneBy: jest.fn(),
+  },
+};
+
+const SendGridServiceMock = {
+  sendEmail: jest.fn(),
+};
+
+const JwtServiceMock = {
+  asyncSign: jest.fn(),
+};
+
+const ConfigServiceMock = {
+  get: jest.fn(),
+};
+
+const Auth0ManagementServiceMock = {
+  getAuth0User: jest.fn(),
+};
+
 describe('ProjectService', () => {
   let projectService: ProjectService;
 
   const userDummy = {
     id: randomUUID(),
     email: 'test@example.com',
+    auth0_id: 'auth0|123',
   };
 
   const projectDummy = {
@@ -67,12 +95,31 @@ describe('ProjectService', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [ProjectService, ProjectRepository, ProjectMemberRepository],
+      providers: [
+        ProjectService,
+        ProjectRepository,
+        ProjectMemberRepository,
+        UserRepository,
+        SendGridService,
+        JwtService,
+        ConfigService,
+        Auth0ManagementService,
+      ],
     })
       .overrideProvider(ProjectRepository)
       .useValue(ProjectRepositoryMock)
       .overrideProvider(ProjectMemberRepository)
       .useValue(ProjectMemberRepositoryMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
+      .overrideProvider(JwtService)
+      .useValue(JwtServiceMock)
+      .overrideProvider(ConfigService)
+      .useValue(ConfigServiceMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
       .compile();
 
     projectService = moduleRef.get<ProjectService>(ProjectService);
@@ -230,7 +277,7 @@ describe('ProjectService', () => {
   });
 
   describe('inviteMember', () => {
-    it('positive: should invite a new member', async () => {
+    it('positive: should invite a new member and send invitation email', async () => {
       const newMember = {
         id: randomUUID(),
         project_id: projectDummy.id,
@@ -241,6 +288,42 @@ describe('ProjectService', () => {
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
       ProjectMemberRepositoryMock.orm.save.mockResolvedValueOnce(newMember);
+      JwtServiceMock.asyncSign.mockResolvedValueOnce('mock-token');
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: 'admin@example.com' });
+      SendGridServiceMock.sendEmail.mockResolvedValueOnce(undefined);
+
+      const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
+        email: 'newmember@example.com',
+      });
+
+      expect(result.email).toBe('newmember@example.com');
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.PENDING);
+      expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'newmember@example.com',
+        }),
+      );
+    });
+
+    it('positive: should still return member even if email sending fails', async () => {
+      const newMember = {
+        id: randomUUID(),
+        project_id: projectDummy.id,
+        email: 'newmember@example.com',
+        role: ProjectMemberRole.MEMBER,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+      };
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
+      ProjectMemberRepositoryMock.orm.save.mockResolvedValueOnce(newMember);
+      JwtServiceMock.asyncSign.mockRejectedValueOnce(new Error('JWT signing failed'));
 
       const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
         email: 'newmember@example.com',

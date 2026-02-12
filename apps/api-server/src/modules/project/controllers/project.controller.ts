@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -67,8 +68,10 @@ export class ProjectController {
     @Param() params: InviteProjectMemberParamsDto,
     @Body() dto: InviteProjectMemberDto,
     @AuthContext() { user }: Passport,
+    @Req() request: Request,
   ): Promise<ProjectMemberResponseDto> {
-    return this.projectService.inviteMember(user.id, params.project_id, dto);
+    const { origin } = request.headers as { origin?: string };
+    return this.projectService.inviteMember(user.id, params.project_id, dto, origin);
   }
 
   @Delete(':project_id/members/:member_id')

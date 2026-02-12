@@ -47,12 +47,13 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
           async_task.status = :processingStatus
           OR (
             async_task.status = :pendingStatus
-            AND async_task.updated_at >= NOW() - INTERVAL '${PENDING_TASK_DEDUP_MAX_AGE_MINUTES} minutes'
+            AND async_task.updated_at >= NOW() - make_interval(mins => :pendingMaxAgeMinutes)
           )
         )`,
         {
           processingStatus: AsyncTaskStatus.PROCESSING,
           pendingStatus: AsyncTaskStatus.PENDING,
+          pendingMaxAgeMinutes: PENDING_TASK_DEDUP_MAX_AGE_MINUTES,
         },
       )
       .andWhere("async_task.metadata ->> 'taskType' = :taskType", { taskType })

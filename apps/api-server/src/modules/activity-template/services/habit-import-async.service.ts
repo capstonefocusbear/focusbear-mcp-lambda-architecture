@@ -7,6 +7,7 @@ import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 import { HabitImportUploadedDto, HabitImportJobData } from '../dto/import-habits-from-media.dto';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { getInFlightAsyncTaskIdByJobId, reuseInFlightOrCleanupTerminalJob } from './async-task-dedup.util';
 
 @Injectable()
 export class HabitImportAsyncService {
@@ -33,7 +34,12 @@ export class HabitImportAsyncService {
     if (existingTask?.id) {
       return { asyncTaskId: existingTask.id };
     }
-    const existingQueueTaskId = await this.reuseInFlightOrCleanupTerminalJob(jobId);
+    const existingQueueTaskId = await reuseInFlightOrCleanupTerminalJob({
+      queue: this.habitImportQueue,
+      queueName: BullQueues.HABIT_IMPORT,
+      sentry: this.sentry,
+      jobId,
+    });
     if (existingQueueTaskId) {
       return { asyncTaskId: existingQueueTaskId };
     }
@@ -75,7 +81,7 @@ export class HabitImportAsyncService {
 
       const queuedJobId =
         typeof queuedJob?.id === 'string' || typeof queuedJob?.id === 'number' ? String(queuedJob.id) : jobId;
-      const inFlightAsyncTaskId = await this.getInFlightAsyncTaskIdByJobId(queuedJobId);
+      const inFlightAsyncTaskId = await getInFlightAsyncTaskIdByJobId(this.habitImportQueue, queuedJobId);
       if (inFlightAsyncTaskId && inFlightAsyncTaskId !== asyncTask.id) {
         await this.asyncTaskService.updateStatusWithMetadata(asyncTask.id, AsyncTaskStatus.FAILED, metadata, {
           processingFailed: new Date(),
@@ -85,7 +91,7 @@ export class HabitImportAsyncService {
         return { asyncTaskId: inFlightAsyncTaskId };
       }
     } catch (error) {
-      const duplicateQueueTaskId = await this.getInFlightAsyncTaskIdByJobId(jobId);
+      const duplicateQueueTaskId = await getInFlightAsyncTaskIdByJobId(this.habitImportQueue, jobId);
       if (duplicateQueueTaskId) {
         await this.asyncTaskService.updateStatusWithMetadata(asyncTask.id, AsyncTaskStatus.FAILED, metadata, {
           processingFailed: new Date(),
@@ -113,46 +119,5 @@ export class HabitImportAsyncService {
       routineType: dto.routineType ?? null,
     };
     return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
-  }
-
-  private async reuseInFlightOrCleanupTerminalJob(jobId: string): Promise<string | null> {
-    const existingJob = await this.habitImportQueue.getJob(jobId);
-    if (!existingJob) {
-      return null;
-    }
-
-    const state = await existingJob.getState();
-    const existingAsyncTaskId = typeof existingJob.data?.asyncTaskId === 'string' ? existingJob.data.asyncTaskId : null;
-
-    if (['waiting', 'active', 'delayed', 'paused'].includes(state) && existingAsyncTaskId) {
-      return existingAsyncTaskId;
-    }
-
-    if (['completed', 'failed'].includes(state)) {
-      try {
-        await existingJob.remove();
-      } catch (error) {
-        this.sentry.instance().captureException(error, {
-          level: 'warning',
-          extra: { jobId, state, queue: BullQueues.HABIT_IMPORT },
-        });
-      }
-    }
-
-    return null;
-  }
-
-  private async getInFlightAsyncTaskIdByJobId(jobId: string): Promise<string | null> {
-    const existingJob = await this.habitImportQueue.getJob(jobId);
-    if (!existingJob) {
-      return null;
-    }
-
-    const state = await existingJob.getState();
-    if (!['waiting', 'active', 'delayed', 'paused'].includes(state)) {
-      return null;
-    }
-
-    return typeof existingJob.data?.asyncTaskId === 'string' ? existingJob.data.asyncTaskId : null;
   }
 }

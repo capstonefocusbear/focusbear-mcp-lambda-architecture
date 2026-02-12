@@ -281,23 +281,7 @@ export class HabitImportExtractionService {
     searchQueries: string[],
     routineType?: string,
   ): Promise<Array<Array<{ activityTemplateId: string; similarity: number }>>> {
-    const retriever = this.activityTemplateRetrieverService as ActivityTemplateRetrieverService & {
-      retrieveByTexts?: (
-        rawTexts: string[],
-        limit?: number,
-        options?: { routineType?: string },
-      ) => Promise<Array<Array<{ activityTemplateId: string; similarity: number }>>>;
-    };
-
-    if (typeof retriever.retrieveByTexts === 'function') {
-      return retriever.retrieveByTexts(searchQueries, RAG_RETRIEVAL_LIMIT, { routineType });
-    }
-
-    return Promise.all(
-      searchQueries.map((searchQuery) =>
-        this.activityTemplateRetrieverService.retrieveByText(searchQuery, RAG_RETRIEVAL_LIMIT, { routineType }),
-      ),
-    );
+    return this.activityTemplateRetrieverService.retrieveByTexts(searchQueries, RAG_RETRIEVAL_LIMIT, { routineType });
   }
 
   private createEmptyTelemetry(): MatchExtractedHabitsTelemetry {

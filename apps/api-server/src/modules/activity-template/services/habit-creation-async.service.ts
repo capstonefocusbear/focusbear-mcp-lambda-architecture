@@ -7,6 +7,7 @@ import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
+import { getInFlightAsyncTaskIdByJobId, reuseInFlightOrCleanupTerminalJob } from './async-task-dedup.util';
 
 export interface HabitCreationJobData {
   asyncTaskId: string;
@@ -40,7 +41,12 @@ export class HabitCreationAsyncService {
     if (existingTask?.id) {
       return { asyncTaskId: existingTask.id };
     }
-    const existingQueueTaskId = await this.reuseInFlightOrCleanupTerminalJob(jobId);
+    const existingQueueTaskId = await reuseInFlightOrCleanupTerminalJob({
+      queue: this.routineSuggestionsQueue,
+      queueName: BullQueues.ROUTINE_SUGGESTIONS,
+      sentry: this.sentry,
+      jobId,
+    });
     if (existingQueueTaskId) {
       return { asyncTaskId: existingQueueTaskId };
     }
@@ -76,7 +82,7 @@ export class HabitCreationAsyncService {
 
       const queuedJobId =
         typeof queuedJob?.id === 'string' || typeof queuedJob?.id === 'number' ? String(queuedJob.id) : jobId;
-      const inFlightAsyncTaskId = await this.getInFlightAsyncTaskIdByJobId(queuedJobId);
+      const inFlightAsyncTaskId = await getInFlightAsyncTaskIdByJobId(this.routineSuggestionsQueue, queuedJobId);
       if (inFlightAsyncTaskId && inFlightAsyncTaskId !== asyncTask.id) {
         await this.asyncTaskService.updateStatusWithMetadata(asyncTask.id, AsyncTaskStatus.FAILED, metadata, {
           processingFailed: new Date(),
@@ -86,7 +92,7 @@ export class HabitCreationAsyncService {
         return { asyncTaskId: inFlightAsyncTaskId };
       }
     } catch (error) {
-      const duplicateQueueTaskId = await this.getInFlightAsyncTaskIdByJobId(jobId);
+      const duplicateQueueTaskId = await getInFlightAsyncTaskIdByJobId(this.routineSuggestionsQueue, jobId);
       if (duplicateQueueTaskId) {
         await this.asyncTaskService.updateStatusWithMetadata(asyncTask.id, AsyncTaskStatus.FAILED, metadata, {
           processingFailed: new Date(),
@@ -114,46 +120,5 @@ export class HabitCreationAsyncService {
       prompt: dto.prompt ?? '',
     };
     return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
-  }
-
-  private async reuseInFlightOrCleanupTerminalJob(jobId: string): Promise<string | null> {
-    const existingJob = await this.routineSuggestionsQueue.getJob(jobId);
-    if (!existingJob) {
-      return null;
-    }
-
-    const state = await existingJob.getState();
-    const existingAsyncTaskId = typeof existingJob.data?.asyncTaskId === 'string' ? existingJob.data.asyncTaskId : null;
-
-    if (['waiting', 'active', 'delayed', 'paused'].includes(state) && existingAsyncTaskId) {
-      return existingAsyncTaskId;
-    }
-
-    if (['completed', 'failed'].includes(state)) {
-      try {
-        await existingJob.remove();
-      } catch (error) {
-        this.sentry.instance().captureException(error, {
-          level: 'warning',
-          extra: { jobId, state, queue: BullQueues.ROUTINE_SUGGESTIONS },
-        });
-      }
-    }
-
-    return null;
-  }
-
-  private async getInFlightAsyncTaskIdByJobId(jobId: string): Promise<string | null> {
-    const existingJob = await this.routineSuggestionsQueue.getJob(jobId);
-    if (!existingJob) {
-      return null;
-    }
-
-    const state = await existingJob.getState();
-    if (!['waiting', 'active', 'delayed', 'paused'].includes(state)) {
-      return null;
-    }
-
-    return typeof existingJob.data?.asyncTaskId === 'string' ? existingJob.data.asyncTaskId : null;
   }
 }

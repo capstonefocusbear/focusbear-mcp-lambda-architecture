@@ -74,7 +74,7 @@ npm run data:migration:run
 npm run seed
 ```
 
-**Migration Note**: When writing migrations that need `CREATE INDEX CONCURRENTLY`, export `transaction = false` from the migration file instead of using transactions.
+**Migration Note**: Keep DataSource `migrationsTransactionMode` as `'none'`. For migrations that need `CREATE INDEX CONCURRENTLY`, set `transaction = false` on the migration class.
 
 ## Cron Jobs Reference
 
@@ -259,7 +259,7 @@ export class ImageConsumer {
 Register queues in module imports:
 
 ```typescript
-BullModule.registerQueue({ name: BullQueues.ACTIVITY_IMAGE })
+BullModule.registerQueue({ name: BullQueues.ACTIVITY_IMAGE });
 ```
 
 Register consumers as providers in the module.
@@ -318,8 +318,8 @@ export class User extends BaseEntity {
 
 ### Migrations
 
-- Regular migrations use transactions by default
-- Concurrent index migrations: Export `transaction = false` (not 'none')
+- DataSource migration mode: `migrationsTransactionMode: 'none'`
+- Per migration override: set `transaction = false` on the migration class when using `CREATE INDEX CONCURRENTLY`
 - Example: [apps/api-server/migrations/1759217602679-userEndpointIndexing.ts](apps/api-server/migrations/1759217602679-userEndpointIndexing.ts)
 
 ### Soft Deletes

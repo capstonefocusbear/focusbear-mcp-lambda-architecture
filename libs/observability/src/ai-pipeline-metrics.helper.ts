@@ -5,6 +5,8 @@ import {
   PutMetricDataCommand,
   StandardUnit,
 } from '@aws-sdk/client-cloudwatch';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import * as Sentry from '@sentry/nestjs';
 
 const DEFAULT_ENVIRONMENT_DIMENSION = 'prod';
 const resolvedRegion =
@@ -100,7 +102,19 @@ export async function emitAiPipelineMetrics(input: AiPipelineMetricInput): Promi
         MetricData: metricData,
       }),
     );
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error, {
+      level: 'warning',
+      tags: {
+        context: 'emit-ai-pipeline-metrics',
+      },
+      extra: {
+        namespace: input.namespace,
+        pipeline: input.pipeline,
+        operation: input.operation,
+        service: input.service,
+      },
+    });
     // Best-effort only: metric failures must not affect request/job processing.
   }
 }

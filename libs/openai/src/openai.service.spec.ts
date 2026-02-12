@@ -1129,6 +1129,33 @@ describe('OpenAIService', () => {
       expect(promptContent).toContain(JSON.stringify(dto.current_tasks));
       completionsSpy.mockRestore();
     });
+
+    it('should pass lastFiveJustificationsInThisFocusSession to the app safety prompt', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(
+        () => 'App prompt {{appName}} {{lastFiveJustificationsInThisFocusSession}}',
+      );
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.6,"reason":"ok"}' } }],
+        });
+
+      const recentJustifications = ['Checked deployment notes', 'Reviewed onboarding SOP'];
+      const dto = {
+        focusMode: 'work',
+        intention: 'deployment',
+        appName: 'Microsoft Word',
+        lastFiveJustificationsInThisFocusSession: recentJustifications,
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+      expect(promptContent).toContain(JSON.stringify(recentJustifications));
+      completionsSpy.mockRestore();
+    });
   }); // Properly closing checkIfAppIsSafeToUse describe block
 
   describe('getOpenAIInstance', () => {

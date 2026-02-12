@@ -205,6 +205,10 @@ export const R2ServiceMock = {
   getPresignedUrl: jest.fn(),
   getJsonFromBucket: jest.fn(),
   addObjectToBucket: jest.fn(),
+  getPresignedUploadUrl: jest.fn(),
+  uploadFileToBucket: jest.fn(),
+  getObjectMetadata: jest.fn(),
+  deleteObject: jest.fn(),
 };
 
 export const UserDailyStatsServiceMock = {

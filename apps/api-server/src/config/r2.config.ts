@@ -9,5 +9,6 @@ export const r2Config = registerAs(
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     signatureVersion: process.env.R2_SIGNATURE_VERSION,
     region: process.env.R2_REGION,
+    publicUrl: process.env.R2_PUBLIC_URL,
   }),
 );

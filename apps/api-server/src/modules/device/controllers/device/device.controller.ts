@@ -3,7 +3,6 @@ import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../../shared/decorators/passport.decorator';
 import { Passport } from '../../../auth/domain/passport.model';
 import { IsAuth } from '../../../auth/guards/is-auth/is-auth.guard';
-import { FocusMode } from '../../../focus-mode/entities/focus-mode.entity';
 import { CreateDeviceDto } from '../../dto/create-device.dto';
 import { UpdateDeviceDto } from '../../dto/update-device.dto';
 import { Device } from '../../entities/device.entity';
@@ -26,7 +25,7 @@ export class DeviceController {
   }
 
   @Patch(':device_id')
-  async updateDevice(@Body() updateDeviceDto: UpdateDeviceDto, @Param() { device_id }): Promise<FocusMode> {
+  async updateDevice(@Body() updateDeviceDto: UpdateDeviceDto, @Param() { device_id }): Promise<Device> {
     return this.deviceService.update(device_id, { ...updateDeviceDto });
   }
 

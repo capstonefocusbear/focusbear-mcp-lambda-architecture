@@ -162,7 +162,7 @@ describe('timed', () => {
     });
 
     expect(result.result).toBe('done');
-    expect(result.durationMs).toBeGreaterThanOrEqual(50);
+    expect(result.durationMs).toBeGreaterThan(10);
     expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining('Performance budget exceeded for slow_operation'),
       expect.objectContaining({

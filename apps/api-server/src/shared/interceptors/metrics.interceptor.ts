@@ -28,7 +28,7 @@ export class MetricsInterceptor implements NestInterceptor {
   private async emitMetric(operation: string, durationMs: number, success: boolean, userId: string): Promise<void> {
     try {
       const metrics = this.getMetricsConfig();
-      const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
+      const shouldEmitMetrics = Boolean(metrics.emitUserActivityMetrics || metrics.emitQueueMetrics);
       if (!shouldEmitMetrics) {
         return;
       }

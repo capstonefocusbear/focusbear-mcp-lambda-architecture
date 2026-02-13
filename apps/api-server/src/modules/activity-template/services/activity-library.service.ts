@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectSentry, SentryService } from '@app/observability';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { InjectSentry, SentryService, emitAiPipelineMetrics } from '@app/observability';
+import { ConfigService } from '@nestjs/config';
 import { In } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
@@ -8,7 +9,7 @@ import { UpdateActivityTemplateDto } from '../dto/activity-template.dto';
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { ActivityTemplateParserService } from './activity-template-parser.service';
 import { ActivityRepository } from '../../activity/repositories/activity.repository';
-import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { ActivityType, normalizeRoutineTypeToActivityType } from '../../activity/domain/activity-type.enum';
 import { GetRoutineSuggestionsDto, GetRoutineSuggestionsInput } from '../dto/get-routine-suggestions.dto';
 import { UserGoalDto, UserGoalInput } from '../dto/user-goal.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
@@ -20,9 +21,11 @@ import {
   RoutineSuggestionGeneratorService,
   RoutineSuggestionResult,
   GeneratedHabitSuggestion,
+  GenerateSuggestionsResponse,
 } from './routine-suggestion-generator.service';
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
+import { MetricsConfig } from '../../../config/metrics.config';
 
 const EMOJI_REGEX = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Component}\uFE0F\u200D]/gu;
 
@@ -58,6 +61,42 @@ type NormalizedGoals = {
   predefinedGoalStrings: string[];
 };
 
+type RoutineSuggestionsStageDurations = {
+  validateUserMs: number;
+  directMatchQueryMs: number;
+  ragRetrieveMs: number;
+  ragRerankMs: number;
+  ragGenerateMs: number;
+  durationFilterMs: number;
+  persistGeneratedMs: number;
+  totalMs: number;
+};
+
+type RoutineSuggestionsCounters = {
+  directMatchCount: number;
+  ragGoalCount: number;
+  ragTemplateCandidates: number;
+  rerankLlmCalls: number;
+  rerankShortcutAccepts: number;
+  rerankShortcutRejects: number;
+  acceptedTemplateCount: number;
+  generatedHabitCount: number;
+};
+
+type RoutineSuggestionsPipelineTelemetry = {
+  stageDurations: RoutineSuggestionsStageDurations;
+  counters: RoutineSuggestionsCounters;
+};
+
+type RoutineSuggestionsMetricsContext = {
+  userId: string;
+  asyncTaskId?: string;
+  requestHash?: string | null;
+};
+
+const ROUTINE_SUGGESTIONS_PIPELINE = 'routine-suggestions';
+const ROUTINE_SUGGESTIONS_OPERATION = 'getActivitiesRelatedToUserGoals';
+
 @Injectable()
 export class ActivityLibraryService {
   private readonly logger = new Logger(ActivityLibraryService.name);
@@ -72,6 +111,7 @@ export class ActivityLibraryService {
     private readonly habitLibraryRequestRepository: HabitLibraryRequestRepository,
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly openAIService: OpenAIService,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
 
   async getLibraryActivities(user_id: string): Promise<UpdateActivityDto[]> {
@@ -145,11 +185,17 @@ export class ActivityLibraryService {
     user_id: string,
     options?: RoutineSuggestionRequestOptions,
   ) {
+    const pipelineStartedAt = Date.now();
+    const telemetry = this.createEmptyRoutineSuggestionsTelemetry();
+    let success = false;
+    let processingError: Error | undefined;
+
     try {
       const { useRag = true, ...ragOptions } = options ?? {};
       const normalizedRoutineSuggestionsDto = this.normalizeRoutineSuggestionsDto(getRoutineSuggestionsDto);
       const request = normalizedRoutineSuggestionsDto;
       const normalizedGoals = this.normalizeGoalsWithMetadata(request.user_goals);
+      telemetry.counters.ragGoalCount = normalizedGoals.goalStrings.length;
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -166,15 +212,20 @@ export class ActivityLibraryService {
         })}`,
       );
 
+      const validateUserStartedAt = Date.now();
       await this.validateUser(user_id);
+      telemetry.stageDurations.validateUserMs += Date.now() - validateUserStartedAt;
 
       const routineDurationSeconds = request.routine_duration * ONE_MINUTE_SECONDS;
 
+      const directMatchQueryStartedAt = Date.now();
       const directMatches = await this.activityTemplateRepository.getActivityTemplatesWithGoalsMatched({
         routine_duration: request.routine_duration,
         routine: request.routine,
         user_goals: normalizedGoals.goalStrings,
       });
+      telemetry.stageDurations.directMatchQueryMs += Date.now() - directMatchQueryStartedAt;
+      telemetry.counters.directMatchCount = directMatches.length;
       this.logger.debug(
         `RoutineSuggestions:dbDirectMatches ${JSON.stringify({
           userId: user_id,
@@ -190,11 +241,13 @@ export class ActivityLibraryService {
         orderedMatches,
         normalizedGoals,
       );
+      const directDurationFilterStartedAt = Date.now();
       const directTemplates = this.userDesiredRoutineDurationSeconds(
         orderedMatches,
         routineDurationSeconds,
         directMatchMetadata,
       );
+      telemetry.stageDurations.durationFilterMs += Date.now() - directDurationFilterStartedAt;
 
       const customGoalsWithoutMatches = normalizedGoals.customGoalStrings.filter(
         (goal) => !matchedCustomGoalLowerSet.has(goal.toLowerCase()),
@@ -218,8 +271,12 @@ export class ActivityLibraryService {
                 tags: template.tags?.flatMap((tag) => tag.tags) ?? [],
               }));
           }
+          telemetry.counters.acceptedTemplateCount = directTemplates.length;
+          success = true;
           return groupedByGoal;
         }
+        telemetry.counters.acceptedTemplateCount = directTemplates.length;
+        success = true;
         return directTemplates;
       }
 
@@ -233,13 +290,27 @@ export class ActivityLibraryService {
             durationMinutes: request.routine_duration,
           })}`,
         );
+        success = true;
         return request.groupByGoals ? {} : [];
       }
 
-      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, ragOptions, {
-        templates: orderedMatches,
-        metadata: directMatchMetadata,
-      });
+      const ragResult = await this.getActivitiesFromRag(
+        request,
+        routineDurationSeconds,
+        user_id,
+        ragOptions,
+        {
+          templates: orderedMatches,
+          metadata: directMatchMetadata,
+        },
+        telemetry,
+      );
+      telemetry.counters.acceptedTemplateCount = ragResult.templates.filter(
+        (template: any) => !template.ai_generated,
+      ).length;
+      telemetry.counters.generatedHabitCount = ragResult.templates.filter(
+        (template: any) => template.ai_generated,
+      ).length;
 
       this.logger.debug(
         `RoutineSuggestions:ragComplete ${JSON.stringify({
@@ -252,12 +323,28 @@ export class ActivityLibraryService {
         })}`,
       );
       if (request.groupByGoals) {
+        success = true;
         return ragResult.groupedByGoal ?? {};
       }
+      success = true;
       return ragResult.templates;
     } catch (error) {
+      processingError = error instanceof Error ? error : new Error(String(error));
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
+    } finally {
+      telemetry.stageDurations.totalMs = Date.now() - pipelineStartedAt;
+      await this.emitRoutineSuggestionsTelemetry({
+        success,
+        stageDurations: telemetry.stageDurations,
+        counters: telemetry.counters,
+        context: {
+          userId: user_id,
+          asyncTaskId: options?.asyncTaskId,
+          requestHash: options?.requestHash,
+        },
+        error: processingError,
+      });
     }
   }
 
@@ -498,11 +585,14 @@ export class ActivityLibraryService {
     userId?: string,
     options?: RagRequestOptions,
     seed?: { templates: ActivityTemplate[]; metadata: Map<string, ActivityMetadata> },
+    telemetry: RoutineSuggestionsPipelineTelemetry = this.createEmptyRoutineSuggestionsTelemetry(),
   ): Promise<{ templates: ActivityTemplate[]; groupedByGoal?: Record<string, ActivityTemplate[]> }> {
     // RAG flow documented in docs/rag-routine-suggestions-flow.md
     const request = getRoutineSuggestionsDto;
     const normalizedGoals = this.normalizeGoalsWithMetadata(request.user_goals);
     const goals = normalizedGoals.goalEntries;
+    const { stageDurations } = telemetry;
+    const { counters } = telemetry;
     if (!goals.length) {
       return { templates: [], groupedByGoal: {} };
     }
@@ -511,7 +601,7 @@ export class ActivityLibraryService {
       goals.map(async ({ goal, isCustom }) => {
         const generationOptions = {
           limit: RAG_RETRIEVAL_LIMIT,
-          routineType: request.routine,
+          routineType: request.routine || ActivityType.morning,
           routineDurationSeconds,
         };
         try {
@@ -520,11 +610,14 @@ export class ActivityLibraryService {
               ? RAG_RETRIEVAL_LIMIT * RAG_RETRIEVAL_DURATION_MULTIPLIER
               : RAG_RETRIEVAL_LIMIT;
 
+          const retrieveStartedAt = Date.now();
           const matches = await this.activityTemplateRetrieverService.retrieveByGoal(goal, retrievalLimit, {
             routineType: request.routine,
           });
+          stageDurations.ragRetrieveMs += Date.now() - retrieveStartedAt;
+          counters.ragTemplateCandidates += matches.length;
           if (!matches.length) {
-            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
+            const generated = await this.generateHabitsWithTiming(goal, generationOptions, telemetry);
             return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
@@ -548,7 +641,7 @@ export class ActivityLibraryService {
             .filter((candidate): candidate is { template: ActivityTemplate; similarity: number } => !!candidate);
 
           if (!candidates.length) {
-            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
+            const generated = await this.generateHabitsWithTiming(goal, generationOptions, telemetry);
             return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
@@ -558,17 +651,21 @@ export class ActivityLibraryService {
               : candidates;
 
           if (!durationFilteredCandidates.length) {
-            const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
+            const generated = await this.generateHabitsWithTiming(goal, generationOptions, telemetry);
             return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
 
+          const rerankStartedAt = Date.now();
           const suggestionResult = await this.routineSuggestionGeneratorService.generateSuggestions(
             goal,
             durationFilteredCandidates,
             {
               limit: generationOptions.limit,
+              includeTelemetry: true,
             },
           );
+          stageDurations.ragRerankMs += Date.now() - rerankStartedAt;
+          this.recordRerankCounters(suggestionResult, telemetry);
           if (suggestionResult.accepted.length) {
             const acceptedDurationSeconds = suggestionResult.accepted.reduce(
               (total, suggestion) => total + Number(suggestion.template?.duration_seconds ?? 0),
@@ -593,11 +690,15 @@ export class ActivityLibraryService {
               (generationOptions.limit ?? RAG_RETRIEVAL_LIMIT) - suggestionResult.accepted.length,
             );
             const generated = remainingSlots
-              ? await this.routineSuggestionGeneratorService.generateNewHabits(goal, {
-                  ...generationOptions,
-                  routineDurationSeconds: remainingSeconds,
-                  limit: remainingSlots,
-                })
+              ? await this.generateHabitsWithTiming(
+                  goal,
+                  {
+                    ...generationOptions,
+                    routineDurationSeconds: remainingSeconds,
+                    limit: remainingSlots,
+                  },
+                  telemetry,
+                )
               : [];
 
             return { goal, isCustom, suggestions: suggestionResult.accepted, generated };
@@ -613,7 +714,7 @@ export class ActivityLibraryService {
               rejectedCount: suggestionResult.rejectedCount,
             },
           });
-          const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, generationOptions);
+          const generated = await this.generateHabitsWithTiming(goal, generationOptions, telemetry);
           if (generated.length) {
             return { goal, isCustom, suggestions: [] as RoutineSuggestionResult[], generated };
           }
@@ -728,7 +829,10 @@ export class ActivityLibraryService {
       });
     }
 
-    const aggregatedTemplates = Array.from(templatesAccumulator.values());
+    const aggregatedTemplates = this.filterTemplatesForRoutineScope(
+      Array.from(templatesAccumulator.values()),
+      request.routine,
+    );
 
     this.logger.debug(
       `RoutineSuggestions:beforeDurationFilter ${JSON.stringify({
@@ -746,11 +850,13 @@ export class ActivityLibraryService {
       })}`,
     );
 
+    const durationFilterStartedAt = Date.now();
     const finalTemplates = this.userDesiredRoutineDurationSeconds(
       aggregatedTemplates,
       routineDurationSeconds,
       metadataAccumulator,
     );
+    stageDurations.durationFilterMs += Date.now() - durationFilterStartedAt;
 
     this.logger.debug(
       `RoutineSuggestions:afterDurationFilter ${JSON.stringify({
@@ -771,11 +877,15 @@ export class ActivityLibraryService {
       );
       const generatedResults = await Promise.all(
         goalsNeedingGeneration.map((goal) =>
-          this.routineSuggestionGeneratorService.generateNewHabits(goal, {
-            limit: RAG_RETRIEVAL_LIMIT,
-            routineDurationSeconds,
-            routineType: request.routine,
-          }),
+          this.generateHabitsWithTiming(
+            goal,
+            {
+              limit: RAG_RETRIEVAL_LIMIT,
+              routineDurationSeconds,
+              routineType: request.routine || ActivityType.morning,
+            },
+            telemetry,
+          ),
         ),
       );
       goalsNeedingGeneration.forEach((goal, index) => {
@@ -788,7 +898,9 @@ export class ActivityLibraryService {
 
     const generatedActivities = this.buildGeneratedActivities(generatedByGoal, routineDurationSeconds, request.routine);
 
+    const persistGeneratedStartedAt = Date.now();
     await this.persistGeneratedHabits(userId, generatedByGoal, request, generatedActivities.flat.length > 0, options);
+    stageDurations.persistGeneratedMs += Date.now() - persistGeneratedStartedAt;
 
     let combinedTemplates = [...finalTemplates, ...generatedActivities.flat];
     if (normalizedGoals.hasCustomGoals) {
@@ -804,6 +916,7 @@ export class ActivityLibraryService {
       });
       combinedTemplates = [...customFirst, ...predefinedNext];
     }
+    combinedTemplates = this.filterTemplatesForRoutineScope(combinedTemplates, request.routine);
 
     let groupedByGoal: Record<string, ActivityTemplate[]> | undefined;
     if (request.groupByGoals) {
@@ -834,6 +947,136 @@ export class ActivityLibraryService {
     };
   }
 
+  private createEmptyRoutineSuggestionsTelemetry(): RoutineSuggestionsPipelineTelemetry {
+    return {
+      stageDurations: {
+        validateUserMs: 0,
+        directMatchQueryMs: 0,
+        ragRetrieveMs: 0,
+        ragRerankMs: 0,
+        ragGenerateMs: 0,
+        durationFilterMs: 0,
+        persistGeneratedMs: 0,
+        totalMs: 0,
+      },
+      counters: {
+        directMatchCount: 0,
+        ragGoalCount: 0,
+        ragTemplateCandidates: 0,
+        rerankLlmCalls: 0,
+        rerankShortcutAccepts: 0,
+        rerankShortcutRejects: 0,
+        acceptedTemplateCount: 0,
+        generatedHabitCount: 0,
+      },
+    };
+  }
+
+  private recordRerankCounters(
+    suggestionResult: GenerateSuggestionsResponse,
+    telemetry: RoutineSuggestionsPipelineTelemetry,
+  ): void {
+    if (!suggestionResult.telemetry) {
+      return;
+    }
+    const { counters } = telemetry;
+
+    if (suggestionResult.telemetry.llmInvoked) {
+      counters.rerankLlmCalls += 1;
+    }
+    if (suggestionResult.telemetry.shortcutAccepted) {
+      counters.rerankShortcutAccepts += 1;
+    }
+    if (suggestionResult.telemetry.shortcutRejected) {
+      counters.rerankShortcutRejects += 1;
+    }
+  }
+
+  private async generateHabitsWithTiming(
+    goal: string,
+    options: { limit?: number; routineType?: ActivityType | string; routineDurationSeconds?: number },
+    telemetry: RoutineSuggestionsPipelineTelemetry,
+  ): Promise<GeneratedHabitSuggestion[]> {
+    const generationStartedAt = Date.now();
+    const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
+    const { stageDurations } = telemetry;
+    stageDurations.ragGenerateMs += Date.now() - generationStartedAt;
+    return generated;
+  }
+
+  private async emitRoutineSuggestionsTelemetry({
+    success,
+    stageDurations,
+    counters,
+    context,
+    error,
+  }: {
+    success: boolean;
+    stageDurations: RoutineSuggestionsStageDurations;
+    counters: RoutineSuggestionsCounters;
+    context: RoutineSuggestionsMetricsContext;
+    error?: Error;
+  }): Promise<void> {
+    const payload = {
+      event: 'AiPipelineTimingV1',
+      pipeline: ROUTINE_SUGGESTIONS_PIPELINE,
+      operation: ROUTINE_SUGGESTIONS_OPERATION,
+      success,
+      durationMs: stageDurations.totalMs,
+      stageDurationsMs: stageDurations,
+      counters,
+      asyncTaskId: context.asyncTaskId ?? null,
+      jobId: null,
+      requestHash: context.requestHash ?? null,
+      attempt: null,
+      userId: context.userId,
+      errorName: error?.name,
+      errorMessage: error?.message,
+    };
+
+    if (success) {
+      this.logger.log(JSON.stringify(payload));
+    } else {
+      this.logger.error(JSON.stringify(payload), error?.stack);
+    }
+
+    const metrics = this.getMetricsConfig();
+    const shouldEmitMetrics = Boolean(metrics.emitUserActivityMetrics || metrics.emitQueueMetrics);
+    if (!shouldEmitMetrics) {
+      return;
+    }
+
+    try {
+      await emitAiPipelineMetrics({
+        namespace: metrics.namespace,
+        environment: metrics.environment,
+        service: metrics.service,
+        pipeline: ROUTINE_SUGGESTIONS_PIPELINE,
+        operation: ROUTINE_SUGGESTIONS_OPERATION,
+        success,
+        durationMs: stageDurations.totalMs,
+        stageDurationsMs: stageDurations,
+        counters,
+      });
+    } catch {
+      // Best-effort: metrics must not impact request execution.
+    }
+  }
+
+  private getMetricsConfig(): MetricsConfig {
+    return (
+      this.configService?.get<MetricsConfig>('metrics') || {
+        emitQueueMetrics: true,
+        emitUserActivityMetrics: true,
+        pollIntervalMs: 60_000,
+        namespace: 'FocusBear/Queues',
+        service: 'api',
+        environment: 'prod',
+        logQueueFailures: true,
+      }
+    );
+  }
+
   private buildGeneratedActivities(
     generatedByGoal: Record<string, GeneratedHabitSuggestion[]>,
     routineDurationSeconds: number,
@@ -857,10 +1100,21 @@ export class ActivityLibraryService {
             ? Math.min(rawDurationMinutes, maxDurationMinutes)
             : rawDurationMinutes;
         const sanitizedName = this.sanitizeDurationPhrases(habit.name ?? '');
-        const activityType =
-          typeof habit.routineType === 'string'
-            ? (habit.routineType.toLowerCase() as ActivityType)
-            : (fallbackRoutineType as ActivityType | undefined) ?? ActivityType.morning;
+        const normalizedHabitRoutine = normalizeRoutineTypeToActivityType(
+          typeof habit.routineType === 'string' ? habit.routineType : undefined,
+        );
+        const normalizedFallbackRoutine = normalizeRoutineTypeToActivityType(
+          typeof fallbackRoutineType === 'string' ? fallbackRoutineType : undefined,
+        );
+        const requestedRoutine = this.resolveRequestedRoutineType(fallbackRoutineType);
+        let activityType = (normalizedHabitRoutine ??
+          normalizedFallbackRoutine ??
+          ActivityType.morning) as ActivityType;
+        // On onboarding requests (no explicit routine), coerce non-routine outputs back to morning
+        // so clients always receive visible routine suggestions.
+        if (!requestedRoutine && activityType !== ActivityType.morning && activityType !== ActivityType.evening) {
+          activityType = ActivityType.morning;
+        }
         const durationSeconds = Math.max(ONE_MINUTE_SECONDS, Math.round(durationMinutes) * ONE_MINUTE_SECONDS);
         const rawDescription = habit.description ?? '';
         const description = this.sanitizeDurationPhrases(rawDescription);
@@ -884,6 +1138,39 @@ export class ActivityLibraryService {
     });
 
     return { byGoal, flat };
+  }
+
+  private resolveRequestedRoutineType(routine?: ActivityType | string): ActivityType | undefined {
+    if (!routine) {
+      return undefined;
+    }
+    return (normalizeRoutineTypeToActivityType(String(routine)) as ActivityType | undefined) ?? undefined;
+  }
+
+  private isBreakLikeActivityType(activityType?: string): boolean {
+    const normalized = String(activityType ?? '')
+      .trim()
+      .toLowerCase();
+    return normalized === ActivityType.break || normalized === 'break';
+  }
+
+  private filterTemplatesForRoutineScope(
+    templates: ActivityTemplate[],
+    routine?: ActivityType | string,
+  ): ActivityTemplate[] {
+    const requestedRoutine = this.resolveRequestedRoutineType(routine);
+    if (requestedRoutine) {
+      if (requestedRoutine === ActivityType.break) {
+        return templates.filter((template) => this.isBreakLikeActivityType(template.activity_type as any));
+      }
+      return templates.filter((template) => String(template.activity_type).toLowerCase() === requestedRoutine);
+    }
+    // Default onboarding scope: return only morning/evening routines.
+    return templates.filter((template) =>
+      [ActivityType.morning, ActivityType.evening].includes(
+        String(template.activity_type).toLowerCase() as ActivityType,
+      ),
+    );
   }
 
   /**

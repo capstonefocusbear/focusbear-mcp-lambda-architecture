@@ -8,6 +8,7 @@ set -euo pipefail
 SERVER_URL="${SERVER_URL:-http://localhost:5038}"
 MAX_RETRIES="${MAX_RETRIES:-30}"
 RETRY_INTERVAL="${RETRY_INTERVAL:-2}"
+CURL_TIMEOUT_ARGS="--connect-timeout 5 --max-time 10"
 
 PASSED=0
 FAILED=0
@@ -24,10 +25,10 @@ check_endpoint() {
   local actual_status
 
   if [ -n "$body" ]; then
-    actual_status=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$url" \
+    actual_status=$(curl -s $CURL_TIMEOUT_ARGS -o /dev/null -w "%{http_code}" -X "$method" "$url" \
       -H "Content-Type: application/json" -d "$body")
   else
-    actual_status=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$url")
+    actual_status=$(curl -s $CURL_TIMEOUT_ARGS -o /dev/null -w "%{http_code}" -X "$method" "$url")
   fi
 
   if [ "$actual_status" = "$expected_status" ]; then
@@ -46,8 +47,8 @@ echo ""
 
 echo "Waiting for server to be ready..."
 for i in $(seq 1 "$MAX_RETRIES"); do
-  if curl -s -o /dev/null -w "%{http_code}" "${SERVER_URL}/healthcheck" | grep -q "200"; then
-    echo "Server is ready after $((i * RETRY_INTERVAL)) seconds"
+  if curl -s $CURL_TIMEOUT_ARGS -o /dev/null -w "%{http_code}" "${SERVER_URL}/healthcheck" | grep -q "200"; then
+    echo "Server is ready after $(((i - 1) * RETRY_INTERVAL)) seconds"
     break
   fi
   if [ "$i" -eq "$MAX_RETRIES" ]; then

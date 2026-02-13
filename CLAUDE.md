@@ -321,8 +321,8 @@ export class User extends BaseEntity {
 
 ### Migrations
 
-- Regular migrations use transactions by default
-- Concurrent index migrations: Export `transaction = false` (not 'none')
+- This project sets `migrationsTransactionMode: 'none'` in typeorm.config, so migrations run without a wrapping transaction by default.
+- For migrations that need `CREATE INDEX CONCURRENTLY`, export `transaction = false` from the migration file.
 - Example: [apps/api-server/migrations/1759217602679-userEndpointIndexing.ts](apps/api-server/migrations/1759217602679-userEndpointIndexing.ts)
 
 ### Soft Deletes

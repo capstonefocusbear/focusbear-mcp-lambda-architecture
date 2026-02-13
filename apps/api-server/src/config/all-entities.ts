@@ -3,6 +3,7 @@
  * Both api-server (typeorm.config.ts) and cron-jobs (data-source.ts) must use this list.
  * Add new entities here when adding new entity files; the all-entities.spec.ts test in CI will fail if entities are missing.
  */
+import { Feedback } from '@app/stripe/entities/feedback.entity';
 import { ActivitySequence } from '../modules/activity/entities/activity-sequence.entity';
 import { Activity } from '../modules/activity/entities/activity.entity';
 import { CompletedActivitySequence } from '../modules/activity/entities/completed-activity-sequence.entity';
@@ -47,7 +48,6 @@ import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
 import { TrackEvent } from '../modules/events/entities/track-event.entity';
 import { Tutorial } from '../modules/activity/entities/tutorial.entity';
 import { Geofence } from '../modules/geofence/entities/geofence.entity';
-import { Feedback } from '../../../../libs/stripe/src/entities/feedback.entity';
 import { Survey } from '../modules/survey/entities/survey.entity';
 import { SurveyAnswer } from '../modules/survey/entities/survey-answer.entity';
 import { SurveyAnswerMetadata } from '../modules/survey/entities/survey-answer-metadata.entity';
@@ -73,10 +73,9 @@ import { Note } from '../modules/note/entities/note.entity';
 import { NoteTag } from '../modules/note/entities/note-tag.entity';
 import { WebhookSubscription } from '../modules/webhook/entities/webhook-subscription.entity';
 
-/** Entity class constructor; compatible with TypeORM DataSourceOptions.entities */
-type EntityConstructor = new (...args: unknown[]) => unknown;
-
-export const allEntities: EntityConstructor[] = [
+/** TypeORM DataSourceOptions.entities expects Function[] (entity class constructors). */
+// eslint-disable-next-line @typescript-eslint/ban-types -- TypeORM API expects Function[] for entities
+export const allEntities: Function[] = [
   User,
   Activity,
   ActivitySequence,

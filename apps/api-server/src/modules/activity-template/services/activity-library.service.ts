@@ -553,6 +553,9 @@ export class ActivityLibraryService {
       const baseActivity: any = {
         ...rest,
         ...activity_data,
+        // Guard against legacy payloads where activity_data still includes an `activity_type` field
+        // (for example "morning_activity"). The canonical type must come from the template row.
+        activity_type: rest.activity_type,
         id: randomUUID(),
         original_template_id: activityTemplate.id,
         ai_generated: false,

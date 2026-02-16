@@ -8,6 +8,7 @@ describe(ActivityTemplateRetrieverService.name, () => {
 
   const goalEmbeddingServiceMock = {
     generateEmbedding: jest.fn(),
+    generateEmbeddings: jest.fn(),
   };
 
   const embeddingRepositoryMock = {
@@ -31,6 +32,7 @@ describe(ActivityTemplateRetrieverService.name, () => {
 
     service = module.get(ActivityTemplateRetrieverService);
     goalEmbeddingServiceMock.generateEmbedding.mockReset();
+    goalEmbeddingServiceMock.generateEmbeddings.mockReset();
     embeddingRepositoryMock.findNearestByEmbedding.mockReset();
   });
 
@@ -47,8 +49,10 @@ describe(ActivityTemplateRetrieverService.name, () => {
 
     const result = await service.retrieveByGoal('Get buffed', 5);
 
-    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith('Get buffed');
-    expect(embeddingRepositoryMock.findNearestByEmbedding).toHaveBeenCalledWith([0.1, 0.2], 5);
+    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith('Get buffed', undefined);
+    expect(embeddingRepositoryMock.findNearestByEmbedding).toHaveBeenCalledWith([0.1, 0.2], 5, {
+      activityType: undefined,
+    });
     expect(result).toEqual(expectedResult);
   });
 
@@ -57,8 +61,29 @@ describe(ActivityTemplateRetrieverService.name, () => {
 
     const result = await service.retrieveByGoal('unknown goal', 3);
 
-    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith('unknown goal');
+    expect(goalEmbeddingServiceMock.generateEmbedding).toHaveBeenCalledWith('unknown goal', undefined);
     expect(embeddingRepositoryMock.findNearestByEmbedding).not.toHaveBeenCalled();
     expect(result).toEqual([]);
+  });
+
+  it('retrieves matches for multiple texts using batched embeddings', async () => {
+    goalEmbeddingServiceMock.generateEmbeddings.mockResolvedValue([
+      [0.11, 0.22],
+      [0.33, 0.44],
+    ]);
+    embeddingRepositoryMock.findNearestByEmbedding
+      .mockResolvedValueOnce([{ activityTemplateId: 'a1', similarity: 0.81 }])
+      .mockResolvedValueOnce([{ activityTemplateId: 'a2', similarity: 0.74 }]);
+
+    const result = await service.retrieveByTexts(['habit one', 'habit two'], 4, { routineType: 'morning' });
+
+    expect(goalEmbeddingServiceMock.generateEmbeddings).toHaveBeenCalledWith(
+      ['habit one', 'habit two'],
+      [{ routineType: 'morning' }, { routineType: 'morning' }],
+    );
+    expect(result).toEqual([
+      [{ activityTemplateId: 'a1', similarity: 0.81 }],
+      [{ activityTemplateId: 'a2', similarity: 0.74 }],
+    ]);
   });
 });

@@ -42,6 +42,12 @@ export class IsAppSafeDto {
 
   @IsOptional()
   @IsArray()
+  @IsString({ each: true })
+  @MaxLength(MAX_WORD_LENGTH.justification, { each: true })
+  lastFiveJustificationsInThisFocusSession?: string[];
+
+  @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CurrentTaskDto)
   current_tasks?: CurrentTaskDto[];

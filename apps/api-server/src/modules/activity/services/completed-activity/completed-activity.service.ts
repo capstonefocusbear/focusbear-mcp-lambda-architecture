@@ -72,6 +72,8 @@ import { ActivityChoiceType } from '../../domain/activity-choice-type.enum';
 import { GetLogQuantityAnswerLogsDto } from '../../dto/get-log-quantity-answer-logs.dto';
 import { UserService } from '../../../user/services/user/user.service';
 import { UserTimesResponse } from '../../domain/user-times-response.model';
+import { WebhookDispatcherService } from '../../../webhook/services/webhook-dispatcher.service';
+import { WebhookEventType } from '../../../webhook/domain/webhook-event-type.enum';
 
 @Injectable()
 export class CompletedActivityService implements OnModuleInit {
@@ -99,6 +101,7 @@ export class CompletedActivityService implements OnModuleInit {
     private readonly userService: UserService,
     private readonly i18nService: I18nService,
     @InjectQueue(BullQueues.COMPLETED_ACTIVITY) private completedActivityQueue: Queue,
+    private readonly webhookDispatcherService: WebhookDispatcherService,
   ) {
     this.validateRedisEnvironment();
     this.redisClient = new Redis(`redis://${process.env.REDIS_HOSTNAME}:${process.env.REDIS_PORT}`);
@@ -272,6 +275,14 @@ export class CompletedActivityService implements OnModuleInit {
 
       this.logUserData(choice, user, completedActivity, activity, sequence, completingSequenceLog);
 
+      // Dispatch webhook event for habit completion (fire-and-forget, errors handled internally)
+      this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.HABIT_COMPLETED, {
+        habit_name: activity.activity_data?.name || activity.id,
+        routine_name: this.formatRoutineName(sequence.type),
+        duration_seconds: completedActivity.duration_logged,
+        completed_at: new Date().toISOString(),
+      });
+
       const response = new CompletedActivityResponse({
         ...createdItem,
         saved_log_quantity_answers: logQuantityAnswers,
@@ -410,6 +421,7 @@ export class CompletedActivityService implements OnModuleInit {
     timeZone: string,
   ): Promise<CompletedActivityResponse> {
     const { device_id, log_quantity_answers, duration_logged } = completedActivity;
+
     this.validateChoice(activity, choice);
     await this.deviceService.markAsLeader(device_id, user_id);
     const createdItem = await this.saveCompletedLog(
@@ -427,6 +439,19 @@ export class CompletedActivityService implements OnModuleInit {
       logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
     }
     await this.userDailyStatsService.updateTimeSpentInBreaks(user_id, startTimeToUse, timeZone, duration_logged);
+
+    // Fire-and-forget webhook events (errors handled internally)
+    this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.BREAK_STARTED, {
+      break_name: activity.activity_data?.name || activity.id,
+      started_at: startTimeToUse.toISOString(),
+    });
+
+    this.webhookDispatcherService.dispatchEvent(user_id, WebhookEventType.BREAK_COMPLETED, {
+      break_name: activity.activity_data?.name || activity.id,
+      duration_seconds: duration_logged,
+      completed_at: new Date().toISOString(),
+    });
+
     return new CompletedActivityResponse({ ...createdItem, saved_log_quantity_answers: logQuantityAnswers });
   }
 
@@ -1225,6 +1250,19 @@ export class CompletedActivityService implements OnModuleInit {
       partialUser.current_activity_sequence_id,
       partialUser.current_sequence_started_at,
     );
+
+    // Fire-and-forget webhook event (errors handled internally)
+    this.webhookDispatcherService.dispatchEvent(partialUser.id, WebhookEventType.ROUTINE_COMPLETED, {
+      routine_name: this.formatRoutineName(seqLog.activity_sequence?.type),
+      completed_habits_count: seqLog.completed_activity_logs?.length || 0,
+      completed_at: new Date().toISOString(),
+    });
+  }
+
+  private formatRoutineName(type?: string): string {
+    if (!type) return 'unknown';
+    if (type === ActivityType.break) return 'break';
+    return type;
   }
 
   isCutoffTimeReached(partialUser: Partial<User>): boolean {

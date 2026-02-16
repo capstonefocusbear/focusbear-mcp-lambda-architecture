@@ -42,10 +42,15 @@ import { IntegrationPlatforms } from '../../platform-integrations/domain/integra
 import { IntegrationFactory } from '../../integration/services/IntegrationFactory';
 import { PlatformIntegrationRepository } from '../../platform-integrations/repositories/platform-integration.repository';
 import { UserRepository } from '../../user/repositories/user.repository';
+import { ProjectRepository } from '../../project/repositories/project.repository';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
 import { PageOrder } from '../../../shared/domain/page-order.enum';
+
+const ProjectRepositoryMock = {
+  getProjectById: jest.fn(),
+};
 
 describe('toDoService', () => {
   let toDoService: ToDoService;
@@ -61,6 +66,7 @@ describe('toDoService', () => {
         SyncedProjectsRepository,
         OpenAIService,
         UserRepository,
+        ProjectRepository,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -85,6 +91,8 @@ describe('toDoService', () => {
       .useValue(OpenAIServiceMock)
       .overrideProvider(UserRepository)
       .useValue(UserRepositoryMock)
+      .overrideProvider(ProjectRepository)
+      .useValue(ProjectRepositoryMock)
       .compile();
 
     toDoService = moduleRef.get<ToDoService>(ToDoService);

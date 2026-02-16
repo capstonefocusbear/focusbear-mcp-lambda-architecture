@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { IPusherOptions, PusherModule } from '@app/pusher';
 import { UserModule } from '../user/user.module';
+import { WebhookModule } from '../webhook/webhook.module';
 import { FocusModeController } from './controllers/focus-mode/focus-mode.controller';
 import { CompletedFocusBlockRepository } from './repositories/completed-focus-block.repository';
 import { FocusModeRepository } from './repositories/focus-mode.repository';
@@ -34,8 +35,10 @@ import { CompletedActivitySequenceRepository } from '../activity/repositories/co
     FocusModeRepository,
     FocusModeTagRepository,
     FocusModeService,
+    FocusModeManagerService,
     BlockingScheduleService,
     CompletedFocusBlockRepository,
+    FocusModeManagerService,
   ],
   imports: [
     forwardRef(() => UserModule),
@@ -51,6 +54,7 @@ import { CompletedActivitySequenceRepository } from '../activity/repositories/co
     }),
     forwardRef(() => FocusModeTemplatesModule),
     ToDoModule,
+    forwardRef(() => WebhookModule),
   ],
   controllers: [FocusModeController, CompletedFocusBlocksController, BlockingScheduleController],
 })

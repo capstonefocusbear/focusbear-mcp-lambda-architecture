@@ -2,25 +2,27 @@ prompts:
   - id: routine-suggestions-generate
     raw: |
       You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
-      Output ONLY a JSON array of habit objects. Each object MUST include exactly:
+      Output ONLY a JSON object with a "habits" array. Each habit object MUST include exactly:
       - name (string, concise and goal-aligned)
       - description (string, user-facing instructions for what the user does)
-      - routineType ("morning" or "evening")
+      - routineType ("morning", "evening", or "break")
       - durationMinutes (integer, >= 1)
       - justification (<=120 characters summarising why it helps)
       No other keys or prose are allowed.
 
       ## OUTPUT FORMAT
-      Provide response ONLY as a JSON array of habit objects:
-      [
-        {
-          "name": string,
-          "description": string,
-          "routineType": "morning" | "evening",
-          "durationMinutes": integer,
-          "justification": string
-        }
-      ]
+      Provide response ONLY as a JSON object with a "habits" array:
+      {
+        "habits": [
+          {
+            "name": string,
+            "description": string,
+            "routineType": "morning" | "evening" | "break",
+            "durationMinutes": integer,
+            "justification": string
+          }
+        ]
+      }
 
       Guidance:
       - Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
@@ -35,7 +37,7 @@ prompts:
 providers:
   - id: openai:gpt-5-mini
     config:
-      max_tokens: 512
+      max_completion_tokens: 512
       apiKeyEnvar: $OPENAI_ROUTINE_SUGGESTION_API_KEY
 
 tests:
@@ -48,11 +50,12 @@ tests:
     assert:
       - type: javascript
         value: |
-          const habits = JSON.parse(output);
+          const parsed = JSON.parse(output);
+          const habits = Array.isArray(parsed) ? parsed : (parsed.habits || []);
           if (!Array.isArray(habits) || habits.length === 0) throw new Error('Expected non-empty habit array');
           habits.forEach((h) => {
             if (!h.name || !h.description) throw new Error('Missing name/description');
-            if (!['morning','evening'].includes(String(h.routineType || '').toLowerCase())) throw new Error('Invalid routineType');
+            if (!['morning','evening','break'].includes(String(h.routineType || '').toLowerCase())) throw new Error('Invalid routineType');
             if (!Number.isFinite(h.durationMinutes) || h.durationMinutes < 1) throw new Error('Invalid durationMinutes');
           });
 
@@ -65,7 +68,8 @@ tests:
     assert:
       - type: javascript
         value: |
-          const habits = JSON.parse(output);
+          const parsed = JSON.parse(output);
+          const habits = Array.isArray(parsed) ? parsed : (parsed.habits || []);
           if (habits.length > 2) throw new Error('Exceeded limit');
 
 output:

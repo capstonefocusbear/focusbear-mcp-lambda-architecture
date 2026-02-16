@@ -4,6 +4,7 @@ import { StripeService } from '@app/stripe';
 import { RevenueCatService } from '@app/revenue-cat';
 import { StripeEvents } from '@app/stripe/model/stripe-events.enum';
 import { IsNull } from 'typeorm';
+import { SkipThrottle } from '@nestjs/throttler';
 import { WebhookHandlerStrategy } from '../../services/webhook-handler/webhook-handler.strategy';
 import { Headers } from '../../../../shared/decorators/headers.decorator';
 import { SubscriptionProvider } from '../../domain/subscription-provider.enum';
@@ -11,6 +12,7 @@ import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamManagementService } from '../../../team/services/team-management/team-management.service';
 
 @Controller('subscription/webhooks')
+@SkipThrottle()
 export class WebhooksController {
   constructor(
     private readonly webhookStrategy: WebhookHandlerStrategy,

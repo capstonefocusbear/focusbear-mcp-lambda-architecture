@@ -6,25 +6,27 @@ prompts:
       - Only use the supplied habits; do not invent new ones.
       - Evaluate each habit for direct alignment with the goal (not just generic wellness benefits).
       - Skip habits that do not clearly advance the goal.
-      - Output **only** a JSON array. Each item must include exactly:
+      - Output **only** a JSON object with a "suggestions" array. Each item must include exactly:
         - habitId (string from the supplied list)
         - name (string, goal-aligned rename of the habit; keep under 60 characters)
-      - description (string, <= 120 characters of user-facing instructions for the habit)
-      - justification (string, <= 120 characters explaining why it helps)
-      - matchScore (number between 0 and 1)
-      - Do not return any extra keys or any prose outside the JSON array.
+        - description (string, <= 120 characters of user-facing instructions for the habit)
+        - justification (string, <= 120 characters explaining why it helps)
+        - matchScore (number between 0 and 1)
+      - Do not return any extra keys or any prose outside the JSON object.
 
       ## OUTPUT FORMAT
-      Provide response ONLY as a JSON array of suggestion objects:
-      [
-        {
-          "habitId": string,
-          "name": string,
-          "description": string,
-          "justification": string,
-          "matchScore": number
-        }
-      ]
+      Provide response ONLY as a JSON object with a "suggestions" array:
+      {
+        "suggestions": [
+          {
+            "habitId": string,
+            "name": string,
+            "description": string,
+            "justification": string,
+            "matchScore": number
+          }
+        ]
+      }
 
       Guidance:
       - Prioritise specificity. If the goal mentions a sport, hobby, profession, or skill, favour habits that explicitly train that area.
@@ -41,7 +43,7 @@ prompts:
 providers:
   - id: openai:gpt-5-mini
     config:
-      max_tokens: 512
+      max_completion_tokens: 512
       apiKeyEnvar: $OPENAI_ROUTINE_SUGGESTION_API_KEY
 
 tests:

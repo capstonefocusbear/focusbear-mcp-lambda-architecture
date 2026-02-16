@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -16,6 +17,7 @@ import { OpenAIService } from '@app/openai';
 import { StripeService } from '@app/stripe';
 import { getQueueToken } from '@nestjs/bull';
 import { SendGridService } from '@app/send-grid';
+import { R2Service } from '@app/r2';
 import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
@@ -51,6 +53,7 @@ import {
   SendGridServiceMock,
   CompletedActivitySequenceServiceMock,
   FocusModeServiceMock,
+  R2ServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
 import { UserRepository } from '../../repositories/user.repository';
@@ -70,7 +73,13 @@ import { UserTypes } from '../../domain/user-types.enum';
 import { UsersOrderByOptions } from '../../domain/find-users-sort-by-options.enum';
 import { CompletedActivityService } from '../../../activity/services/completed-activity/completed-activity.service';
 import { UserProgressUpdateTypes } from '../../domain/user-progress-update-types.enum';
-import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import {
+  BullQueues,
+  BullWorkers,
+  EMAIL_SUBJECTS,
+  FOCUS_BEAR_EMAILS,
+  MAX_ATTACHMENT_SIZE_BYTES,
+} from '../../../../shared/utils/constants';
 import { AdminAccessRequest } from '../../entities/admin-access-requests.entity';
 import { PlatformIntegrationsService } from '../../../platform-integrations/services/platform-integrations.service';
 import { DeviceService } from '../../../device/services/device/device.service';
@@ -95,6 +104,7 @@ jest.mock('@app/observability', () => {
 
 describe('UserService', () => {
   let userService: UserService;
+  let configService: ConfigService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -135,6 +145,7 @@ describe('UserService', () => {
         },
         CompletedActivitySequenceService,
         AccountabilityBuddyService,
+        R2Service,
       ],
     })
       .overrideProvider(AccountabilityBuddyService)
@@ -179,8 +190,11 @@ describe('UserService', () => {
       .useValue(FocusModeServiceMock)
       .overrideProvider(CompletedActivitySequenceService)
       .useValue(CompletedActivitySequenceServiceMock)
+      .overrideProvider(R2Service)
+      .useValue(R2ServiceMock)
       .compile();
     userService = moduleRef.get<UserService>(UserService);
+    configService = moduleRef.get<ConfigService>(ConfigService);
   });
 
   beforeEach(() => {
@@ -1178,6 +1192,68 @@ describe('UserService', () => {
         }),
       );
     });
+
+    it('positive: should validate R2 profile image and save metadata when image is valid', async () => {
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      const r2PublicUrl = 'https://r2-public.example.com';
+      const profileImageKey = `${userDummy.id}/profile.jpg`;
+      const profileImageDummy = `${r2PublicUrl}/profile-images/${profileImageKey}`;
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
+      configService.set('r2.publicUrl', r2PublicUrl);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'image/jpeg' });
+
+      await userService.updateMetadata({ profile_image: profileImageDummy }, userDummy.id);
+
+      expect(R2ServiceMock.getObjectMetadata).toHaveBeenCalledWith('profile-images', profileImageKey);
+      expect(UserRepositoryMock.orm.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          metadata: { profile_image: profileImageDummy },
+        }),
+      );
+    });
+
+    it('negative: should delete invalid profile image and throw BadRequestException when mime type is invalid', async () => {
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      const r2PublicUrl = 'https://r2-public.example.com';
+      const profileImageKey = `${userDummy.id}/profile.jpg`;
+      const profileImageDummy = `${r2PublicUrl}/profile-images/${profileImageKey}`;
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
+      configService.set('r2.publicUrl', r2PublicUrl);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({ contentLength: 1024, contentType: 'text/plain' });
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
+
+      await expect(userService.updateMetadata({ profile_image: profileImageDummy }, userDummy.id)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('profile-images', profileImageKey);
+      expect(UserRepositoryMock.orm.update).not.toHaveBeenCalled();
+    });
+
+    it('negative: should delete oversized profile image and throw BadRequestException', async () => {
+      const userWithoutMetadata = { ...userDummy, metadata: undefined };
+      const r2PublicUrl = 'https://r2-public.example.com';
+      const profileImageKey = `${userDummy.id}/profile.jpg`;
+      const profileImageDummy = `${r2PublicUrl}/profile-images/${profileImageKey}`;
+
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userWithoutMetadata);
+      configService.set('r2.publicUrl', r2PublicUrl);
+      R2ServiceMock.getObjectMetadata.mockResolvedValueOnce({
+        contentLength: MAX_ATTACHMENT_SIZE_BYTES + 1,
+        contentType: 'image/jpeg',
+      });
+      R2ServiceMock.deleteObject.mockResolvedValueOnce(undefined);
+
+      await expect(userService.updateMetadata({ profile_image: profileImageDummy }, userDummy.id)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(R2ServiceMock.deleteObject).toHaveBeenCalledWith('profile-images', profileImageKey);
+      expect(UserRepositoryMock.orm.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('saveAdminAccessRequest', () => {
@@ -1684,6 +1760,47 @@ describe('UserService', () => {
       await userService.uninstallApplication(dummyUninstallApplicationQueryDto, userDummy.id);
 
       expect(SendGridServiceMock.sendEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getProfileImageUploadUrl', () => {
+    it('should throw NotFoundException if user does not exist', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await expect(
+        userService.getProfileImageUploadUrl('non-existent-user-id', 'profile.jpg', 'image/jpeg'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should return upload URL and public URL for valid user', async () => {
+      const mockPresignedUrl = 'https://presigned-url.example.com';
+      const mockPublicUrl = 'https://r2-public.example.com';
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce(mockPresignedUrl);
+      configService.set('r2.publicUrl', mockPublicUrl);
+
+      const result = await userService.getProfileImageUploadUrl(userDummy.id, 'profile.jpg', 'image/jpeg');
+
+      expect(result.uploadUrl).toBe(mockPresignedUrl);
+      expect(result.publicUrl).toContain(mockPublicUrl);
+      expect(result.publicUrl).toContain(userDummy.id);
+      expect(result.publicUrl).toContain('profile.jpg');
+      expect(result.publicUrl).toContain('profile-images');
+      expect(R2ServiceMock.getPresignedUploadUrl).toHaveBeenCalledWith(
+        'profile-images',
+        expect.stringContaining(userDummy.id),
+        'image/jpeg',
+      );
+    });
+
+    it('should throw InternalServerErrorException when r2.publicUrl is not configured', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      R2ServiceMock.getPresignedUploadUrl.mockResolvedValueOnce('https://presigned-url.example.com');
+      configService.set('r2.publicUrl', '');
+
+      await expect(userService.getProfileImageUploadUrl(userDummy.id, 'profile.jpg', 'image/jpeg')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

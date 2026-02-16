@@ -52,7 +52,21 @@ import { StudyParticipant } from '../apps/api-server/src/modules/user/entities/s
 import { HabitLibraryRequest } from '../apps/api-server/src/modules/activity-template/entity/habit-library-request.entity';
 import { AccountabilityBuddy } from '../apps/api-server/src/modules/accountability-buddy/entities/accountability-buddy.entity';
 import { UnlockRequest } from '../apps/api-server/src/modules/accountability-buddy/entities/unlock-request.entity';
-
+import { Geofence } from '../apps/api-server/src/modules/geofence/entities/geofence.entity';
+import { Project } from '../apps/api-server/src/modules/project/entities/project.entity';
+import { ProjectMember } from '../apps/api-server/src/modules/project/entities/project-member.entity';
+import { TaskComment } from '../apps/api-server/src/modules/to-do/entities/task-comment.entity';
+import { TaskAttachment } from '../apps/api-server/src/modules/to-do/entities/task-attachment.entity';
+import { CommentAttachment } from '../apps/api-server/src/modules/to-do/entities/comment-attachment.entity';
+import { Note } from '../apps/api-server/src/modules/note/entities/note.entity';
+import { NoteTag } from '../apps/api-server/src/modules/note/entities/note-tag.entity';
+import { UsageData } from '../apps/api-server/src/modules/user/entities/usage-data.entity';
+import { HealthMetrics } from '../apps/api-server/src/modules/user/entities/health-metrics.entity';
+import { FlankerTest } from '../apps/api-server/src/modules/user/entities/flanker-test.entity';
+import { AsyncTask } from '../apps/api-server/src/modules/async-task/entities/async-task.entity';
+import { AppVersionEntity } from '../apps/api-server/src/modules/app-versions/entities/app-versions.entity';
+import { AnnouncementEntity } from '../apps/api-server/src/modules/announcements/entities/announcements.entity';
+import { AnnouncementViewEntity } from '../apps/api-server/src/modules/announcements/entities/announcement-views.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -117,6 +131,21 @@ export const CronJobDataSource = new DataSource({
     HabitLibraryRequest,
     AccountabilityBuddy,
     UnlockRequest,
+    Geofence,
+    Project,
+    ProjectMember,
+    TaskComment,
+    TaskAttachment,
+    CommentAttachment,
+    Note,
+    NoteTag,
+    UsageData,
+    HealthMetrics,
+    FlankerTest,
+    AsyncTask,
+    AppVersionEntity,
+    AnnouncementEntity,
+    AnnouncementViewEntity,
   ],
   subscribers: [],
   migrations: [],

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { OpenAIService, PromptCacheService } from '@app/openai';
+import { createHash } from 'crypto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 
@@ -10,6 +11,72 @@ const DEFAULT_GENERATED_LIMIT = 3;
 const DEFAULT_MINUTES_FALLBACK = 10;
 const DEFAULT_MIN_MATCH_SCORE = 0.5;
 const DEFAULT_SUGGESTION_LIMIT = 5;
+const SHORTCUT_ACCEPT_SIMILARITY_THRESHOLD = 0.7;
+const SHORTCUT_ACCEPT_TOP_FLOOR = 0.6;
+const SHORTCUT_ACCEPT_GAP_THRESHOLD = 0.15;
+const SHORTCUT_REJECT_SIMILARITY_THRESHOLD = 0.25;
+const LLM_SCORE_WEIGHT = 0.65;
+const MAX_LLM_UPLIFT_OVER_SIMILARITY = 0.25;
+
+const ROUTINE_SUGGESTIONS_RERANK_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'routine_suggestions_rerank',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        suggestions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              habitId: { type: 'string', minLength: 1 },
+              name: { type: 'string', minLength: 1 },
+              description: { type: 'string' },
+              justification: { type: 'string' },
+              matchScore: { type: 'number', minimum: 0, maximum: 1 },
+            },
+            required: ['habitId', 'name', 'description', 'justification', 'matchScore'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['suggestions'],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
+const ROUTINE_SUGGESTIONS_GENERATION_RESPONSE_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'routine_suggestions_generate',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        habits: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', minLength: 1 },
+              description: { type: 'string' },
+              routineType: { type: 'string', enum: ['morning', 'evening', 'break'] },
+              durationMinutes: { type: 'integer', minimum: 1, maximum: 120 },
+              justification: { type: 'string' },
+            },
+            required: ['name', 'description', 'routineType', 'durationMinutes', 'justification'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['habits'],
+      additionalProperties: false,
+    },
+  },
+} as const;
 
 export interface RoutineSuggestionCandidate {
   template: ActivityTemplate;
@@ -36,6 +103,20 @@ export interface GeneratedHabitSuggestion {
 export interface GenerateSuggestionsOptions {
   limit?: number;
   minMatchScore?: number;
+  includeTelemetry?: boolean;
+}
+
+export type SuggestionEvaluationPath = 'empty' | 'shortcut_accept' | 'shortcut_reject' | 'llm' | 'fallback';
+
+export interface GenerateSuggestionsTelemetry {
+  evaluationPath: SuggestionEvaluationPath;
+  llmInvoked: boolean;
+  shortcutAccepted: boolean;
+  shortcutRejected: boolean;
+  shortcutReason?: string;
+  topSimilarity?: number;
+  secondSimilarity?: number;
+  similarityGap?: number;
 }
 
 export interface GenerateSuggestionsResponse {
@@ -43,6 +124,7 @@ export interface GenerateSuggestionsResponse {
   rejectedCount: number;
   parsedCount: number;
   minScoreApplied: number;
+  telemetry?: GenerateSuggestionsTelemetry;
 }
 
 @Injectable()
@@ -58,20 +140,76 @@ export class RoutineSuggestionGeneratorService {
   async generateSuggestions(
     goal: string,
     candidates: RoutineSuggestionCandidate[],
-    { limit = DEFAULT_SUGGESTION_LIMIT, minMatchScore }: GenerateSuggestionsOptions = {},
+    { limit = DEFAULT_SUGGESTION_LIMIT, minMatchScore, includeTelemetry = false }: GenerateSuggestionsOptions = {},
   ): Promise<GenerateSuggestionsResponse> {
     if (!candidates.length) {
-      return {
-        accepted: [],
-        rejectedCount: 0,
-        parsedCount: 0,
-        minScoreApplied: this.resolveMinMatchScore(minMatchScore),
-      };
+      return this.withTelemetry(
+        {
+          accepted: [],
+          rejectedCount: 0,
+          parsedCount: 0,
+          minScoreApplied: this.resolveMinMatchScore(minMatchScore),
+        },
+        {
+          evaluationPath: 'empty',
+          llmInvoked: false,
+          shortcutAccepted: false,
+          shortcutRejected: false,
+        },
+        includeTelemetry,
+      );
     }
 
     const normalizedLimit = Math.max(1, limit);
     const sortedCandidates = [...candidates].sort((a, b) => b.similarity - a.similarity);
     const scoreThreshold = this.resolveMinMatchScore(minMatchScore);
+
+    const shortcutDecision = this.evaluateShortcut(sortedCandidates);
+    if (shortcutDecision.decision === 'accept') {
+      const accepted = this.buildFallbackSuggestions(sortedCandidates, goal, normalizedLimit, scoreThreshold);
+      return this.withTelemetry(
+        {
+          accepted,
+          rejectedCount: 0,
+          parsedCount: 0,
+          minScoreApplied: scoreThreshold,
+        },
+        {
+          evaluationPath: 'shortcut_accept',
+          llmInvoked: false,
+          shortcutAccepted: true,
+          shortcutRejected: false,
+          shortcutReason: shortcutDecision.reason,
+          topSimilarity: shortcutDecision.topSimilarity,
+          secondSimilarity: shortcutDecision.secondSimilarity,
+          similarityGap: shortcutDecision.similarityGap,
+        },
+        includeTelemetry,
+      );
+    }
+
+    if (shortcutDecision.decision === 'reject') {
+      return this.withTelemetry(
+        {
+          accepted: [],
+          rejectedCount: sortedCandidates.length,
+          parsedCount: 0,
+          minScoreApplied: scoreThreshold,
+        },
+        {
+          evaluationPath: 'shortcut_reject',
+          llmInvoked: false,
+          shortcutAccepted: false,
+          shortcutRejected: true,
+          shortcutReason: shortcutDecision.reason,
+          topSimilarity: shortcutDecision.topSimilarity,
+          secondSimilarity: shortcutDecision.secondSimilarity,
+          similarityGap: shortcutDecision.similarityGap,
+        },
+        includeTelemetry,
+      );
+    }
+
     const promptContext = this.buildContext(sortedCandidates.slice(0, MAX_CONTEXT_CANDIDATES));
 
     this.logger.debug(
@@ -93,13 +231,12 @@ export class RoutineSuggestionGeneratorService {
       level: 'info',
       message: 'Evaluating RAG candidates',
       data: {
-        goal,
         minMatchScore: scoreThreshold,
+        candidateCount: sortedCandidates.length,
         topCandidates: sortedCandidates.slice(0, 5).map((candidate) => ({
           templateId: candidate.template.id,
           similarity: Number(candidate.similarity.toFixed(4)),
           activityType: candidate.template.activity_type,
-          name: candidate.template.activity_data?.name,
         })),
       },
     });
@@ -107,7 +244,11 @@ export class RoutineSuggestionGeneratorService {
     const messages = this.buildMessages(goal, promptContext, scoreThreshold);
 
     try {
-      const response = await this.openAIService.createChatCompletion(messages);
+      const response = await this.openAIService.createChatCompletion(messages, {
+        params: {
+          response_format: ROUTINE_SUGGESTIONS_RERANK_RESPONSE_FORMAT,
+        } as any,
+      });
       const content = response.choices?.[0]?.message?.content ?? '[]';
       this.logger.debug(
         `RoutineSuggestions:llmResponse ${JSON.stringify({
@@ -140,33 +281,69 @@ export class RoutineSuggestionGeneratorService {
       );
 
       if (accepted.length) {
-        return { accepted, rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
+        return this.withTelemetry(
+          { accepted, rejectedCount, parsedCount, minScoreApplied: scoreThreshold },
+          {
+            evaluationPath: 'llm',
+            llmInvoked: true,
+            shortcutAccepted: false,
+            shortcutRejected: false,
+          },
+          includeTelemetry,
+        );
       }
       if (parsedCount > 0) {
-        return { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold };
+        return this.withTelemetry(
+          { accepted: [], rejectedCount, parsedCount, minScoreApplied: scoreThreshold },
+          {
+            evaluationPath: 'llm',
+            llmInvoked: true,
+            shortcutAccepted: false,
+            shortcutRejected: false,
+          },
+          includeTelemetry,
+        );
       }
     } catch (error) {
+      const goalHash = this.hashGoal(goal);
       this.logger.error(
-        `RoutineSuggestions:generateSuggestions failed for goal "${goal}": ${error.message}`,
+        `RoutineSuggestions:generateSuggestions failed${goalHash ? ` [goalHash=${goalHash}]` : ''}: ${error.message}`,
         error.stack,
       );
       this.sentry.instance().captureException(error, {
         level: 'error',
         extra: {
-          goal,
           operation: 'generateSuggestions',
           candidateCount: candidates.length,
           errorType: error.constructor?.name,
-          errorMessage: error.message,
+          goalHash,
         },
       });
     }
 
     const fallback = this.buildFallbackSuggestions(sortedCandidates, goal, normalizedLimit, scoreThreshold);
     if (fallback.length) {
-      return { accepted: fallback, rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold };
+      return this.withTelemetry(
+        { accepted: fallback, rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold },
+        {
+          evaluationPath: 'fallback',
+          llmInvoked: true,
+          shortcutAccepted: false,
+          shortcutRejected: false,
+        },
+        includeTelemetry,
+      );
     }
-    return { accepted: [], rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold };
+    return this.withTelemetry(
+      { accepted: [], rejectedCount: 0, parsedCount: 0, minScoreApplied: scoreThreshold },
+      {
+        evaluationPath: 'fallback',
+        llmInvoked: true,
+        shortcutAccepted: false,
+        shortcutRejected: false,
+      },
+      includeTelemetry,
+    );
   }
 
   private resolveMinMatchScore(override: number | undefined): number {
@@ -176,6 +353,77 @@ export class RoutineSuggestionGeneratorService {
 
     // Use the default threshold (0.5) – if nothing meets this, we generate instead
     return DEFAULT_MIN_MATCH_SCORE;
+  }
+
+  private withTelemetry(
+    response: Omit<GenerateSuggestionsResponse, 'telemetry'>,
+    telemetry: GenerateSuggestionsTelemetry,
+    includeTelemetry: boolean,
+  ): GenerateSuggestionsResponse {
+    if (!includeTelemetry) {
+      return response;
+    }
+    return {
+      ...response,
+      telemetry,
+    };
+  }
+
+  private evaluateShortcut(candidates: RoutineSuggestionCandidate[]): {
+    decision: 'accept' | 'reject' | 'none';
+    reason?: string;
+    topSimilarity?: number;
+    secondSimilarity?: number;
+    similarityGap?: number;
+  } {
+    if (!candidates.length) {
+      return { decision: 'none' };
+    }
+
+    const topSimilarity = this.normalizeScore(candidates[0]?.similarity ?? 0);
+    const secondSimilarity = this.normalizeScore(candidates[1]?.similarity ?? 0);
+    const similarityGap = Number((topSimilarity - secondSimilarity).toFixed(4));
+
+    if (topSimilarity < SHORTCUT_REJECT_SIMILARITY_THRESHOLD) {
+      return {
+        decision: 'reject',
+        reason: 'low_top_similarity',
+        topSimilarity,
+        secondSimilarity,
+        similarityGap,
+      };
+    }
+
+    if (topSimilarity >= SHORTCUT_ACCEPT_SIMILARITY_THRESHOLD) {
+      return {
+        decision: 'accept',
+        reason: 'high_top_similarity',
+        topSimilarity,
+        secondSimilarity,
+        similarityGap,
+      };
+    }
+
+    if (
+      candidates.length > 1 &&
+      topSimilarity >= SHORTCUT_ACCEPT_TOP_FLOOR &&
+      similarityGap >= SHORTCUT_ACCEPT_GAP_THRESHOLD
+    ) {
+      return {
+        decision: 'accept',
+        reason: 'strong_similarity_gap',
+        topSimilarity,
+        secondSimilarity,
+        similarityGap,
+      };
+    }
+
+    return {
+      decision: 'none',
+      topSimilarity,
+      secondSimilarity,
+      similarityGap,
+    };
   }
 
   private buildContext(candidates: RoutineSuggestionCandidate[]): string {
@@ -245,6 +493,17 @@ Guidance:
     return Math.min(1, Math.max(0, Number(value)));
   }
 
+  private combineCandidateAndLlmScore(candidateSimilarity: number, llmScoreNormalized?: number): number {
+    if (typeof llmScoreNormalized !== 'number') {
+      return candidateSimilarity;
+    }
+
+    const blendedScore =
+      candidateSimilarity * (1 - LLM_SCORE_WEIGHT) + this.normalizeScore(llmScoreNormalized) * LLM_SCORE_WEIGHT;
+    const upliftCappedScore = Math.min(blendedScore, candidateSimilarity + MAX_LLM_UPLIFT_OVER_SIMILARITY);
+    return this.normalizeScore(upliftCappedScore);
+  }
+
   private parseResponse(
     content: string,
     candidates: RoutineSuggestionCandidate[],
@@ -253,7 +512,14 @@ Guidance:
   ): { accepted: RoutineSuggestionResult[]; rejectedCount: number; parsedCount: number } {
     try {
       const parsed = JSON.parse(content);
-      if (!Array.isArray(parsed)) {
+
+      // Handle both new object format and legacy array format for backward compatibility
+      let items: unknown[];
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.suggestions)) {
+        items = parsed.suggestions;
+      } else {
         return { accepted: [], rejectedCount: 0, parsedCount: 0 };
       }
 
@@ -261,7 +527,7 @@ Guidance:
 
       const results: RoutineSuggestionResult[] = [];
       let rejectedCount = 0;
-      parsed.forEach((item) => {
+      items.forEach((item: any) => {
         const habitId = item?.habitId || item?.templateId || item?.id;
         if (!habitId) {
           return;
@@ -274,11 +540,8 @@ Guidance:
         const llmScore = Number.isFinite(item?.matchScore) ? Number(item.matchScore) : undefined;
         const candidateSimilarity = this.normalizeScore(candidate.similarity);
         const llmScoreNormalized = typeof llmScore === 'number' ? this.normalizeScore(llmScore) : undefined;
-        // Keep the match score grounded in retrieval similarity to avoid unrelated habits sneaking in.
-        const normalizedScore =
-          typeof llmScoreNormalized === 'number'
-            ? Math.min(candidateSimilarity, llmScoreNormalized)
-            : candidateSimilarity;
+        // Blend retrieval + LLM judgment while capping uplift to keep matches grounded in retriever quality.
+        const normalizedScore = this.combineCandidateAndLlmScore(candidateSimilarity, llmScoreNormalized);
 
         if (normalizedScore < minMatchScore) {
           rejectedCount += 1;
@@ -294,12 +557,12 @@ Guidance:
           name,
           description,
           justification,
-          matchScore: normalizedScore,
+          matchScore: Number(normalizedScore.toFixed(2)),
           template: candidate.template,
         });
       });
       const limited = results.slice(0, limit);
-      return { accepted: limited, rejectedCount, parsedCount: parsed.length };
+      return { accepted: limited, rejectedCount, parsedCount: items.length };
     } catch (error) {
       this.sentry.instance().captureException(error, {
         level: 'warning',
@@ -348,30 +611,34 @@ Guidance:
     );
 
     try {
-      const response = await this.openAIService.createChatCompletion(messages);
+      const response = await this.openAIService.createChatCompletion(messages, {
+        params: {
+          response_format: ROUTINE_SUGGESTIONS_GENERATION_RESPONSE_FORMAT,
+        } as any,
+      });
       const content = response.choices?.[0]?.message?.content ?? '[]';
       const parsed = this.parseGeneratedHabits(content, normalizedLimit);
       if (!parsed.length) {
         this.sentry.instance().captureMessage('RoutineSuggestion: no habits generated by OpenAI', {
           level: 'warning',
-          extra: { goal, limit: normalizedLimit, routineType: preferredRoutineType },
+          extra: { limit: normalizedLimit, routineType: preferredRoutineType },
         });
       }
       return parsed;
     } catch (error) {
+      const goalHash = this.hashGoal(goal);
       this.logger.error(
-        `RoutineSuggestions:generateNewHabits failed for goal "${goal}": ${error.message}`,
+        `RoutineSuggestions:generateNewHabits failed${goalHash ? ` [goalHash=${goalHash}]` : ''}: ${error.message}`,
         error.stack,
       );
       this.sentry.instance().captureException(error, {
         level: 'error',
         extra: {
-          goal,
           operation: 'generateNewHabits',
           preferredRoutineType,
           limit: normalizedLimit,
           errorType: error.constructor?.name,
-          errorMessage: error.message,
+          goalHash,
         },
       });
       return [];
@@ -399,12 +666,13 @@ Guidance:
         role: 'system',
         content: `You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
 Analyse the goal text to understand the desired outcome, key skills, and relevant contexts. Generate up to ${limit} habits that directly advance those needs (avoid generic wellness tips unless they are explicitly required by the goal).
-Return ONLY a JSON array. Each habit must include:
+Return ONLY a JSON object with a "habits" array. Each habit must include:
 - name (string, concise and goal-aligned)
 - description (string, what the user does)
-- routineType ("morning" or "evening")
+- routineType ("morning", "evening", or "break")
 - durationMinutes (integer, >= 1)
 - justification (<=120 characters summarising why it helps)
+Example: { "habits": [{ "name": "...", "description": "...", "routineType": "morning", "durationMinutes": 10, "justification": "..." }] }
 Guidance:
 - Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
 - Include a mix of training, learning, strategy, or recovery actions as appropriate for the outcome.
@@ -422,12 +690,19 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
   private parseGeneratedHabits(content: string, limit: number): GeneratedHabitSuggestion[] {
     try {
       const parsed = JSON.parse(content);
-      if (!Array.isArray(parsed)) {
+
+      // Handle both new object format and legacy array format for backward compatibility
+      let items: unknown[];
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.habits)) {
+        items = parsed.habits;
+      } else {
         return [];
       }
 
       const results: GeneratedHabitSuggestion[] = [];
-      parsed.forEach((item) => {
+      items.forEach((item: any) => {
         if (!item || typeof item !== 'object') {
           return;
         }
@@ -453,5 +728,13 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
       });
       return [];
     }
+  }
+
+  private hashGoal(goal?: string): string | undefined {
+    const trimmed = goal?.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    return createHash('sha256').update(trimmed).digest('hex').slice(0, 16);
   }
 }

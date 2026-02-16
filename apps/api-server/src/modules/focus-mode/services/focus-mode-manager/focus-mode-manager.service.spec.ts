@@ -26,6 +26,7 @@ import {
   ToDoRepositoryMock,
   ToDoServiceMock,
   UserServiceMock,
+  WebhookDispatcherServiceMock,
 } from '../../../../../test/mocks';
 import { User } from '../../../user/entities/user.entity';
 import { UserRepository } from '../../../user/repositories/user.repository';
@@ -44,6 +45,7 @@ import { ToDoTimeLogDto } from '../../../to-do/dto/to-do-time-log.dto.ts';
 import { ToDoStatus } from '../../../to-do/domain/to-do-status.enum';
 import { ToDoService } from '../../../to-do/services/to-do.service';
 import { UserService } from '../../../user/services/user/user.service';
+import { WebhookDispatcherService } from '../../../webhook/services/webhook-dispatcher.service';
 
 describe('FocusModeManagerService', () => {
   let focusModeManagerService: FocusModeManagerService;
@@ -63,6 +65,7 @@ describe('FocusModeManagerService', () => {
         ToDoRepository,
         ToDoService,
         UserService,
+        WebhookDispatcherService,
         {
           provide: SENTRY_TOKEN,
           useValue: SentryServiceMock,
@@ -93,6 +96,8 @@ describe('FocusModeManagerService', () => {
       .useValue(ToDoServiceMock)
       .overrideProvider(UserService)
       .useValue(UserServiceMock)
+      .overrideProvider(WebhookDispatcherService)
+      .useValue(WebhookDispatcherServiceMock)
       .compile();
 
     focusModeManagerService = moduleRef.get<FocusModeManagerService>(FocusModeManagerService);
@@ -280,6 +285,7 @@ describe('FocusModeManagerService', () => {
     beforeEach(() => {
       jest.clearAllMocks();
       jest.resetAllMocks();
+      WebhookDispatcherServiceMock.dispatchEvent.mockImplementation(() => Promise.resolve());
     });
     const thirtyMinutesInSeconds = 1800;
     const focus_mode_id = FocusModeDummy.id;

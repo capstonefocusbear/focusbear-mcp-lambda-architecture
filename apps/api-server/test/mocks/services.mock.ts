@@ -205,6 +205,10 @@ export const R2ServiceMock = {
   getPresignedUrl: jest.fn(),
   getJsonFromBucket: jest.fn(),
   addObjectToBucket: jest.fn(),
+  getPresignedUploadUrl: jest.fn(),
+  uploadFileToBucket: jest.fn(),
+  getObjectMetadata: jest.fn(),
+  deleteObject: jest.fn(),
 };
 
 export const UserDailyStatsServiceMock = {
@@ -379,4 +383,8 @@ export const CalendarServiceMock = {
 
 export const GoogleAuthServiceMock = {
   refreshToken: jest.fn(),
+};
+
+export const WebhookDispatcherServiceMock = {
+  dispatchEvent: jest.fn(() => Promise.resolve()),
 };

@@ -1,0 +1,422 @@
+{
+  "platformVersion": "15.0.0",
+  "version": "1.0.0",
+  "name": "Focus Bear",
+  "description": "Connect Focus Bear to thousands of apps. Track habits, routines, and focus sessions.",
+  "authentication": {
+    "type": "oauth2",
+    "oauth2Config": {
+      "authorizeUrl": "https://{{AUTH0_DOMAIN}}/authorize",
+      "getAccessToken": {
+        "url": "https://{{AUTH0_DOMAIN}}/oauth/token",
+        "method": "POST",
+        "body": {
+          "client_id": "{{CLIENT_ID}}",
+          "client_secret": "{{CLIENT_SECRET}}",
+          "code": "{{bundle.inputData.code}}",
+          "grant_type": "authorization_code",
+          "redirect_uri": "{{bundle.inputData.redirect_uri}}"
+        }
+      },
+      "refreshAccessToken": {
+        "url": "https://{{AUTH0_DOMAIN}}/oauth/token",
+        "method": "POST",
+        "body": {
+          "client_id": "{{CLIENT_ID}}",
+          "client_secret": "{{CLIENT_SECRET}}",
+          "refresh_token": "{{bundle.authData.refresh_token}}",
+          "grant_type": "refresh_token"
+        }
+      },
+      "scope": "openid profile email offline_access",
+      "autoRefresh": true
+    },
+    "test": {
+      "url": "{{API_BASE_URL}}/external/v1/me"
+    },
+    "connectionLabel": "{{bundle.inputData.email}}"
+  },
+  "triggers": {
+    "habit_completed": {
+      "key": "habit_completed",
+      "noun": "Habit",
+      "display": {
+        "label": "Habit Completed",
+        "description": "Triggers when a habit is completed.",
+        "important": true
+      },
+      "operation": {
+        "type": "hook",
+        "performSubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
+          "method": "POST",
+          "body": {
+            "name": "Zapier - Habit Completed",
+            "url": "{{bundle.targetUrl}}",
+            "event_types": ["habit.completed"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/webhooks/sample/habit.completed"
+        },
+        "sample": {
+          "event_type": "habit.completed",
+          "timestamp": "2024-01-15T10:30:00Z",
+          "user_id": "user_123",
+          "data": {
+            "habit_name": "Morning Meditation",
+            "routine_name": "morning",
+            "duration_seconds": 600,
+            "completed_at": "2024-01-15T10:30:00Z"
+          }
+        },
+        "outputFields": [
+          {"key": "event_type", "label": "Event Type"},
+          {"key": "timestamp", "label": "Timestamp"},
+          {"key": "user_id", "label": "User ID"},
+          {"key": "data__habit_name", "label": "Habit Name"},
+          {"key": "data__routine_name", "label": "Routine Name"},
+          {"key": "data__duration_seconds", "label": "Duration (seconds)"},
+          {"key": "data__completed_at", "label": "Completed At"}
+        ]
+      }
+    },
+    "routine_completed": {
+      "key": "routine_completed",
+      "noun": "Routine",
+      "display": {
+        "label": "Routine Completed",
+        "description": "Triggers when a routine (morning/evening) is completed.",
+        "important": true
+      },
+      "operation": {
+        "type": "hook",
+        "performSubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
+          "method": "POST",
+          "body": {
+            "name": "Zapier - Routine Completed",
+            "url": "{{bundle.targetUrl}}",
+            "event_types": ["routine.completed"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/webhooks/sample/routine.completed"
+        },
+        "sample": {
+          "event_type": "routine.completed",
+          "timestamp": "2024-01-15T07:30:00Z",
+          "user_id": "user_123",
+          "data": {
+            "routine_name": "morning",
+            "completed_habits_count": 5,
+            "completed_at": "2024-01-15T07:30:00Z"
+          }
+        },
+        "outputFields": [
+          {"key": "event_type", "label": "Event Type"},
+          {"key": "timestamp", "label": "Timestamp"},
+          {"key": "user_id", "label": "User ID"},
+          {"key": "data__routine_name", "label": "Routine Name"},
+          {"key": "data__completed_habits_count", "label": "Completed Habits Count"},
+          {"key": "data__completed_at", "label": "Completed At"}
+        ]
+      }
+    },
+    "focus_session_started": {
+      "key": "focus_session_started",
+      "noun": "Focus Session",
+      "display": {
+        "label": "Focus Session Started",
+        "description": "Triggers when a focus session is started."
+      },
+      "operation": {
+        "type": "hook",
+        "performSubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
+          "method": "POST",
+          "body": {
+            "name": "Zapier - Focus Session Started",
+            "url": "{{bundle.targetUrl}}",
+            "event_types": ["focus_session.started"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/webhooks/sample/focus_session.started"
+        },
+        "sample": {
+          "event_type": "focus_session.started",
+          "timestamp": "2024-01-15T09:00:00Z",
+          "user_id": "user_123",
+          "data": {
+            "focus_mode_name": "Deep Work",
+            "intention": "Complete project report",
+            "scheduled_finish_time": "2024-01-15T11:00:00Z",
+            "started_at": "2024-01-15T09:00:00Z"
+          }
+        },
+        "outputFields": [
+          {"key": "event_type", "label": "Event Type"},
+          {"key": "timestamp", "label": "Timestamp"},
+          {"key": "user_id", "label": "User ID"},
+          {"key": "data__focus_mode_name", "label": "Focus Mode Name"},
+          {"key": "data__intention", "label": "Intention"},
+          {"key": "data__scheduled_finish_time", "label": "Scheduled Finish Time"},
+          {"key": "data__started_at", "label": "Started At"}
+        ]
+      }
+    },
+    "focus_session_completed": {
+      "key": "focus_session_completed",
+      "noun": "Focus Session",
+      "display": {
+        "label": "Focus Session Completed",
+        "description": "Triggers when a focus session is completed.",
+        "important": true
+      },
+      "operation": {
+        "type": "hook",
+        "performSubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
+          "method": "POST",
+          "body": {
+            "name": "Zapier - Focus Session Completed",
+            "url": "{{bundle.targetUrl}}",
+            "event_types": ["focus_session.completed"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/webhooks/sample/focus_session.completed"
+        },
+        "sample": {
+          "event_type": "focus_session.completed",
+          "timestamp": "2024-01-15T11:00:00Z",
+          "user_id": "user_123",
+          "data": {
+            "focus_mode_name": "Deep Work",
+            "intention": "Complete project report",
+            "duration_seconds": 7200,
+            "completed_at": "2024-01-15T11:00:00Z"
+          }
+        },
+        "outputFields": [
+          {"key": "event_type", "label": "Event Type"},
+          {"key": "timestamp", "label": "Timestamp"},
+          {"key": "user_id", "label": "User ID"},
+          {"key": "data__focus_mode_name", "label": "Focus Mode Name"},
+          {"key": "data__intention", "label": "Intention"},
+          {"key": "data__duration_seconds", "label": "Duration (seconds)"},
+          {"key": "data__completed_at", "label": "Completed At"}
+        ]
+      }
+    },
+    "break_started": {
+      "key": "break_started",
+      "noun": "Break",
+      "display": {
+        "label": "Break Started",
+        "description": "Triggers when a break is started."
+      },
+      "operation": {
+        "type": "hook",
+        "performSubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
+          "method": "POST",
+          "body": {
+            "name": "Zapier - Break Started",
+            "url": "{{bundle.targetUrl}}",
+            "event_types": ["break.started"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/webhooks/sample/break.started"
+        },
+        "sample": {
+          "event_type": "break.started",
+          "timestamp": "2024-01-15T10:00:00Z",
+          "user_id": "user_123",
+          "data": {
+            "break_name": "Stretch Break",
+            "started_at": "2024-01-15T10:00:00Z"
+          }
+        },
+        "outputFields": [
+          {"key": "event_type", "label": "Event Type"},
+          {"key": "timestamp", "label": "Timestamp"},
+          {"key": "user_id", "label": "User ID"},
+          {"key": "data__break_name", "label": "Break Name"},
+          {"key": "data__started_at", "label": "Started At"}
+        ]
+      }
+    },
+    "break_completed": {
+      "key": "break_completed",
+      "noun": "Break",
+      "display": {
+        "label": "Break Completed",
+        "description": "Triggers when a break is completed."
+      },
+      "operation": {
+        "type": "hook",
+        "performSubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions",
+          "method": "POST",
+          "body": {
+            "name": "Zapier - Break Completed",
+            "url": "{{bundle.targetUrl}}",
+            "event_types": ["break.completed"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "{{API_BASE_URL}}/webhooks/subscriptions/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/webhooks/sample/break.completed"
+        },
+        "sample": {
+          "event_type": "break.completed",
+          "timestamp": "2024-01-15T10:05:00Z",
+          "user_id": "user_123",
+          "data": {
+            "break_name": "Stretch Break",
+            "duration_seconds": 300,
+            "completed_at": "2024-01-15T10:05:00Z"
+          }
+        },
+        "outputFields": [
+          {"key": "event_type", "label": "Event Type"},
+          {"key": "timestamp", "label": "Timestamp"},
+          {"key": "user_id", "label": "User ID"},
+          {"key": "data__break_name", "label": "Break Name"},
+          {"key": "data__duration_seconds", "label": "Duration (seconds)"},
+          {"key": "data__completed_at", "label": "Completed At"}
+        ]
+      }
+    }
+  },
+  "creates": {
+    "start_focus_session": {
+      "key": "start_focus_session",
+      "noun": "Focus Session",
+      "display": {
+        "label": "Start Focus Session",
+        "description": "Starts a new focus session with the specified focus mode."
+      },
+      "operation": {
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/focus-session/start",
+          "method": "POST",
+          "body": {
+            "focus_mode_name": "{{bundle.inputData.focus_mode_name}}",
+            "duration_minutes": "{{bundle.inputData.duration_minutes}}",
+            "intention": "{{bundle.inputData.intention}}"
+          }
+        },
+        "inputFields": [
+          {
+            "key": "focus_mode_name",
+            "label": "Focus Mode Name",
+            "type": "string",
+            "required": true,
+            "helpText": "The name of the focus mode to start (e.g., 'Deep Work', 'Creative Time')"
+          },
+          {
+            "key": "duration_minutes",
+            "label": "Duration (minutes)",
+            "type": "integer",
+            "required": false,
+            "helpText": "How long the focus session should last in minutes"
+          },
+          {
+            "key": "intention",
+            "label": "Intention",
+            "type": "string",
+            "required": false,
+            "helpText": "What you plan to accomplish during this focus session"
+          }
+        ],
+        "sample": {
+          "success": true,
+          "message": "Focus session started",
+          "focus_mode_id": "fm_123",
+          "focus_mode_name": "Deep Work",
+          "started_at": "2024-01-15T09:00:00Z"
+        }
+      }
+    },
+    "complete_habit": {
+      "key": "complete_habit",
+      "noun": "Habit",
+      "display": {
+        "label": "Complete Habit",
+        "description": "Marks a habit as completed within a routine."
+      },
+      "operation": {
+        "perform": {
+          "url": "{{API_BASE_URL}}/external/v1/habit/complete",
+          "method": "POST",
+          "body": {
+            "habit_name": "{{bundle.inputData.habit_name}}",
+            "routine_name": "{{bundle.inputData.routine_name}}",
+            "duration_seconds": "{{bundle.inputData.duration_seconds}}"
+          }
+        },
+        "inputFields": [
+          {
+            "key": "habit_name",
+            "label": "Habit Name",
+            "type": "string",
+            "required": true,
+            "helpText": "The name of the habit to complete"
+          },
+          {
+            "key": "routine_name",
+            "label": "Routine Name",
+            "type": "string",
+            "required": false,
+            "choices": ["morning", "evening", "break"],
+            "helpText": "Optional routine name to disambiguate the habit"
+          },
+          {
+            "key": "duration_seconds",
+            "label": "Duration (seconds)",
+            "type": "integer",
+            "required": false,
+            "helpText": "How long the habit took to complete in seconds"
+          }
+        ],
+        "sample": {
+          "success": true,
+          "message": "Habit completed",
+          "habit_name": "Morning Meditation",
+          "routine_name": "morning",
+          "completed_at": "2024-01-15T07:15:00Z"
+        }
+      }
+    }
+  },
+  "searchOrCreates": {},
+  "searches": {},
+  "resources": {}
+}

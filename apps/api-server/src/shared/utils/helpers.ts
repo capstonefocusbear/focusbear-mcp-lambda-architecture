@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import { Logger } from '@nestjs/common';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
 import { NotifyLogsUploadSuccessDto } from '../../modules/app-logs/dto/notify-logs-upload-success.dto';
 
@@ -319,4 +320,49 @@ export function withTimeout<T>(
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
+}
+
+export interface TimedResult<T> {
+  result: T;
+  durationMs: number;
+}
+
+export interface TimedOptions {
+  operationName: string;
+  budgetMs: number;
+  logger: Logger;
+  context?: Record<string, unknown>;
+}
+
+export async function timed<T>(operation: () => Promise<T>, options: TimedOptions): Promise<TimedResult<T>> {
+  const { operationName, budgetMs, logger, context = {} } = options;
+  const startTime = Date.now();
+
+  const warnIfBudgetExceeded = (durationMs: number, error?: unknown) => {
+    if (durationMs <= budgetMs) return;
+
+    const suffix = error ? ' (failed)' : '';
+    logger.warn(
+      {
+        operationName,
+        budgetMs,
+        actualMs: durationMs,
+        exceededByMs: durationMs - budgetMs,
+        ...(error && { error: error instanceof Error ? error.message : String(error) }),
+        ...context,
+      },
+      `Performance budget exceeded for ${operationName}${suffix}: ${durationMs}ms (budget: ${budgetMs}ms)`,
+    );
+  };
+
+  try {
+    const result = await operation();
+    const durationMs = Date.now() - startTime;
+    warnIfBudgetExceeded(durationMs);
+    return { result, durationMs };
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    warnIfBudgetExceeded(durationMs, error);
+    throw error;
+  }
 }

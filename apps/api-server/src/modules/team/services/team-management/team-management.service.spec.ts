@@ -1665,8 +1665,81 @@ describe('TeamManagementService', () => {
       created_by: adminId,
     };
 
+    const setupJoinTeamTransactionMocks = ({
+      codeRecord = validCodeRecord,
+      team = TeamWithMembersDummy,
+      existingMember = null,
+      membersCount = 1,
+      insertIdentifiers = [{ id: randomUUID() }],
+      updateAffected = 1,
+    }: {
+      codeRecord?: any;
+      team?: any;
+      existingMember?: any;
+      membersCount?: number;
+      insertIdentifiers?: any[];
+      updateAffected?: number;
+    } = {}) => {
+      const joinCodeQueryBuilder = {
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(codeRecord),
+      };
+      const teamQueryBuilder = {
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(team),
+      };
+      const insertQueryBuilder = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orIgnore: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ identifiers: insertIdentifiers }),
+      };
+      const updateQueryBuilder = {
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: updateAffected }),
+      };
+      const teamToMemberOrm = {
+        findOne: jest.fn().mockResolvedValue(existingMember),
+        count: jest.fn().mockResolvedValue(membersCount),
+      };
+
+      const manager = {
+        createQueryBuilder: jest
+          .fn()
+          .mockReturnValueOnce(joinCodeQueryBuilder)
+          .mockReturnValueOnce(teamQueryBuilder)
+          .mockReturnValueOnce(insertQueryBuilder)
+          .mockReturnValueOnce(updateQueryBuilder),
+        getRepository: jest.fn().mockImplementation((entity) => {
+          if (entity === TeamToMember) {
+            return teamToMemberOrm;
+          }
+          throw new Error(`Unexpected entity: ${entity}`);
+        }),
+      };
+
+      (TeamJoinCodeRepositoryMock.orm as any).manager = {
+        transaction: jest.fn().mockImplementationOnce(async (callback) => callback(manager)),
+      };
+
+      return {
+        manager,
+        joinCodeQueryBuilder,
+        teamQueryBuilder,
+        insertQueryBuilder,
+        updateQueryBuilder,
+        teamToMemberOrm,
+      };
+    };
+
     it('negative: if join code does not exist, throw NotFoundException', async () => {
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      setupJoinTeamTransactionMocks({ codeRecord: null });
 
       let exception: any;
       try {
@@ -1681,7 +1754,7 @@ describe('TeamManagementService', () => {
     });
 
     it('negative: if join code is deactivated, throw BadRequestException', async () => {
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...validCodeRecord, is_active: false });
+      setupJoinTeamTransactionMocks({ codeRecord: { ...validCodeRecord, is_active: false } });
 
       let exception: any;
       try {
@@ -1696,9 +1769,11 @@ describe('TeamManagementService', () => {
     });
 
     it('negative: if join code has expired, throw BadRequestException', async () => {
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...validCodeRecord,
-        expires_at: new Date('2020-01-01'),
+      setupJoinTeamTransactionMocks({
+        codeRecord: {
+          ...validCodeRecord,
+          expires_at: new Date('2020-01-01'),
+        },
       });
 
       let exception: any;
@@ -1714,10 +1789,12 @@ describe('TeamManagementService', () => {
     });
 
     it('negative: if join code has reached max redemptions, throw BadRequestException', async () => {
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...validCodeRecord,
-        max_redemptions: 1,
-        redemption_count: 1,
+      setupJoinTeamTransactionMocks({
+        codeRecord: {
+          ...validCodeRecord,
+          max_redemptions: 1,
+          redemption_count: 1,
+        },
       });
 
       let exception: any;
@@ -1733,8 +1810,7 @@ describe('TeamManagementService', () => {
     });
 
     it('negative: if team does not exist, throw NotFoundException with "Team not found"', async () => {
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      setupJoinTeamTransactionMocks({ team: null });
 
       let exception: any;
       try {
@@ -1749,10 +1825,11 @@ describe('TeamManagementService', () => {
     });
 
     it('negative: if team is expired, throw NotFoundException with "Team not found"', async () => {
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...TeamWithMembersDummy,
-        expires_date: new Date('2020-01-01'),
+      setupJoinTeamTransactionMocks({
+        team: {
+          ...TeamWithMembersDummy,
+          expires_date: new Date('2020-01-01'),
+        },
       });
 
       let exception: any;
@@ -1768,9 +1845,7 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: if user is already a member, return 200 idempotent response', async () => {
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamMemberDummy);
+      const { manager } = setupJoinTeamTransactionMocks({ existingMember: TeamMemberDummy });
 
       const result = await teamManagementService.joinTeam(TeamMemberDummy.member_id, validJoinCode);
 
@@ -1778,8 +1853,7 @@ describe('TeamManagementService', () => {
         message: 'User is already a member of this team',
         statusCode: 200,
       });
-      // Should NOT create a new member record
-      expect(TeamToMemberRepositoryMock.orm.create).not.toHaveBeenCalled();
+      expect(manager.createQueryBuilder).toHaveBeenCalledTimes(2);
     });
 
     it('negative: if team has reached its member limit, throw BadRequestException', async () => {
@@ -1787,10 +1861,7 @@ describe('TeamManagementService', () => {
         ...TeamWithMembersDummy,
         team_size_limit: 2,
       };
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(fullTeam);
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([TeamMemberDummy, TeamMemberFake]);
+      setupJoinTeamTransactionMocks({ team: fullTeam, existingMember: null, membersCount: 2 });
 
       let exception: any;
       try {
@@ -1809,11 +1880,11 @@ describe('TeamManagementService', () => {
         ...TeamWithMembersDummy,
         team_size_limit: 10,
       };
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(teamWithCapacity);
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([TeamMemberDummy]);
-      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+      const { insertQueryBuilder, updateQueryBuilder } = setupJoinTeamTransactionMocks({
+        team: teamWithCapacity,
+        existingMember: null,
+        membersCount: 1,
+      });
 
       const result = await teamManagementService.joinTeam(userId, validJoinCode);
 
@@ -1824,7 +1895,7 @@ describe('TeamManagementService', () => {
         statusCode: 201,
       });
 
-      expect(TeamToMemberRepositoryMock.orm.create).toHaveBeenCalledWith({
+      expect(insertQueryBuilder.values).toHaveBeenCalledWith({
         team_id: TeamWithMembersDummy.id,
         member_id: userId,
         member_expiry_date: teamWithCapacity.expires_date,
@@ -1834,12 +1905,7 @@ describe('TeamManagementService', () => {
         invitation_responded_at: null,
       });
 
-      expect(TeamToMemberRepositoryMock.orm.save).toHaveBeenCalled();
-
-      // Verify join code redemption count was incremented
-      expect(TeamJoinCodeRepositoryMock.orm.save).toHaveBeenCalledWith(
-        expect.objectContaining({ redemption_count: 1 }),
-      );
+      expect(updateQueryBuilder.execute).toHaveBeenCalled();
 
       expect(RevenueCatServiceMock.grantTeamMembership).toHaveBeenCalledWith(
         userId,
@@ -1853,11 +1919,7 @@ describe('TeamManagementService', () => {
         ...TeamWithMembersDummy,
         team_size_limit: null,
       };
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(teamNoLimit);
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([TeamMemberDummy]);
-      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+      setupJoinTeamTransactionMocks({ team: teamNoLimit, existingMember: null, membersCount: 1 });
 
       const result = await teamManagementService.joinTeam(userId, validJoinCode);
 
@@ -1871,15 +1933,15 @@ describe('TeamManagementService', () => {
         expires_date: null,
         team_size_limit: 10,
       };
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(teamNoExpiry);
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([]);
-      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+      const { insertQueryBuilder } = setupJoinTeamTransactionMocks({
+        team: teamNoExpiry,
+        existingMember: null,
+        membersCount: 0,
+      });
 
       await teamManagementService.joinTeam(userId, validJoinCode);
 
-      expect(TeamToMemberRepositoryMock.orm.create).toHaveBeenCalledWith(
+      expect(insertQueryBuilder.values).toHaveBeenCalledWith(
         expect.objectContaining({
           member_expiry_date: null,
         }),
@@ -1891,17 +1953,38 @@ describe('TeamManagementService', () => {
         ...TeamWithMembersDummy,
         team_size_limit: 10,
       };
-      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(validCodeRecord);
-      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(teamWithCapacity);
-      TeamToMemberRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      TeamRepositoryMock.getTeamMembersIncludingUnregistered.mockResolvedValueOnce([TeamMemberDummy]);
-      TeamToMemberRepositoryMock.orm.create.mockImplementation((args) => args);
+      setupJoinTeamTransactionMocks({ team: teamWithCapacity, existingMember: null, membersCount: 1 });
       RevenueCatServiceMock.grantTeamMembership.mockRejectedValueOnce(new Error('RevenueCat API error'));
 
       const result = await teamManagementService.joinTeam(userId, validJoinCode);
 
       expect(result.statusCode).toBe(201);
       expect(SentryServiceMock.instance().captureException).toHaveBeenCalled();
+    });
+
+    it('negative: if redemption increment fails due concurrent limit hit, throw BadRequestException and rollback insert', async () => {
+      const teamWithCapacity = {
+        ...TeamWithMembersDummy,
+        team_size_limit: 10,
+      };
+      setupJoinTeamTransactionMocks({
+        team: teamWithCapacity,
+        existingMember: null,
+        membersCount: 1,
+        updateAffected: 0,
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('This join code has reached its maximum number of redemptions');
+      expect(RevenueCatServiceMock.grantTeamMembership).not.toHaveBeenCalled();
     });
   });
 

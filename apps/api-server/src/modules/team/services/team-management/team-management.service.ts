@@ -6,7 +6,7 @@ import { SendGridService } from '@app/send-grid';
 import { JwtService } from '@app/jwt';
 import { StripeService } from '@app/stripe';
 import { StripeEvents } from '@app/stripe/model/stripe-events.enum';
-import { In } from 'typeorm';
+import { In, QueryFailedError } from 'typeorm';
 import { Auth0ManagementService } from '@app/auth0';
 import { DateTime } from 'luxon';
 import { randomBytes } from 'crypto';
@@ -608,94 +608,123 @@ export class TeamManagementService {
   }
 
   async joinTeam(userId: string, joinCode: string) {
-    // 1. Look up the join code
-    const codeRecord = await this.teamJoinCodeRepository.orm.findOne({ where: { code: joinCode } });
-    if (!codeRecord) {
-      throw new NotFoundException('Invalid join code');
-    }
+    try {
+      const result = await this.teamJoinCodeRepository.orm.manager.transaction(async (manager) => {
+        const codeRecord = await manager
+          .createQueryBuilder(TeamJoinCode, 'join_code')
+          .setLock('pessimistic_write')
+          .where('join_code.code = :joinCode', { joinCode })
+          .getOne();
+        if (!codeRecord) {
+          throw new NotFoundException('Invalid join code');
+        }
 
-    // 2. Validate the join code is active and not expired
-    if (!codeRecord.is_active) {
-      throw new BadRequestException('This join code has been deactivated');
-    }
-    if (codeRecord.expires_at && new Date(codeRecord.expires_at) < new Date()) {
-      throw new BadRequestException('This join code has expired');
-    }
-    if (codeRecord.max_redemptions !== null && codeRecord.redemption_count >= codeRecord.max_redemptions) {
-      throw new BadRequestException('This join code has reached its maximum number of redemptions');
-    }
+        if (!codeRecord.is_active) {
+          throw new BadRequestException('This join code has been deactivated');
+        }
+        if (codeRecord.expires_at && new Date(codeRecord.expires_at) < new Date()) {
+          throw new BadRequestException('This join code has expired');
+        }
+        if (codeRecord.max_redemptions !== null && codeRecord.redemption_count >= codeRecord.max_redemptions) {
+          throw new BadRequestException('This join code has reached its maximum number of redemptions');
+        }
 
-    // 3. Look up the team
-    const team = await this.teamRepository.orm.findOne({ where: { id: codeRecord.team_id } });
-    if (!team) {
-      throw new NotFoundException('Team not found');
+        const team = await manager
+          .createQueryBuilder(Team, 'team')
+          .setLock('pessimistic_write')
+          .where('team.id = :teamId', { teamId: codeRecord.team_id })
+          .getOne();
+        if (!team) {
+          throw new NotFoundException('Team not found');
+        }
+        if (team.expires_date && new Date(team.expires_date) < new Date()) {
+          throw new NotFoundException('Team not found');
+        }
+
+        const teamToMemberOrm = manager.getRepository(TeamToMember);
+
+        const existingMember = await teamToMemberOrm.findOne({
+          where: { team_id: codeRecord.team_id, member_id: userId },
+        });
+        if (existingMember) {
+          return { message: 'User is already a member of this team', statusCode: 200 };
+        }
+
+        const membersCount = await teamToMemberOrm.count({ where: { team_id: codeRecord.team_id } });
+        if (team.team_size_limit && membersCount >= team.team_size_limit) {
+          throw new BadRequestException('Team has reached its member limit');
+        }
+
+        // INSERT ... ON CONFLICT DO NOTHING to keep concurrent same-user joins idempotent.
+        const insertResult = await manager
+          .createQueryBuilder()
+          .insert()
+          .into(TeamToMember)
+          .values({
+            team_id: codeRecord.team_id,
+            member_id: userId,
+            member_expiry_date: team.expires_date ? (team.expires_date as Date) : null,
+            invitation_status: InvitationStatus.ACCEPTED,
+            invitation_sent_at: null,
+            invitation_send_count: 0,
+            invitation_responded_at: null,
+          })
+          .orIgnore()
+          .execute();
+        const isMemberInserted = insertResult.identifiers.length > 0;
+        if (!isMemberInserted) {
+          return { message: 'User is already a member of this team', statusCode: 200 };
+        }
+
+        const updateResult = await manager
+          .createQueryBuilder()
+          .update(TeamJoinCode)
+          .set({ redemption_count: () => 'redemption_count + 1' })
+          .where('id = :id', { id: codeRecord.id })
+          .andWhere('(max_redemptions IS NULL OR redemption_count < max_redemptions)')
+          .execute();
+        if (updateResult.affected === 0) {
+          throw new BadRequestException('This join code has reached its maximum number of redemptions');
+        }
+
+        return {
+          message: 'Successfully joined team',
+          team_id: codeRecord.team_id,
+          team_name: team.name,
+          team,
+          statusCode: 201,
+          teamSize: membersCount + 1,
+        };
+      });
+
+      if (result.statusCode === 200) {
+        return result;
+      }
+
+      const [entitlementResult, syncResult] = await Promise.allSettled([
+        this.revenueCatService.grantTeamMembership(userId, Entitlement.team_member, result.team.expires_date),
+        this.syncTeamSizeWithSubscription(result.team, result.teamSize),
+      ]);
+
+      if (entitlementResult.status === 'rejected') {
+        this.sentryService.instance().captureException(entitlementResult.reason, { level: 'error' });
+      }
+      if (syncResult.status === 'rejected') {
+        this.sentryService.instance().captureException(syncResult.reason, { level: 'error' });
+      }
+
+      return {
+        message: result.message,
+        team_id: result.team_id,
+        team_name: result.team_name,
+        statusCode: result.statusCode,
+      };
+    } catch (error) {
+      if (this.isDuplicateTeamMemberError(error)) {
+        return { message: 'User is already a member of this team', statusCode: 200 };
+      }
+      throw error;
     }
-
-    // 4. Check if team is expired
-    if (team.expires_date && new Date(team.expires_date) < new Date()) {
-      throw new NotFoundException('Team not found');
-    }
-
-    // 5. Check existing membership (idempotent - return early if already a member)
-    const existingMember = await this.teamToMemberRepository.orm.findOne({
-      where: { team_id: codeRecord.team_id, member_id: userId },
-    });
-    if (existingMember) {
-      return { message: 'User is already a member of this team', statusCode: 200 };
-    }
-
-    // 6. Check team capacity
-    const members = await this.teamRepository.getTeamMembersIncludingUnregistered(codeRecord.team_id);
-    if (team.team_size_limit && members.length >= team.team_size_limit) {
-      throw new BadRequestException('Team has reached its member limit');
-    }
-
-    // 7. Add member as standard member with accepted status
-    const newMember = this.teamToMemberRepository.orm.create({
-      team_id: codeRecord.team_id,
-      member_id: userId,
-      member_expiry_date: team.expires_date ? (team.expires_date as Date) : null,
-      invitation_status: InvitationStatus.ACCEPTED,
-      invitation_sent_at: null,
-      invitation_send_count: 0,
-      invitation_responded_at: null,
-    });
-    await this.teamToMemberRepository.orm.save(newMember);
-
-    // 8. Atomically increment redemption count on the join code
-    const updateResult = await this.teamJoinCodeRepository.orm
-      .createQueryBuilder()
-      .update()
-      .set({ redemption_count: () => 'redemption_count + 1' })
-      .where('id = :id', { id: codeRecord.id })
-      .andWhere('(max_redemptions IS NULL OR redemption_count < max_redemptions)')
-      .execute();
-
-    // If no rows were updated, the code hit its limit between our check and now
-    if (updateResult.affected === 0) {
-      throw new BadRequestException('This join code has reached its maximum number of redemptions');
-    }
-
-    // 9. Grant team membership entitlement and update team size
-    const [entitlementResult, syncResult] = await Promise.allSettled([
-      this.revenueCatService.grantTeamMembership(userId, Entitlement.team_member, team.expires_date),
-      this.syncTeamSizeWithSubscription(team, members.length + 1),
-    ]);
-
-    // Log failures but don't fail the request (member record is already saved)
-    if (entitlementResult.status === 'rejected') {
-      this.sentryService.instance().captureException(entitlementResult.reason, { level: 'error' });
-    }
-    if (syncResult.status === 'rejected') {
-      this.sentryService.instance().captureException(syncResult.reason, { level: 'error' });
-    }
-
-    return {
-      message: 'Successfully joined team',
-      team_id: codeRecord.team_id,
-      team_name: team.name,
-      statusCode: 201,
-    };
   }
 
   async createJoinCode(adminId: string, dto: CreateJoinCodeDto): Promise<TeamJoinCode> {
@@ -763,6 +792,14 @@ export class TeamManagementService {
 
   private generateJoinCode(): string {
     return randomBytes(6).toString('base64url').substring(0, 8).toUpperCase();
+  }
+
+  private isDuplicateTeamMemberError(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+    const driverError = error.driverError as { code?: string; constraint?: string } | undefined;
+    return driverError?.code === '23505' && driverError.constraint === 'IDX_team_to_member_team_id_member_id_unique';
   }
 
   async syncTeamSizeWithSubscription(team: Team, teamSize: number) {

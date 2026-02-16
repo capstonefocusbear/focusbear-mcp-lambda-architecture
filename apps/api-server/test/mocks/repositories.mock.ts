@@ -9,6 +9,10 @@ export const BaseRepositoryMock = {
     findOneBy: jest.fn(),
     insert: jest.fn(),
     create: jest.fn(),
+    createQueryBuilder: jest.fn(),
+    manager: {
+      transaction: jest.fn(),
+    },
     // ... rest methods can be added on demand
   },
   create: jest.fn(),

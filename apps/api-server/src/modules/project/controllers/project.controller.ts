@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -15,8 +15,9 @@ import { GetProjectParamsDto } from '../dto/get-project-params.dto';
 import { RemoveProjectMemberParamsDto } from '../dto/remove-project-member-params.dto';
 import { AcceptInvitationParamsDto } from '../dto/accept-invitation-params.dto';
 import { ProjectResponseDto } from '../dto/project-response.dto';
-import { ProjectListResponseDto } from '../dto/project-list-response.dto';
 import { ProjectMemberResponseDto } from '../dto/project-member-response.dto';
+import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
+import { PaginationDto } from '../../../shared/pagination/index.dto';
 
 @Controller('projects')
 @ApiTags('projects')
@@ -31,8 +32,11 @@ export class ProjectController {
   }
 
   @Get()
-  async getUserProjects(@AuthContext() { user }: Passport): Promise<ProjectListResponseDto> {
-    return this.projectService.getUserProjects(user.id);
+  async getUserProjects(
+    @Query() queryDto: GetProjectsQueryDto,
+    @AuthContext() { user }: Passport,
+  ): Promise<PaginationDto<ProjectResponseDto>> {
+    return this.projectService.getUserProjects(user.id, queryDto);
   }
 
   @Get('invitations/pending')

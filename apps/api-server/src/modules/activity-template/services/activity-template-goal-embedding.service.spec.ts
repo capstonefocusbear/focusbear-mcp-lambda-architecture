@@ -6,6 +6,7 @@ describe(ActivityTemplateGoalEmbeddingService.name, () => {
   let service: ActivityTemplateGoalEmbeddingService;
   const openAIServiceMock = {
     createEmbedding: jest.fn(),
+    createEmbeddings: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -21,6 +22,7 @@ describe(ActivityTemplateGoalEmbeddingService.name, () => {
 
     service = module.get(ActivityTemplateGoalEmbeddingService);
     openAIServiceMock.createEmbedding.mockReset();
+    openAIServiceMock.createEmbeddings.mockReset();
   });
 
   it('returns OpenAI embedding for trimmed user goal', async () => {
@@ -54,5 +56,20 @@ describe(ActivityTemplateGoalEmbeddingService.name, () => {
 
     expect(openAIServiceMock.createEmbedding).not.toHaveBeenCalled();
     expect(result).toEqual([]);
+  });
+
+  it('returns ordered embeddings for batched goals', async () => {
+    openAIServiceMock.createEmbeddings.mockResolvedValueOnce([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
+
+    const result = await service.generateEmbeddings(['First', 'Second']);
+
+    expect(openAIServiceMock.createEmbeddings).toHaveBeenCalledWith(['First', 'Second']);
+    expect(result).toEqual([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
   });
 });

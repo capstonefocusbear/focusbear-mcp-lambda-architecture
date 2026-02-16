@@ -179,7 +179,7 @@ describe('OpenAIService', () => {
       const result = await service.createEmbedding(goal);
 
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-        input: goal,
+        input: [goal],
         model: DEFAULT_EMBEDDING_MODEL,
       });
       expect(result).toEqual(expectedEmbedding);
@@ -191,6 +191,68 @@ describe('OpenAIService', () => {
       const result = await service.createEmbedding('No result');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('createEmbeddings', () => {
+    it('returns all embedding vectors in order', async () => {
+      const first = [0.1, 0.2];
+      const second = [0.3, 0.4];
+      mockEmbeddingsCreate.mockResolvedValueOnce({
+        data: [
+          { embedding: first, index: 0 },
+          { embedding: second, index: 1 },
+        ],
+      });
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+        input: ['first', 'second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(result).toEqual([first, second]);
+    });
+
+    it('orders embeddings by response index when response order differs', async () => {
+      const first = [0.1, 0.2];
+      const second = [0.3, 0.4];
+      mockEmbeddingsCreate.mockResolvedValueOnce({
+        data: [
+          { embedding: second, index: 1 },
+          { embedding: first, index: 0 },
+        ],
+      });
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(result).toEqual([first, second]);
+    });
+
+    it('falls back to per-input embedding calls when batch call fails', async () => {
+      const first = [0.1, 0.2];
+      mockEmbeddingsCreate
+        .mockRejectedValueOnce(new Error('batch failed'))
+        .mockResolvedValueOnce({
+          data: [{ embedding: first, index: 0 }],
+        })
+        .mockRejectedValueOnce(new Error('second failed'));
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(1, {
+        input: ['first', 'second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(2, {
+        input: ['first'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(3, {
+        input: ['second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(result).toEqual([first, []]);
     });
   });
 
@@ -351,6 +413,53 @@ describe('OpenAIService', () => {
         'Baby mattresses and changepads',
         dto.current_tasks,
         'en',
+        undefined,
+      );
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+      getMetadataSpy.mockRestore();
+    });
+
+    it('should pass currentTaskInToDoPlayer to suggestTaskForUrl when provided', async () => {
+      const getMetadataSpy = jest.spyOn<any, any>(service as any, 'getMetadata').mockResolvedValueOnce({
+        title: 'Sign Document',
+        description: 'Electronic signature service',
+      });
+
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.4,"reason":"Not aligned"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForUrl').mockResolvedValueOnce({
+        task_name: 'sign documents',
+        task_id: 'suggested-123',
+      });
+
+      const dto = {
+        url: 'https://sign.zoho.com/signrequest',
+        meta_description: 'Electronic signature',
+        tab_title: 'Sign Document',
+        focus_mode: 'Deep Work',
+        intention: 'review actions',
+        currentTaskInToDoPlayer: 'aws infra for BearlyMail',
+        current_tasks: [
+          { task_name: 'aws infra for BearlyMail', task_id: 'task-aws-123' },
+          { task_name: 'Code review', task_id: 'task-review-456' },
+        ],
+        language: 'en',
+      };
+
+      await service.checkIfUrlIsSafeToUse(dto, 'en');
+
+      expect(suggestTaskSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        dto.current_tasks,
+        'en',
+        'aws infra for BearlyMail',
       );
       completionsSpy.mockRestore();
       suggestTaskSpy.mockRestore();
@@ -993,7 +1102,39 @@ describe('OpenAIService', () => {
       expect(result.allowed_probability).toBe(0.6);
       expect(result.suggested_task).toBe('coding project');
       expect(result.suggested_task_id).toBe('task-789');
-      expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en');
+      expect(suggestTaskSpy).toHaveBeenCalledWith('Visual Studio Code', 'work', dto.current_tasks, 'en', undefined);
+      completionsSpy.mockRestore();
+      suggestTaskSpy.mockRestore();
+    });
+
+    it('should pass currentTaskInToDoPlayer to suggestTaskForApp when provided', async () => {
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.5,"reason":"Low alignment"}' } }],
+        });
+
+      const suggestTaskSpy = jest.spyOn<any, any>(service as any, 'suggestTaskForApp').mockResolvedValueOnce({
+        task_name: 'check team comms',
+        task_id: 'task-comms-123',
+      });
+
+      const dto = {
+        focusMode: 'work',
+        intention: 'communication',
+        appName: 'Slack',
+        currentTaskInToDoPlayer: 'check team comms',
+        current_tasks: [
+          { task_name: 'check team comms', task_id: 'task-comms-123' },
+          { task_name: 'Code review', task_id: 'task-review-456' },
+        ],
+        language: 'en',
+      };
+
+      const result = await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      expect(result.allowed_probability).toBe(0.5);
+      expect(suggestTaskSpy).toHaveBeenCalledWith('Slack', 'work', dto.current_tasks, 'en', 'check team comms');
       completionsSpy.mockRestore();
       suggestTaskSpy.mockRestore();
     });
@@ -1048,6 +1189,33 @@ describe('OpenAIService', () => {
       const [messages] = completionsSpy.mock.calls[0];
       const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
       expect(promptContent).toContain(JSON.stringify(dto.current_tasks));
+      completionsSpy.mockRestore();
+    });
+
+    it('should pass lastFiveJustificationsInThisFocusSession to the app safety prompt', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(
+        () => 'App prompt {{appName}} {{lastFiveJustificationsInThisFocusSession}}',
+      );
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.6,"reason":"ok"}' } }],
+        });
+
+      const recentJustifications = ['Checked deployment notes', 'Reviewed onboarding SOP'];
+      const dto = {
+        focusMode: 'work',
+        intention: 'deployment',
+        appName: 'Microsoft Word',
+        lastFiveJustificationsInThisFocusSession: recentJustifications,
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+      expect(promptContent).toContain(JSON.stringify(recentJustifications));
       completionsSpy.mockRestore();
     });
   }); // Properly closing checkIfAppIsSafeToUse describe block

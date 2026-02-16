@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddUserJobDetailsAndTypicalDistractions1768435989000 implements MigrationInterface {
+export class AddUserJobDetailsAndTypicalDistractions20260115001309 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "users"

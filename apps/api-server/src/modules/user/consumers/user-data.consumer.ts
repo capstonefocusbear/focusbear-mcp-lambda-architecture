@@ -43,6 +43,7 @@ export class UserPersonalDataConsumer {
       });
       const userFocusBearData = await this.userRepository.orm.findOne({
         where: { id: user_id },
+        relationLoadStrategy: 'query',
         relations: [
           'devices',
           'activities',

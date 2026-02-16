@@ -90,6 +90,7 @@ export class TeamManagementController {
   }
 
   @Post('/join-codes')
+  @UseGuards(HasTeamSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   @ApiOperation({ summary: 'Create a join code for a team (unlimited or limited redemptions)' })
   @ApiResponse({ status: 201, description: 'Join code created' })
@@ -101,6 +102,7 @@ export class TeamManagementController {
   }
 
   @Post('/join-codes/batch')
+  @UseGuards(HasTeamSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   @ApiOperation({ summary: 'Create multiple single-use join codes for a team' })
   @ApiResponse({ status: 201, description: 'Batch join codes created' })
@@ -112,6 +114,7 @@ export class TeamManagementController {
   }
 
   @Get('/join-codes')
+  @UseGuards(HasTeamSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   @ApiOperation({ summary: 'List all join codes for a team' })
   async getJoinCodes(
@@ -123,6 +126,7 @@ export class TeamManagementController {
 
   @Delete('/join-codes')
   @HttpCode(204)
+  @UseGuards(HasTeamSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   @ApiOperation({ summary: 'Deactivate a join code' })
   async deactivateJoinCode(

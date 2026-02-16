@@ -662,11 +662,19 @@ export class TeamManagementService {
     });
     await this.teamToMemberRepository.orm.save(newMember);
 
-    // 8. Increment redemption count on the join code
-    await this.teamJoinCodeRepository.orm.save({
-      ...codeRecord,
-      redemption_count: codeRecord.redemption_count + 1,
-    });
+    // 8. Atomically increment redemption count on the join code
+    const updateResult = await this.teamJoinCodeRepository.orm
+      .createQueryBuilder()
+      .update()
+      .set({ redemption_count: () => 'redemption_count + 1' })
+      .where('id = :id', { id: codeRecord.id })
+      .andWhere('(max_redemptions IS NULL OR redemption_count < max_redemptions)')
+      .execute();
+
+    // If no rows were updated, the code hit its limit between our check and now
+    if (updateResult.affected === 0) {
+      throw new BadRequestException('This join code has reached its maximum number of redemptions');
+    }
 
     // 9. Grant team membership entitlement and update team size
     const [entitlementResult, syncResult] = await Promise.allSettled([

@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export const transaction = false;
 
-export class CreateTeamJoinCodesAndUniqueMemberConstraint1770350000000 implements MigrationInterface {
+export class CreateTeamJoinCodesAndUniqueMemberConstraint1771227545124 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "team_join_codes" (
@@ -21,10 +21,8 @@ export class CreateTeamJoinCodesAndUniqueMemberConstraint1770350000000 implement
       );
     `);
 
-    await queryRunner.query(`
-      CREATE UNIQUE INDEX "IDX_team_join_codes_code" ON "team_join_codes" ("code");
-      CREATE INDEX "IDX_team_join_codes_team_id" ON "team_join_codes" ("team_id");
-    `);
+    await queryRunner.query(`CREATE UNIQUE INDEX "IDX_team_join_codes_code" ON "team_join_codes" ("code")`);
+    await queryRunner.query(`CREATE INDEX "IDX_team_join_codes_team_id" ON "team_join_codes" ("team_id")`);
 
     // Add partial unique index on team_to_member to prevent duplicate memberships (race condition fix)
     // Only applies where member_id is not null (unregistered invited users can have null member_id)
@@ -36,11 +34,9 @@ export class CreateTeamJoinCodesAndUniqueMemberConstraint1770350000000 implement
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      DROP INDEX IF EXISTS "IDX_team_to_member_team_id_member_id_unique";
-      DROP INDEX IF EXISTS "IDX_team_join_codes_team_id";
-      DROP INDEX IF EXISTS "IDX_team_join_codes_code";
-      DROP TABLE IF EXISTS "team_join_codes";
-    `);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_team_to_member_team_id_member_id_unique"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_team_join_codes_team_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_team_join_codes_code"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "team_join_codes"`);
   }
 }

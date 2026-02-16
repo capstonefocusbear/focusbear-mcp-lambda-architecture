@@ -42,6 +42,7 @@ import { CalendarExcludedKeyword } from '../modules/calendar/entities/calendar-e
 import { Calendar } from '../modules/calendar/entities/calendar.entity';
 import { TeamToMember } from '../modules/team/entities/team-to-member.entity';
 import { TeamToAdmin } from '../modules/team/entities/team-to-admin.entity';
+import { TeamJoinCode } from '../modules/team/entities/team-join-code.entity';
 import { TrackEvent } from '../modules/events/entities/track-event.entity';
 import { Tutorial } from '../modules/activity/entities/tutorial.entity';
 import { Geofence } from '../modules/geofence/entities/geofence.entity';
@@ -120,6 +121,7 @@ export const typeormConfig = registerAs(
       Calendar,
       TeamToMember,
       TeamToAdmin,
+      TeamJoinCode,
       CalendarExcludedKeyword,
       Calendar,
       TrackEvent,

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsUUID, IsOptional, IsInt, Min, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsUUID, IsOptional, IsInt, Min, Max, IsDateString } from 'class-validator';
 
 export class CreateBatchJoinCodesDto {
   @IsNotEmpty()
@@ -8,6 +8,7 @@ export class CreateBatchJoinCodesDto {
   @IsNotEmpty()
   @IsInt()
   @Min(1)
+  @Max(100)
   count: number; // number of single-use codes to generate
 
   @IsOptional()

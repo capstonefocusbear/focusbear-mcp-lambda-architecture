@@ -6,9 +6,10 @@ import { SendGridService } from '@app/send-grid';
 import { JwtService } from '@app/jwt';
 import { StripeService } from '@app/stripe';
 import { StripeEvents } from '@app/stripe/model/stripe-events.enum';
-import { In } from 'typeorm';
+import { In, QueryFailedError } from 'typeorm';
 import { Auth0ManagementService } from '@app/auth0';
 import { DateTime } from 'luxon';
+import { randomBytes } from 'crypto';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { MemberInvitationPayload } from '../../domain/member-invitation-payload.mode';
 import { Team } from '../../entities/team.entity';
@@ -38,6 +39,10 @@ import { BulkDeleteDto } from '../../dto/bulk-delete.dto';
 import { AddTeamMemberDto } from '../../dto/add-team-member.dto';
 import { GetAllTeamMembersResponseDto } from '../../dto/get-all-team-members.dto';
 import { GetTeamMembersDetailsDto } from '../../dto/team-member-details.dto';
+import { TeamJoinCodeRepository } from '../../repositories/team-join-code.repository';
+import { TeamJoinCode } from '../../entities/team-join-code.entity';
+import { CreateJoinCodeDto } from '../../dto/create-join-code.dto';
+import { CreateBatchJoinCodesDto } from '../../dto/create-batch-join-codes.dto';
 
 /**
  * @TODO: Entitlement assign/revoke should use the `id` column only,
@@ -60,6 +65,7 @@ export class TeamManagementService {
     private readonly userDailyStatsService: UserDailyStatsService,
     private readonly dailyStatsRepository: DailyStatsRepository,
     private readonly deviceService: DeviceService,
+    private readonly teamJoinCodeRepository: TeamJoinCodeRepository,
   ) {}
 
   async bulkDeleteTeamMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<any> {
@@ -599,6 +605,216 @@ export class TeamManagementService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  async joinTeam(userId: string, joinCode: string) {
+    try {
+      const result = await this.teamJoinCodeRepository.orm.manager.transaction(async (manager) => {
+        const codeRecord = await manager
+          .createQueryBuilder(TeamJoinCode, 'join_code')
+          .setLock('pessimistic_write')
+          .where('join_code.code = :joinCode', { joinCode })
+          .getOne();
+        if (!codeRecord) {
+          throw new NotFoundException('Invalid join code');
+        }
+
+        if (!codeRecord.is_active) {
+          throw new BadRequestException('This join code has been deactivated');
+        }
+        if (codeRecord.expires_at && new Date(codeRecord.expires_at) < new Date()) {
+          throw new BadRequestException('This join code has expired');
+        }
+        if (codeRecord.max_redemptions !== null && codeRecord.redemption_count >= codeRecord.max_redemptions) {
+          throw new BadRequestException('This join code has reached its maximum number of redemptions');
+        }
+
+        const team = await manager
+          .createQueryBuilder(Team, 'team')
+          .setLock('pessimistic_write')
+          .where('team.id = :teamId', { teamId: codeRecord.team_id })
+          .getOne();
+        if (!team) {
+          throw new NotFoundException('Team not found');
+        }
+        if (team.expires_date && new Date(team.expires_date) < new Date()) {
+          throw new NotFoundException('Team not found');
+        }
+
+        const teamToMemberOrm = manager.getRepository(TeamToMember);
+
+        const existingMember = await teamToMemberOrm.findOne({
+          where: { team_id: codeRecord.team_id, member_id: userId },
+        });
+        if (existingMember) {
+          return { message: 'User is already a member of this team', statusCode: 200 };
+        }
+
+        const membersCount = await teamToMemberOrm.count({ where: { team_id: codeRecord.team_id } });
+        if (team.team_size_limit && membersCount >= team.team_size_limit) {
+          throw new BadRequestException('Team has reached its member limit');
+        }
+
+        // INSERT ... ON CONFLICT DO NOTHING to keep concurrent same-user joins idempotent.
+        const insertResult = await manager
+          .createQueryBuilder()
+          .insert()
+          .into(TeamToMember)
+          .values({
+            team_id: codeRecord.team_id,
+            member_id: userId,
+            member_expiry_date: team.expires_date ? (team.expires_date as Date) : null,
+            invitation_status: InvitationStatus.ACCEPTED,
+            invitation_sent_at: null,
+            invitation_send_count: 0,
+            invitation_responded_at: null,
+          })
+          .orIgnore()
+          .execute();
+        const isMemberInserted = insertResult.identifiers.length > 0;
+        if (!isMemberInserted) {
+          return { message: 'User is already a member of this team', statusCode: 200 };
+        }
+
+        const updateResult = await manager
+          .createQueryBuilder()
+          .update(TeamJoinCode)
+          .set({ redemption_count: () => 'redemption_count + 1' })
+          .where('id = :id', { id: codeRecord.id })
+          .andWhere('(max_redemptions IS NULL OR redemption_count < max_redemptions)')
+          .execute();
+        if (updateResult.affected === 0) {
+          throw new BadRequestException('This join code has reached its maximum number of redemptions');
+        }
+
+        return {
+          message: 'Successfully joined team',
+          team_id: codeRecord.team_id,
+          team_name: team.name,
+          team,
+          statusCode: 201,
+          teamSize: membersCount + 1,
+        };
+      });
+
+      if (result.statusCode === 200) {
+        return result;
+      }
+
+      const [entitlementResult, syncResult] = await Promise.allSettled([
+        this.revenueCatService.grantTeamMembership(userId, Entitlement.team_member, result.team.expires_date),
+        this.syncTeamSizeWithSubscription(result.team, result.teamSize),
+      ]);
+
+      if (entitlementResult.status === 'rejected') {
+        this.sentryService.instance().captureException(entitlementResult.reason, { level: 'error' });
+      }
+      if (syncResult.status === 'rejected') {
+        this.sentryService.instance().captureException(syncResult.reason, { level: 'error' });
+      }
+
+      return {
+        message: result.message,
+        team_id: result.team_id,
+        team_name: result.team_name,
+        statusCode: result.statusCode,
+      };
+    } catch (error) {
+      if (this.isDuplicateTeamMemberError(error)) {
+        return { message: 'User is already a member of this team', statusCode: 200 };
+      }
+      throw error;
+    }
+  }
+
+  async createJoinCode(adminId: string, dto: CreateJoinCodeDto): Promise<TeamJoinCode> {
+    const team = await this.validateTeam(dto.team_id);
+    const { admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+    this.validateMemberAction(admins, adminId);
+    const expiresAt = this.parseAndValidateJoinCodeExpiry(dto.expires_at);
+
+    const code = this.generateJoinCode();
+    const joinCode = this.teamJoinCodeRepository.orm.create({
+      team_id: dto.team_id,
+      code,
+      is_active: true,
+      max_redemptions: dto.max_redemptions ?? null,
+      redemption_count: 0,
+      expires_at: expiresAt,
+      created_by: adminId,
+    });
+
+    return this.teamJoinCodeRepository.orm.save(joinCode);
+  }
+
+  async createBatchJoinCodes(adminId: string, dto: CreateBatchJoinCodesDto): Promise<TeamJoinCode[]> {
+    const team = await this.validateTeam(dto.team_id);
+    const { admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+    this.validateMemberAction(admins, adminId);
+    const expiresAt = this.parseAndValidateJoinCodeExpiry(dto.expires_at);
+
+    const codes: TeamJoinCode[] = [];
+    for (let i = 0; i < dto.count; i++) {
+      const code = this.generateJoinCode();
+      const joinCode = this.teamJoinCodeRepository.orm.create({
+        team_id: dto.team_id,
+        code,
+        is_active: true,
+        max_redemptions: 1, // batch codes are always single-use
+        redemption_count: 0,
+        expires_at: expiresAt,
+        created_by: adminId,
+      });
+      codes.push(joinCode);
+    }
+
+    return this.teamJoinCodeRepository.orm.save(codes);
+  }
+
+  async getJoinCodes(adminId: string, teamId: string): Promise<TeamJoinCode[]> {
+    const team = await this.validateTeam(teamId);
+    const { admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+    this.validateMemberAction(admins, adminId);
+
+    return this.teamJoinCodeRepository.orm.find({ where: { team_id: teamId } });
+  }
+
+  async deactivateJoinCode(adminId: string, codeId: string): Promise<void> {
+    const joinCode = await this.teamJoinCodeRepository.orm.findOne({ where: { id: codeId } });
+    if (!joinCode) {
+      throw new NotFoundException('Join code not found');
+    }
+
+    const team = await this.validateTeam(joinCode.team_id);
+    const { admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+    this.validateMemberAction(admins, adminId);
+
+    await this.teamJoinCodeRepository.orm.save({ ...joinCode, is_active: false });
+  }
+
+  private generateJoinCode(): string {
+    return randomBytes(6).toString('base64url').substring(0, 8).toUpperCase();
+  }
+
+  private parseAndValidateJoinCodeExpiry(expiresAt?: string): Date | null {
+    if (!expiresAt) {
+      return null;
+    }
+
+    const parsedExpiry = new Date(expiresAt);
+    if (parsedExpiry <= new Date()) {
+      throw new BadRequestException('Join code expiration must be in the future');
+    }
+
+    return parsedExpiry;
+  }
+
+  private isDuplicateTeamMemberError(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+    const driverError = error.driverError as { code?: string; constraint?: string } | undefined;
+    return driverError?.code === '23505' && driverError.constraint === 'IDX_team_to_member_team_id_member_id_unique';
   }
 
   async syncTeamSizeWithSubscription(team: Team, teamSize: number) {

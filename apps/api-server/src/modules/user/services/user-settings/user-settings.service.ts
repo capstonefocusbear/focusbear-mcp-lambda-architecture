@@ -322,28 +322,27 @@ export class UserSettingsService {
         this.userService.clearVerboseLoggingCache(user_id);
       }
       if (should_update_has_edited_settings) {
-        const timedPusherBroadcast = timed(() => this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id), {
-          operationName: 'pusher_broadcast',
-          budgetMs: PERFORMANCE_BUDGETS.PUSHER_BROADCAST,
-          logger: this.logger,
-          context: { user_id, device_id },
-        });
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
-          timedPusherBroadcast,
+          timed(() => this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id), {
+            operationName: 'pusher_broadcast',
+            budgetMs: PERFORMANCE_BUDGETS.PUSHER_BROADCAST,
+            logger: this.logger,
+            context: { user_id, device_id },
+          }).then(() => undefined),
         ]);
       }
 
       const totalDurationMs = Date.now() - methodStartTime;
       if (totalDurationMs > PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS) {
         this.logger.warn(
-          `Performance budget exceeded for updateSettings total: ${totalDurationMs}ms (budget: ${PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS}ms)`,
           {
             operationName: 'updateSettings_total',
             budgetMs: PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS,
             actualMs: totalDurationMs,
             user_id,
           },
+          `Performance budget exceeded for updateSettings total: ${totalDurationMs}ms (budget: ${PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS}ms)`,
         );
       }
 

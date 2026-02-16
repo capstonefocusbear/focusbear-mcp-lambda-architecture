@@ -331,40 +331,38 @@ export interface TimedOptions {
   operationName: string;
   budgetMs: number;
   logger: Logger;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export async function timed<T>(operation: () => Promise<T>, options: TimedOptions): Promise<TimedResult<T>> {
   const { operationName, budgetMs, logger, context = {} } = options;
   const startTime = Date.now();
-  let error: unknown;
-  let result: T;
+
+  const warnIfBudgetExceeded = (durationMs: number, error?: unknown) => {
+    if (durationMs <= budgetMs) return;
+
+    const suffix = error ? ' (failed)' : '';
+    logger.warn(
+      {
+        operationName,
+        budgetMs,
+        actualMs: durationMs,
+        exceededByMs: durationMs - budgetMs,
+        ...(error && { error: error instanceof Error ? error.message : String(error) }),
+        ...context,
+      },
+      `Performance budget exceeded for ${operationName}${suffix}: ${durationMs}ms (budget: ${budgetMs}ms)`,
+    );
+  };
 
   try {
-    result = await operation();
-  } catch (e) {
-    error = e;
-  }
-
-  // Calculate duration once, after operation completes (success or failure)
-  const durationMs = Date.now() - startTime;
-
-  if (durationMs > budgetMs) {
-    const suffix = error ? ' (failed)' : '';
-    logger.warn(`Performance budget exceeded for ${operationName}${suffix}: ${durationMs}ms (budget: ${budgetMs}ms)`, {
-      operationName,
-      budgetMs,
-      actualMs: durationMs,
-      exceededByMs: durationMs - budgetMs,
-      ...(error && { error: error instanceof Error ? error.message : String(error) }),
-      ...context,
-    });
-  }
-
-  if (error) {
+    const result = await operation();
+    const durationMs = Date.now() - startTime;
+    warnIfBudgetExceeded(durationMs);
+    return { result, durationMs };
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    warnIfBudgetExceeded(durationMs, error);
     throw error;
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return { result: result!, durationMs };
 }

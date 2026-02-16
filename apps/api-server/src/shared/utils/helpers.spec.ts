@@ -134,9 +134,14 @@ describe('timed', () => {
   let mockLogger: Logger;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     mockLogger = {
       warn: jest.fn(),
     } as unknown as Logger;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('should return result and duration for successful operations', async () => {
@@ -155,22 +160,24 @@ describe('timed', () => {
   it('should log warning when budget is exceeded', async () => {
     const slowOperation = () => new Promise<string>((resolve) => setTimeout(() => resolve('done'), 50));
 
-    const result = await timed(slowOperation, {
+    const timedPromise = timed(slowOperation, {
       operationName: 'slow_operation',
       budgetMs: 10,
       logger: mockLogger,
     });
+    await jest.advanceTimersByTimeAsync(50);
+    const result = await timedPromise;
 
     expect(result.result).toBe('done');
     expect(result.durationMs).toBeGreaterThan(10);
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Performance budget exceeded for slow_operation'),
       expect.objectContaining({
         operationName: 'slow_operation',
         budgetMs: 10,
         actualMs: expect.any(Number),
         exceededByMs: expect.any(Number),
       }),
+      expect.stringContaining('Performance budget exceeded for slow_operation'),
     );
   });
 
@@ -178,39 +185,42 @@ describe('timed', () => {
     const failingOperation = () =>
       new Promise<string>((_, reject) => setTimeout(() => reject(new Error('operation failed')), 50));
 
-    await expect(
-      timed(failingOperation, {
-        operationName: 'failing_operation',
-        budgetMs: 10,
-        logger: mockLogger,
-      }),
-    ).rejects.toThrow('operation failed');
+    const timedPromise = timed(failingOperation, {
+      operationName: 'failing_operation',
+      budgetMs: 10,
+      logger: mockLogger,
+    });
+    const rejectionExpectation = expect(timedPromise).rejects.toThrow('operation failed');
+    await jest.advanceTimersByTimeAsync(50);
+    await rejectionExpectation;
 
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Performance budget exceeded for failing_operation (failed)'),
       expect.objectContaining({
         operationName: 'failing_operation',
         error: 'operation failed',
       }),
+      expect.stringContaining('Performance budget exceeded for failing_operation (failed)'),
     );
   });
 
   it('should include context in warning logs', async () => {
     const slowOperation = () => new Promise<string>((resolve) => setTimeout(() => resolve('done'), 50));
 
-    await timed(slowOperation, {
+    const timedPromise = timed(slowOperation, {
       operationName: 'contextualized_operation',
       budgetMs: 10,
       logger: mockLogger,
       context: { user_id: 'test-user-123', request_id: 'req-456' },
     });
+    await jest.advanceTimersByTimeAsync(50);
+    await timedPromise;
 
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.any(String),
       expect.objectContaining({
         user_id: 'test-user-123',
         request_id: 'req-456',
       }),
+      expect.any(String),
     );
   });
 

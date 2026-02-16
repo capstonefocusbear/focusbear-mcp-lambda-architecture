@@ -129,8 +129,6 @@ export const typeormConfig = registerAs(
       TeamToMember,
       TeamToAdmin,
       TeamJoinCode,
-      CalendarExcludedKeyword,
-      Calendar,
       TrackEvent,
       Tutorial,
       Geofence,

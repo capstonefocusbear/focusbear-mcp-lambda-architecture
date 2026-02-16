@@ -731,6 +731,7 @@ export class TeamManagementService {
     const team = await this.validateTeam(dto.team_id);
     const { admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
     this.validateMemberAction(admins, adminId);
+    const expiresAt = this.parseAndValidateJoinCodeExpiry(dto.expires_at);
 
     const code = this.generateJoinCode();
     const joinCode = this.teamJoinCodeRepository.orm.create({
@@ -739,7 +740,7 @@ export class TeamManagementService {
       is_active: true,
       max_redemptions: dto.max_redemptions ?? null,
       redemption_count: 0,
-      expires_at: dto.expires_at ? new Date(dto.expires_at) : null,
+      expires_at: expiresAt,
       created_by: adminId,
     });
 
@@ -750,6 +751,7 @@ export class TeamManagementService {
     const team = await this.validateTeam(dto.team_id);
     const { admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
     this.validateMemberAction(admins, adminId);
+    const expiresAt = this.parseAndValidateJoinCodeExpiry(dto.expires_at);
 
     const codes: TeamJoinCode[] = [];
     for (let i = 0; i < dto.count; i++) {
@@ -760,7 +762,7 @@ export class TeamManagementService {
         is_active: true,
         max_redemptions: 1, // batch codes are always single-use
         redemption_count: 0,
-        expires_at: dto.expires_at ? new Date(dto.expires_at) : null,
+        expires_at: expiresAt,
         created_by: adminId,
       });
       codes.push(joinCode);
@@ -792,6 +794,19 @@ export class TeamManagementService {
 
   private generateJoinCode(): string {
     return randomBytes(6).toString('base64url').substring(0, 8).toUpperCase();
+  }
+
+  private parseAndValidateJoinCodeExpiry(expiresAt?: string): Date | null {
+    if (!expiresAt) {
+      return null;
+    }
+
+    const parsedExpiry = new Date(expiresAt);
+    if (parsedExpiry <= new Date()) {
+      throw new BadRequestException('Join code expiration must be in the future');
+    }
+
+    return parsedExpiry;
   }
 
   private isDuplicateTeamMemberError(error: unknown): boolean {

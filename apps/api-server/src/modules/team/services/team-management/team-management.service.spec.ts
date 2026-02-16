@@ -2051,6 +2051,74 @@ describe('TeamManagementService', () => {
 
       expect(exception).toBeInstanceOf(UnauthorizedException);
     });
+
+    it('negative: should reject expired join code dates', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.createJoinCode(adminId, {
+          team_id: TeamWithMembersDummy.id,
+          expires_at: '2020-01-01T00:00:00.000Z',
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toBe('Join code expiration must be in the future');
+    });
+  });
+
+  describe('createBatchJoinCodes', () => {
+    it('positive: should create requested number of single-use join codes', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+      TeamJoinCodeRepositoryMock.orm.create.mockImplementation((args) => args);
+      TeamJoinCodeRepositoryMock.orm.save.mockImplementation((args) => Promise.resolve(args));
+
+      const result = await teamManagementService.createBatchJoinCodes(adminId, {
+        team_id: TeamWithMembersDummy.id,
+        count: 3,
+      });
+
+      expect(result).toHaveLength(3);
+      result.forEach((code) => {
+        expect(code.max_redemptions).toBe(1);
+        expect(code.redemption_count).toBe(0);
+        expect(code.is_active).toBe(true);
+        expect(code.created_by).toBe(adminId);
+      });
+    });
+
+    it('negative: should reject expired join code dates', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.createBatchJoinCodes(adminId, {
+          team_id: TeamWithMembersDummy.id,
+          count: 2,
+          expires_at: '2020-01-01T00:00:00.000Z',
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toBe('Join code expiration must be in the future');
+    });
   });
 
   describe('deactivateJoinCode', () => {

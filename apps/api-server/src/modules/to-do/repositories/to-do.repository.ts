@@ -193,7 +193,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
   }
 
   async getUserRecentToDos({ updated_at, status, take }: RecentToDoDto, user_id: string) {
-    return this.orm
+    const query = this.orm
       .createQueryBuilder('to_do')
       .leftJoinAndSelect('to_do.tags', 'tags')
       .select([
@@ -218,14 +218,18 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       .where('to_do.user_id = :user_id', {
         user_id,
       })
-      .andWhere('to_do.updated_at >= :updated_at', {
-        updated_at,
-      })
       .andWhere('to_do.status IN (:...status)', {
         status,
       })
       .orderBy('to_do.updated_at', 'DESC')
-      .take(take)
-      .getMany();
+      .take(take);
+
+    if (updated_at) {
+      query.andWhere('to_do.updated_at >= :updated_at', {
+        updated_at,
+      });
+    }
+
+    return query.getMany();
   }
 }

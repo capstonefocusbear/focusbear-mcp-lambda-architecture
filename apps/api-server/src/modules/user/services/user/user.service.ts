@@ -4,6 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -23,6 +24,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { SendGridService } from '@app/send-grid';
+import { R2Service } from '@app/r2';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
@@ -61,7 +63,9 @@ import {
   DEFAULT_AI_RESPONSE_TIMEOUT_MS,
   EMAIL_SUBJECTS,
   FOCUS_BEAR_EMAILS,
+  MAX_ATTACHMENT_SIZE_BYTES,
   USERNAME_VALIDATION_TIMEOUT,
+  S3_BUCKET_PROFILE_IMAGES,
 } from '../../../../shared/utils/constants';
 import { RoutineType } from '../../domain/routine-type.enum';
 import { MotivationalSummaryQueryDto } from '../../dto/get-motivational-summary-query.dto';
@@ -81,6 +85,13 @@ const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
 @Injectable()
 export class UserService {
+  private static readonly ALLOWED_PROFILE_IMAGE_CONTENT_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+  ]);
+
   private readonly verboseLogger = new Logger(UserService.name);
 
   private verboseLogCache = new Map<string, boolean>();
@@ -114,6 +125,7 @@ export class UserService {
     private completedActivitySequenceService: CompletedActivitySequenceService,
     @Inject(forwardRef(() => AccountabilityBuddyService))
     private readonly accountabilityBuddyService: AccountabilityBuddyService,
+    private readonly r2Service: R2Service,
   ) {}
 
   @SentryTraced('syncUserAccount')
@@ -739,6 +751,10 @@ export class UserService {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with id: ${user_id} does not exist!`);
 
+    if (profile_image) {
+      await this.validateProfileImageBeforeSave(profile_image);
+    }
+
     const updateData: Partial<User> = {
       updated_at: new Date().toISOString(),
       has_received_inactivity_warning: false,
@@ -770,6 +786,61 @@ export class UserService {
     }
 
     await this.userRepository.orm.update(user_id, updateData);
+  }
+
+  private async validateProfileImageBeforeSave(profileImageUrl: string): Promise<void> {
+    const profileImageKey = this.getProfileImageKeyFromPublicUrl(profileImageUrl);
+    if (!profileImageKey) return;
+
+    let metadata: { contentLength: number; contentType: string };
+    try {
+      metadata = await this.r2Service.getObjectMetadata(S3_BUCKET_PROFILE_IMAGES, profileImageKey);
+    } catch (error) {
+      throw new BadRequestException('Profile image not found in storage. Please upload the image first.');
+    }
+
+    const normalizedContentType = metadata.contentType?.toLowerCase();
+    const isInvalidMimeType = !UserService.ALLOWED_PROFILE_IMAGE_CONTENT_TYPES.has(normalizedContentType);
+    const isInvalidSize = metadata.contentLength <= 0 || metadata.contentLength > MAX_ATTACHMENT_SIZE_BYTES;
+
+    if (!isInvalidMimeType && !isInvalidSize) return;
+
+    try {
+      await this.r2Service.deleteObject(S3_BUCKET_PROFILE_IMAGES, profileImageKey);
+    } catch (deleteError) {
+      this.verboseLogger.error(
+        `Failed to delete invalid profile image (bucket=${S3_BUCKET_PROFILE_IMAGES}, key=${profileImageKey}): ${deleteError.message}`,
+      );
+    }
+
+    if (isInvalidSize) {
+      throw new BadRequestException('Profile image exceeds maximum allowed size of 20 MB');
+    }
+
+    throw new BadRequestException(
+      'Invalid profile image type. Allowed types: image/jpeg, image/png, image/gif, image/webp.',
+    );
+  }
+
+  private getProfileImageKeyFromPublicUrl(profileImageUrl: string): string | null {
+    const r2PublicUrl = this.config.get<string>('r2.publicUrl');
+    if (!r2PublicUrl) return null;
+
+    try {
+      const baseUrl = new URL(r2PublicUrl.replace(/\/+$/, ''));
+      const imageUrl = new URL(profileImageUrl);
+
+      if (baseUrl.origin !== imageUrl.origin) return null;
+
+      const normalizedBasePath = baseUrl.pathname.replace(/\/+$/, '');
+      const expectedPrefix = `${normalizedBasePath}/${S3_BUCKET_PROFILE_IMAGES}/`.replace(/\/{2,}/g, '/');
+      if (!imageUrl.pathname.startsWith(expectedPrefix)) return null;
+
+      const key = decodeURIComponent(imageUrl.pathname.slice(expectedPrefix.length));
+      return key || null;
+    } catch (error) {
+      return null;
+    }
   }
 
   shouldSyncWithRevenueCat(user: User) {
@@ -1156,7 +1227,7 @@ export class UserService {
     error?: Error,
   ): Promise<void> {
     const metrics = this.getMetricsConfig();
-    const shouldEmitMetrics = metrics.emitUserActivityMetrics ?? metrics.emitQueueMetrics ?? true;
+    const shouldEmitMetrics = Boolean(metrics.emitUserActivityMetrics || metrics.emitQueueMetrics);
 
     if (!shouldEmitMetrics) {
       return;
@@ -1214,5 +1285,29 @@ export class UserService {
         logQueueFailures: true,
       }
     );
+  }
+
+  async getProfileImageUploadUrl(
+    userId: string,
+    filename: string,
+    contentType: string,
+  ): Promise<{ uploadUrl: string; publicUrl: string }> {
+    const user = await this.userRepository.orm.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException(`User with id: ${userId} does not exist!`);
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const key = `${userId}/${timestamp}-${filename}`;
+
+    const uploadUrl = await this.r2Service.getPresignedUploadUrl(S3_BUCKET_PROFILE_IMAGES, key, contentType);
+
+    const r2PublicUrl = this.config.get<string>('r2.publicUrl');
+    if (!r2PublicUrl) {
+      throw new InternalServerErrorException('R2 public URL is not configured');
+    }
+    const publicUrl = `${r2PublicUrl}/${S3_BUCKET_PROFILE_IMAGES}/${key}`;
+
+    return { uploadUrl, publicUrl };
   }
 }

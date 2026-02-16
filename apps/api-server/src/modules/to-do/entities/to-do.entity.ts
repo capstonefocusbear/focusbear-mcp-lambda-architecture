@@ -8,6 +8,7 @@ import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-b
 import { TaskTimeLog } from './tasks-time-logs.entity';
 import { SyncedProject } from './synced-project.entity';
 import { SubtaskDto } from '../dto/subtask.dto';
+import { Project } from '../../project/entities/project.entity';
 
 @Entity('to_do')
 export class ToDo extends BaseEntity {
@@ -36,6 +37,28 @@ export class ToDo extends BaseEntity {
     nullable: true,
   })
   synced_project_id?: string;
+
+  @Index()
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  project_id?: string;
+
+  @Index()
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  assignee_id?: string;
+
+  @Index()
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  custom_status_id?: string;
 
   @Column({
     type: 'varchar',
@@ -112,6 +135,17 @@ export class ToDo extends BaseEntity {
   })
   @JoinColumn({ name: 'synced_project_id' })
   synced_project?: SyncedProject;
+
+  @ManyToOne(() => Project, (project) => project.tasks, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'project_id' })
+  project?: Project;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
+  @JoinColumn({ name: 'assignee_id' })
+  assignee?: User;
 
   @ManyToOne(() => FocusMode, (focus_mode) => focus_mode.to_dos, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'focus_type' })

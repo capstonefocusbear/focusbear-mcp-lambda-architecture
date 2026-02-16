@@ -23,10 +23,9 @@ prompts:
       User feedback: {{feedback}}
 
 providers:
-  - id: openai:gpt-4.1
+  - id: openai:gpt-5-mini
     config:
-      temperature: 0
-      max_tokens: 1024
+      max_completion_tokens: 1024
       apiKeyEnvar: $OPENAI_API_KEY
 
 output:

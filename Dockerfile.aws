@@ -1,19 +1,29 @@
 # Stage 1: Build
 FROM node:22 AS builder
 WORKDIR /app/backend
+
+# Increase Node heap for webpack-based Nest build.
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci --no-audit --prefer-offline
 COPY . .
 RUN npm run build
 
 # Stage 2: Server
 FROM node:22-slim
 WORKDIR /app/backend
+
+RUN apt-get update \
+    && apt-get install -y curl
+
 COPY package.json package-lock.json* ./
-RUN npm install
-COPY . .
-# Copy both source and compiled code
+RUN npm ci --omit=dev --no-audit --prefer-offline
+
 COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/start-server-with-memory-limit.sh ./start-server-with-memory-limit.sh
+COPY --from=builder /app/backend/apps/api-server/src/modules/email/templates ./apps/api-server/src/modules/email/templates
+COPY --from=builder /app/backend/apps/api-server/src/shared/i18n ./apps/api-server/src/shared/i18n
 
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 CMD curl -f http://localhost:4000/healthcheck || exit 1

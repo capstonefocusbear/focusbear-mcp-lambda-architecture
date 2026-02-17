@@ -23,6 +23,7 @@ RUN npm ci --omit=dev --no-audit --prefer-offline
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/start-server-with-memory-limit.sh ./start-server-with-memory-limit.sh
 COPY --from=builder /app/backend/apps/api-server/src/modules/email/templates ./apps/api-server/src/modules/email/templates
+COPY --from=builder /app/backend/apps/api-server/src/shared/i18n ./apps/api-server/src/shared/i18n
 
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 CMD curl -f http://localhost:4000/healthcheck || exit 1

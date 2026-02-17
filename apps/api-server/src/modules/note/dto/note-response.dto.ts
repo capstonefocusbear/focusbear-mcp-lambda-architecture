@@ -13,6 +13,8 @@ export class NoteResponseDto {
 
   embedded_todo_ids?: string[];
 
+  is_brain_dump?: boolean;
+
   activity_name?: string;
 
   activity_emoji?: string;

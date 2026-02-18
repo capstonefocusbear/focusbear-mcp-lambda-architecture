@@ -102,6 +102,7 @@ export class ProjectRepository extends BaseRepository<Project> {
       .take(take)
       .skip(skip)
       .orderBy('project.created_at', order === PageOrder.ASC ? 'ASC' : 'DESC')
+      .addOrderBy('project.id', order === PageOrder.ASC ? 'ASC' : 'DESC')
       .setParameter('acceptedStatus', ProjectMemberInvitationStatus.ACCEPTED);
 
     const [projects, total] = await query.getManyAndCount();

@@ -143,6 +143,8 @@ describe('ProjectService', () => {
       expect(result.meta.take).toBe(20);
       expect(result.meta.order).toBe(PageOrder.DESC);
       expect(result.data[0].name).toBe('Test Project');
+      expect(result.projects).toHaveLength(1);
+      expect(result.total_count).toBe(1);
     });
 
     it('positive: should return empty list when user has no projects', async () => {
@@ -160,6 +162,8 @@ describe('ProjectService', () => {
       expect(result.meta.itemCount).toBe(0);
       expect(result.meta.page).toBe(1);
       expect(result.meta.take).toBe(20);
+      expect(result.projects).toHaveLength(0);
+      expect(result.total_count).toBe(0);
     });
   });
 

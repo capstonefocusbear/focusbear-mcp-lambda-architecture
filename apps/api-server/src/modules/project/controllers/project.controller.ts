@@ -17,7 +17,7 @@ import { AcceptInvitationParamsDto } from '../dto/accept-invitation-params.dto';
 import { ProjectResponseDto } from '../dto/project-response.dto';
 import { ProjectMemberResponseDto } from '../dto/project-member-response.dto';
 import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
-import { PaginationDto } from '../../../shared/pagination/index.dto';
+import { GetProjectsResponseDto } from '../dto/get-projects-response.dto';
 
 @Controller('projects')
 @ApiTags('projects')
@@ -35,7 +35,7 @@ export class ProjectController {
   async getUserProjects(
     @Query() queryDto: GetProjectsQueryDto,
     @AuthContext() { user }: Passport,
-  ): Promise<PaginationDto<ProjectResponseDto>> {
+  ): Promise<GetProjectsResponseDto> {
     return this.projectService.getUserProjects(user.id, queryDto);
   }
 

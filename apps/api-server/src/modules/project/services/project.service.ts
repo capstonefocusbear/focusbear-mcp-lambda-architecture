@@ -13,8 +13,8 @@ import { DEFAULT_PROJECT_STATUSES } from '../domain/project-status.model';
 import { ProjectResponseDto } from '../dto/project-response.dto';
 import { ProjectMemberResponseDto } from '../dto/project-member-response.dto';
 import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
-import { PaginationDto } from '../../../shared/pagination/index.dto';
 import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
+import { GetProjectsResponseDto } from '../dto/get-projects-response.dto';
 
 @Injectable()
 export class ProjectService {
@@ -53,15 +53,17 @@ export class ProjectService {
     return this.mapProjectToResponse(savedProject);
   }
 
-  async getUserProjects(userId: string, queryDto: GetProjectsQueryDto): Promise<PaginationDto<ProjectResponseDto>> {
+  async getUserProjects(userId: string, queryDto: GetProjectsQueryDto): Promise<GetProjectsResponseDto> {
     const [projects, total] = await this.projectRepository.getAllUserProjects(userId, queryDto);
     const mappedProjects = projects.map((p) => this.mapProjectToResponse(p));
-    return new PaginationDto(
+    const meta = new PaginationMetaDto({
+      paginationOptionsDto: queryDto,
+      itemCount: total,
+    });
+
+    return new GetProjectsResponseDto(
       mappedProjects,
-      new PaginationMetaDto({
-        paginationOptionsDto: queryDto,
-        itemCount: total,
-      }),
+      meta,
     );
   }
 

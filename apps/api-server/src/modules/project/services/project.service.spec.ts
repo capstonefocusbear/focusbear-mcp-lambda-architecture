@@ -145,6 +145,7 @@ describe('ProjectService', () => {
       expect(result.data[0].name).toBe('Test Project');
       expect(result.projects).toHaveLength(1);
       expect(result.total_count).toBe(1);
+      expect(ProjectRepositoryMock.getAllUserProjects).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
 
     it('positive: should return empty list when user has no projects', async () => {
@@ -164,6 +165,7 @@ describe('ProjectService', () => {
       expect(result.meta.take).toBe(20);
       expect(result.projects).toHaveLength(0);
       expect(result.total_count).toBe(0);
+      expect(ProjectRepositoryMock.getAllUserProjects).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
   });
 

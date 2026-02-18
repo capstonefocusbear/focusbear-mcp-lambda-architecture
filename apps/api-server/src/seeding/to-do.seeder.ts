@@ -108,7 +108,7 @@ export class ToDoSeeder implements Seeder {
       overdueLowOutcome,
       farFutureHighOutcome,
       completedTask,
-    ].sort(() => Math.random() - 0.5);
+    ];
 
     await toDoRepository.save(todos);
 

@@ -54,5 +54,6 @@ export class GetToDosQueryDto extends PaginationOptionsDto {
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.toUpperCase() : value))
   @IsEnum(ToDoSortMode)
+  @ApiProperty({ enum: ToDoSortMode, default: ToDoSortMode.SMART, required: false })
   sort_mode?: ToDoSortMode = ToDoSortMode.SMART;
 }

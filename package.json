@@ -177,7 +177,12 @@
     "brace-expansion": "^2.0.2",
     "form-data": "^4.0.4",
     "tmp": "0.2.4",
-    "glob": "11.1.0",
+    "glob": {
+      ".": "11.1.0",
+      "minimatch": {
+        "brace-expansion": "^5.0.2"
+      }
+    },
     "@modelcontextprotocol/sdk": "^1.24.1",
     "jws": "4.0.1",
     "jsdiff": "^8.03",
@@ -200,7 +205,12 @@
     "brace-expansion": "^2.0.2",
     "form-data": "^4.0.4",
     "tmp": "0.2.4",
-    "glob": "11.1.0",
+    "glob": {
+      ".": "11.1.0",
+      "minimatch": {
+        "brace-expansion": "^5.0.2"
+      }
+    },
     "@modelcontextprotocol/sdk": "^1.24.1",
     "jws": "4.0.1",
     "jsdiff": "^8.03",

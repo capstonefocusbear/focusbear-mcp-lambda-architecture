@@ -55,6 +55,44 @@ export class PromptCacheService implements OnModuleInit {
   }
 
   /**
+   * Read prompt files from source path first, then dist fallback path.
+   * This supports both ts-node/dev and compiled runtime layouts.
+   */
+  private async readFileWithPathFallback(filePath: string): Promise<{ content: string; resolvedPath: string }> {
+    const candidatePaths = [filePath];
+    if (!filePath.startsWith('dist/') && !filePath.startsWith('/')) {
+      candidatePaths.push(join('dist', filePath));
+    }
+
+    return this.tryReadCandidatePaths(candidatePaths, filePath, null);
+  }
+
+  private async tryReadCandidatePaths(
+    candidatePaths: string[],
+    requestedPath: string,
+    lastError: NodeJS.ErrnoException | null,
+  ): Promise<{ content: string; resolvedPath: string }> {
+    if (candidatePaths.length === 0) {
+      throw lastError ?? new Error(`Prompt file not found: ${requestedPath}`);
+    }
+
+    const [candidatePath, ...remainingPaths] = candidatePaths;
+    try {
+      const content = await fs.readFile(candidatePath, 'utf8');
+      if (candidatePath !== requestedPath) {
+        this.logger.log(`Resolved prompt path fallback from ${requestedPath} to ${candidatePath}`);
+      }
+      return { content, resolvedPath: candidatePath };
+    } catch (error) {
+      const typedError = error as NodeJS.ErrnoException;
+      if (typedError.code !== 'ENOENT') {
+        throw error;
+      }
+      return this.tryReadCandidatePaths(remainingPaths, requestedPath, typedError);
+    }
+  }
+
+  /**
    * Resolves a file path relative to the config directory and validates
    * that the resolved path stays within the config directory (prevents path traversal).
    */
@@ -133,7 +171,7 @@ export class PromptCacheService implements OnModuleInit {
       ): Promise<Array<{ id: string; raw: string }>> => {
         try {
           this.logger.log(`Loading ${configName} prompts from ${configPath}`);
-          const content = await fs.readFile(configPath, 'utf8');
+          const { content, resolvedPath } = await this.readFileWithPathFallback(configPath);
           const config = yaml.load(content) as {
             prompts: Array<{ id: string; raw?: string; file?: string }>;
           };
@@ -143,14 +181,14 @@ export class PromptCacheService implements OnModuleInit {
           const loadedPrompts: Array<{ id: string; raw: string }> = await Promise.all(
             config.prompts.map(async (prompt) => {
               if (!prompt.id) {
-                this.logger.error(`Skipping prompt without id in ${configPath}`);
+                this.logger.error(`Skipping prompt without id in ${resolvedPath}`);
                 this.sentryService.instance().captureMessage('Prompt config entry missing id', {
                   level: 'error',
-                  extra: { configPath, prompt },
+                  extra: { configPath: resolvedPath, requestedConfigPath: configPath, prompt },
                 });
                 return null;
               }
-              const promptContent = await this.loadPromptContent(prompt, configPath);
+              const promptContent = await this.loadPromptContent(prompt, resolvedPath);
               return promptContent ? { id: prompt.id, raw: promptContent } : null;
             }),
           );
@@ -212,7 +250,9 @@ export class PromptCacheService implements OnModuleInit {
       // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)
       this.logger.log(`Loading handwritten todos prompt from ${HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH}`);
       try {
-        const handwrittenTodosContent = await fs.readFile(HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH, 'utf8');
+        const { content: handwrittenTodosContent } = await this.readFileWithPathFallback(
+          HANDWRITTEN_TODOS_PROMPT_CONFIG_PATH,
+        );
         const handwrittenTodosPrompt = JSON.parse(handwrittenTodosContent);
 
         // Find the system message and concatenate all text blocks
@@ -243,7 +283,9 @@ export class PromptCacheService implements OnModuleInit {
       // Load todos transcript prompt (audio flow) - prompt.json style (same as usage screenshot)
       this.logger.log(`Loading todos transcript prompt from ${TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH}`);
       try {
-        const todosTranscriptContent = await fs.readFile(TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH, 'utf8');
+        const { content: todosTranscriptContent } = await this.readFileWithPathFallback(
+          TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH,
+        );
         const todosTranscriptPrompt = JSON.parse(todosTranscriptContent)[0];
         allPrompts.push({
           id: 'todos-transcript-analysis',
@@ -261,7 +303,9 @@ export class PromptCacheService implements OnModuleInit {
       }
 
       try {
-        const usageScreenshotContent = await fs.readFile(USAGE_SCREENSHOT_PROMPT_CONFIG_PATH, 'utf8');
+        const { content: usageScreenshotContent } = await this.readFileWithPathFallback(
+          USAGE_SCREENSHOT_PROMPT_CONFIG_PATH,
+        );
         const usageScreenshotPrompts = JSON.parse(usageScreenshotContent)[0];
         allPrompts.push({
           id: 'usage-screenshot-analysis',

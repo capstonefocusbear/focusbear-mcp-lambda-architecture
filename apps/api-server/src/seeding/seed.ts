@@ -15,6 +15,9 @@ import { FocusModeTagFactory } from './focus-mode-tag.factory';
 import { CompletedFocusBlockFactory } from './completed-focus-block.factory';
 import { CompletedActivityFactory } from './completed-activity.factory';
 import { CompletedActivitySeeder } from './completed-activity.seeder';
+import { ProjectFactory } from './project.factory';
+import { ProjectMemberFactory } from './project-member.factory';
+import { ProjectsSeeder } from './projects.seeder';
 import { ToDoFactory } from './to-do.factory';
 import { ToDoSeeder } from './to-do.seeder';
 
@@ -32,9 +35,11 @@ const options: DataSourceOptions & SeederOptions = {
     FocusModeTagFactory,
     CompletedFocusBlockFactory,
     CompletedActivityFactory,
+    ProjectFactory,
+    ProjectMemberFactory,
     ToDoFactory,
   ],
-  seeds: [MainSeeder, CompletedFocusBlocksSeeder, CompletedActivitySeeder, ToDoSeeder],
+  seeds: [MainSeeder, CompletedFocusBlocksSeeder, CompletedActivitySeeder, ProjectsSeeder, ToDoSeeder],
 };
 
 const datasource = new DataSource(options);

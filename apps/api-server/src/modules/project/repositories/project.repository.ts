@@ -2,31 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Brackets, DataSource, IsNull } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Project } from '../entities/project.entity';
+import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
+import { PageOrder } from '../../../shared/domain/page-order.enum';
+import { ProjectMember } from '../entities/project-member.entity';
+import { ProjectMemberInvitationStatus } from '../domain/project-member-invitation-status.enum';
 
 @Injectable()
 export class ProjectRepository extends BaseRepository<Project> {
   constructor(private readonly dataSource: DataSource) {
     super(dataSource, Project);
-  }
-
-  async getUserProjects(userId: string): Promise<Project[]> {
-    return this.orm
-      .createQueryBuilder('project')
-      .leftJoinAndSelect('project.members', 'members')
-      .where(
-        new Brackets((qb) => {
-          qb.where('project.owner_id = :userId', { userId }).orWhere(
-            new Brackets((sqb) => {
-              sqb
-                .where('members.user_id = :userId', { userId })
-                .andWhere('members.invitation_status = :status', { status: 'accepted' });
-            }),
-          );
-        }),
-      )
-      .andWhere('project.deleted_at IS NULL')
-      .orderBy('project.created_at', 'DESC')
-      .getMany();
   }
 
   async getProjectById(projectId: string): Promise<Project | null> {
@@ -74,20 +58,37 @@ export class ProjectRepository extends BaseRepository<Project> {
     });
   }
 
-  async getAllUserProjects(userId: string): Promise<Project[]> {
-    const ownedProjects = await this.getProjectsUserOwns(userId);
-    const memberProjects = await this.getProjectsUserIsMemberOf(userId);
+  async getUserProjectsPaginated(
+    userId: string,
+    { order, take, skip }: GetProjectsQueryDto,
+  ): Promise<[Project[], number]> {
+    const query = this.orm
+      .createQueryBuilder('project')
+      .leftJoinAndSelect('project.members', 'members')
+      .where(
+        new Brackets((qb) => {
+          qb.where('project.owner_id = :userId', { userId }).orWhere((subQueryBuilder) => {
+            const acceptedMembershipSubQuery = subQueryBuilder
+              .subQuery()
+              .select('1')
+              .from(ProjectMember, 'project_member')
+              .where('project_member.project_id = project.id')
+              .andWhere('project_member.user_id = :userId')
+              .andWhere('project_member.invitation_status = :acceptedStatus')
+              .getQuery();
 
-    // Combine and deduplicate
-    const projectMap = new Map<string, Project>();
-    for (const project of [...ownedProjects, ...memberProjects]) {
-      if (!projectMap.has(project.id)) {
-        projectMap.set(project.id, project);
-      }
-    }
+            return `EXISTS ${acceptedMembershipSubQuery}`;
+          });
+        }),
+      )
+      .andWhere('project.deleted_at IS NULL')
+      .take(take)
+      .skip(skip)
+      .orderBy('project.created_at', order === PageOrder.ASC ? 'ASC' : 'DESC')
+      .addOrderBy('project.id', order === PageOrder.ASC ? 'ASC' : 'DESC')
+      .setParameter('acceptedStatus', ProjectMemberInvitationStatus.ACCEPTED);
 
-    return Array.from(projectMap.values()).sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
+    const [projects, total] = await query.getManyAndCount();
+    return [projects, total];
   }
 }

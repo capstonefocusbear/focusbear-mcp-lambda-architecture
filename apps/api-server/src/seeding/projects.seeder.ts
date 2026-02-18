@@ -5,11 +5,13 @@ import { ProjectMember } from '../modules/project/entities/project-member.entity
 import { ProjectMemberRole } from '../modules/project/domain/project-member-role.enum';
 import { ProjectMemberInvitationStatus } from '../modules/project/domain/project-member-invitation-status.enum';
 import { TEST_USER_ID } from './seeding-constant';
+import { User } from '../modules/user/entities/user.entity';
 
 export class ProjectsSeeder implements Seeder {
   public async run(dataSource: DataSource, factoryManager: SeederFactoryManager): Promise<void> {
     const projectFactory = factoryManager.get(Project);
     const projectMemberFactory = factoryManager.get(ProjectMember);
+    const userFactory = factoryManager.get(User);
 
     // Create projects owned by TEST_USER_ID - for pagination testing
     // We'll create 25 projects to test pagination (default take=20, so we need more than one page)
@@ -51,10 +53,9 @@ export class ProjectsSeeder implements Seeder {
 
     // Create projects where TEST_USER_ID is a member (not owner) - to test the combined query
     // Create 10 projects owned by other users where TEST_USER_ID is a member
-    // Note: We use TEST_USER_ID with a suffix for other owners since we don't have other users seeded
-    // In a real scenario, these would be different user IDs
+    const memberProjectOwners = await userFactory.saveMany(10);
     const memberProjectsPromises = Array.from({ length: 10 }, async (_, i) => {
-      const otherUserId = `${TEST_USER_ID}-other-${i}`;
+      const otherUserId = memberProjectOwners[i].id;
       const project = await projectFactory.save({
         owner_id: otherUserId,
         name: `Member Project ${i + 1}`,
@@ -100,8 +101,9 @@ export class ProjectsSeeder implements Seeder {
 
     // Create projects with pending invitations (email-based, not linked to user yet)
     // These should NOT appear in getUserProjects since they're not accepted
+    const pendingInvitationOwners = await userFactory.saveMany(5);
     const pendingInvitationPromises = Array.from({ length: 5 }, async (_, i) => {
-      const otherUserId = `${TEST_USER_ID}-inviter-${i}`;
+      const otherUserId = pendingInvitationOwners[i].id;
       const project = await projectFactory.save({
         owner_id: otherUserId,
         name: `Pending Invitation Project ${i + 1}`,
@@ -131,8 +133,9 @@ export class ProjectsSeeder implements Seeder {
     await Promise.all(pendingInvitationPromises);
 
     // Create a few projects with multiple members to test member relationships
+    const multiMemberProjectOwners = await userFactory.saveMany(3);
     const multiMemberProjectsPromises = Array.from({ length: 3 }, async (_, i) => {
-      const otherUserId = `${TEST_USER_ID}-multi-owner-${i}`;
+      const otherUserId = multiMemberProjectOwners[i].id;
       const project = await projectFactory.save({
         owner_id: otherUserId,
         name: `Multi-Member Project ${i + 1}`,
@@ -158,10 +161,11 @@ export class ProjectsSeeder implements Seeder {
       });
 
       // Add some other members
-      const otherMembersPromises = Array.from({ length: 2 }, async (_unused, j) => {
+      const extraMembers = await userFactory.saveMany(2);
+      const otherMembersPromises = extraMembers.map(async (extraMember) => {
         await projectMemberFactory.save({
           project_id: project.id,
-          user_id: `${TEST_USER_ID}-other-member-${i}-${j}`,
+          user_id: extraMember.id,
           role: ProjectMemberRole.MEMBER,
           invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
           invitation_responded_at: new Date(),

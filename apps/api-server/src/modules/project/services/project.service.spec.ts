@@ -18,7 +18,7 @@ const ProjectRepositoryMock = {
   },
   getProjectById: jest.fn(),
   getProjectWithTaskCount: jest.fn(),
-  getAllUserProjects: jest.fn(),
+  getUserProjectsPaginated: jest.fn(),
   softDelete: jest.fn(),
   update: jest.fn(),
 };
@@ -133,7 +133,7 @@ describe('ProjectService', () => {
         skip: 0,
         order: PageOrder.DESC,
       };
-      ProjectRepositoryMock.getAllUserProjects.mockResolvedValueOnce([[projectDummy], 1]);
+      ProjectRepositoryMock.getUserProjectsPaginated.mockResolvedValueOnce([[projectDummy], 1]);
 
       const result = await projectService.getUserProjects(userDummy.id, queryDto);
 
@@ -145,7 +145,7 @@ describe('ProjectService', () => {
       expect(result.data[0].name).toBe('Test Project');
       expect(result.projects).toHaveLength(1);
       expect(result.total_count).toBe(1);
-      expect(ProjectRepositoryMock.getAllUserProjects).toHaveBeenCalledWith(userDummy.id, queryDto);
+      expect(ProjectRepositoryMock.getUserProjectsPaginated).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
 
     it('positive: should return empty list when user has no projects', async () => {
@@ -155,7 +155,7 @@ describe('ProjectService', () => {
         skip: 0,
         order: PageOrder.DESC,
       };
-      ProjectRepositoryMock.getAllUserProjects.mockResolvedValueOnce([[], 0]);
+      ProjectRepositoryMock.getUserProjectsPaginated.mockResolvedValueOnce([[], 0]);
 
       const result = await projectService.getUserProjects(userDummy.id, queryDto);
 
@@ -165,7 +165,7 @@ describe('ProjectService', () => {
       expect(result.meta.take).toBe(20);
       expect(result.projects).toHaveLength(0);
       expect(result.total_count).toBe(0);
-      expect(ProjectRepositoryMock.getAllUserProjects).toHaveBeenCalledWith(userDummy.id, queryDto);
+      expect(ProjectRepositoryMock.getUserProjectsPaginated).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
   });
 

@@ -13,26 +13,6 @@ export class ProjectRepository extends BaseRepository<Project> {
     super(dataSource, Project);
   }
 
-  async getUserProjects(userId: string): Promise<Project[]> {
-    return this.orm
-      .createQueryBuilder('project')
-      .leftJoinAndSelect('project.members', 'members')
-      .where(
-        new Brackets((qb) => {
-          qb.where('project.owner_id = :userId', { userId }).orWhere(
-            new Brackets((sqb) => {
-              sqb
-                .where('members.user_id = :userId', { userId })
-                .andWhere('members.invitation_status = :status', { status: 'accepted' });
-            }),
-          );
-        }),
-      )
-      .andWhere('project.deleted_at IS NULL')
-      .orderBy('project.created_at', 'DESC')
-      .getMany();
-  }
-
   async getProjectById(projectId: string): Promise<Project | null> {
     return this.orm.findOne({
       where: { id: projectId, deleted_at: IsNull() },
@@ -78,7 +58,10 @@ export class ProjectRepository extends BaseRepository<Project> {
     });
   }
 
-  async getAllUserProjects(userId: string, { order, take, skip }: GetProjectsQueryDto): Promise<[Project[], number]> {
+  async getUserProjectsPaginated(
+    userId: string,
+    { order, take, skip }: GetProjectsQueryDto,
+  ): Promise<[Project[], number]> {
     const query = this.orm
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.members', 'members')

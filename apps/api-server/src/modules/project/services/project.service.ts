@@ -54,7 +54,7 @@ export class ProjectService {
   }
 
   async getUserProjects(userId: string, queryDto: GetProjectsQueryDto): Promise<GetProjectsResponseDto> {
-    const [projects, total] = await this.projectRepository.getAllUserProjects(userId, queryDto);
+    const [projects, total] = await this.projectRepository.getUserProjectsPaginated(userId, queryDto);
     const mappedProjects = projects.map((p) => this.mapProjectToResponse(p));
     const meta = new PaginationMetaDto({
       paginationOptionsDto: queryDto,

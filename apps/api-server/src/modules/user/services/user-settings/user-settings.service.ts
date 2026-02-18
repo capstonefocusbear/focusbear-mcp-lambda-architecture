@@ -483,6 +483,10 @@ export class UserSettingsService {
     const updateData: Partial<User> = {};
 
     if (timezone) {
+      // Normalize timezone input to a stable UTC offset string (for example "UTC-05:00")
+      // so routine matching can compare persisted "HH:mm" UTC fields directly in cron.
+      // For IANA zones, this captures the current offset only; DST shifts are picked up
+      // the next time client settings sync sends timezone again.
       const currentTime = DateTime.local({ zone: timezone });
       if (currentTime.invalidReason) {
         throw new BadRequestException(currentTime.invalidExplanation);
@@ -499,6 +503,7 @@ export class UserSettingsService {
 
       const { startupTime, shutdownTime } = routineTimes ?? {};
       if (startupTime && shutdownTime) {
+        // Keep cached UTC routine times aligned with timezone changes.
         const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
           startupTime,
           shutdownTime,

@@ -364,6 +364,7 @@ Access via `BaseCRUDService.softDelete(id)` method.
 - Test mocks in `apps/api-server/test/mocks/`
 - Coverage collected from `*.service.ts`, `*.guard.ts`, `*.strategy.ts`, `*.middleware.ts`
 - Prompt safety evaluations in `apps/api-server/test/prompt-testing/` using promptfoo
+- **Smoke tests**: `scripts/smoke-test.sh` (run via `npm run smoke-test`). Run automatically in CI after the unit-test job (server started with Postgres/Redis services, then health + auth-required endpoints checked). For local runs, start the server first; script is non-interactive and configurable via env (`SERVER_URL`, `MAX_RETRIES`, `RETRY_INTERVAL`).
 
 ## Local Development Setup
 

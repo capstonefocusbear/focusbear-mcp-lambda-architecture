@@ -281,7 +281,7 @@ async function getMessage(routine: string, fileName: string, language: string): 
 }
 
 async function getUsersForStartup(language: string) {
-  const currentTime = DateTime.local();
+  const currentTime = DateTime.utc();
   const { timeStamp, timeStampPlusMinute, timeStrings } = buildTimeWindowStrings(currentTime);
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
@@ -323,7 +323,7 @@ async function getUsersForStartup(language: string) {
 }
 
 async function getUsersForShutdown(language: string) {
-  const currentTime = DateTime.local();
+  const currentTime = DateTime.utc();
   const { timeStamp, timeStampPlusMinute, timeStrings } = buildTimeWindowStrings(currentTime);
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
@@ -368,7 +368,7 @@ async function getUsersForShutdown(language: string) {
 async function updateUsersMorningRoutineNotification(users: User[]) {
   const updatedUsers = users.map((user) => {
     const userClone = { ...user };
-    userClone.routine_notification_times.last_time_notified_of_morning_routine = DateTime.local().toJSDate();
+    userClone.routine_notification_times.last_time_notified_of_morning_routine = DateTime.utc().toJSDate();
     return userClone;
   });
   await CronJobDataSource.manager.save(User, updatedUsers);
@@ -377,7 +377,7 @@ async function updateUsersMorningRoutineNotification(users: User[]) {
 async function updateUsersEveningRoutineNotification(users: User[]) {
   const updatedUsers = users.map((user) => {
     const userClone = { ...user };
-    userClone.routine_notification_times.last_time_notified_of_evening_routine = DateTime.local().toJSDate();
+    userClone.routine_notification_times.last_time_notified_of_evening_routine = DateTime.utc().toJSDate();
     return userClone;
   });
   await CronJobDataSource.manager.save(User, updatedUsers);

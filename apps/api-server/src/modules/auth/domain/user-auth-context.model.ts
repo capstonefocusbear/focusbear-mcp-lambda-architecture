@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsUUID } from 'class-validator';
 import { randomUUID } from 'crypto';
 import { SubscriptionStatus } from '../../subscription/domain/subscription-status.model';
@@ -13,4 +13,7 @@ export class UserAuthContext {
 
   @ApiProperty()
   stripeCustomerId?: string;
+
+  @ApiPropertyOptional()
+  email?: string;
 }

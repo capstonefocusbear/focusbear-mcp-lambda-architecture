@@ -70,6 +70,7 @@ import { TaskAttachment } from '../modules/to-do/entities/task-attachment.entity
 import { CommentAttachment } from '../modules/to-do/entities/comment-attachment.entity';
 import { Note } from '../modules/note/entities/note.entity';
 import { NoteTag } from '../modules/note/entities/note-tag.entity';
+import { WebhookSubscription } from '../modules/webhook/entities/webhook-subscription.entity';
 
 export const typeormConfig = registerAs(
   'typeorm',
@@ -155,6 +156,7 @@ export const typeormConfig = registerAs(
       CommentAttachment,
       Note,
       NoteTag,
+      WebhookSubscription,
     ],
     migrations: [join(__dirname, '../../migrations/**/*.{ts,js}')],
   }),

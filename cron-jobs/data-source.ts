@@ -68,6 +68,7 @@ import { AsyncTask } from '../apps/api-server/src/modules/async-task/entities/as
 import { AppVersionEntity } from '../apps/api-server/src/modules/app-versions/entities/app-versions.entity';
 import { AnnouncementEntity } from '../apps/api-server/src/modules/announcements/entities/announcements.entity';
 import { AnnouncementViewEntity } from '../apps/api-server/src/modules/announcements/entities/announcement-views.entity';
+import { WebhookSubscription } from '../apps/api-server/src/modules/webhook/entities/webhook-subscription.entity';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -148,6 +149,7 @@ export const CronJobDataSource = new DataSource({
     AppVersionEntity,
     AnnouncementEntity,
     AnnouncementViewEntity,
+    WebhookSubscription,
   ],
   subscribers: [],
   migrations: [],

@@ -15,6 +15,9 @@ import { FocusModeTagFactory } from './focus-mode-tag.factory';
 import { CompletedFocusBlockFactory } from './completed-focus-block.factory';
 import { CompletedActivityFactory } from './completed-activity.factory';
 import { CompletedActivitySeeder } from './completed-activity.seeder';
+import { ProjectFactory } from './project.factory';
+import { ProjectMemberFactory } from './project-member.factory';
+import { ProjectsSeeder } from './projects.seeder';
 
 const options: DataSourceOptions & SeederOptions = {
   ...typeormConfig(),
@@ -30,8 +33,10 @@ const options: DataSourceOptions & SeederOptions = {
     FocusModeTagFactory,
     CompletedFocusBlockFactory,
     CompletedActivityFactory,
+    ProjectFactory,
+    ProjectMemberFactory,
   ],
-  seeds: [MainSeeder, CompletedFocusBlocksSeeder, CompletedActivitySeeder],
+  seeds: [MainSeeder, CompletedFocusBlocksSeeder, CompletedActivitySeeder, ProjectsSeeder],
 };
 
 const datasource = new DataSource(options);

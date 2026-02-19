@@ -263,6 +263,28 @@ describe('ActivityLibraryService', () => {
       ).toBeDefined();
     });
 
+    it('preserves canonical activity_type even when activity_data contains a legacy activity_type field', () => {
+      const routineDurationSeconds = dummyGetRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS;
+      const templateWithLegacyType = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: 'legacy-type-template',
+        activity_type: ActivityType.morning,
+        duration_seconds: 300,
+        activity_data: {
+          ...dummyActivityTemplatesWithTags[0].activity_data,
+          activity_type: 'morning_activity',
+        },
+      } as any;
+
+      const matchedActivities = activityLibraryService.userDesiredRoutineDurationSeconds(
+        [templateWithLegacyType],
+        routineDurationSeconds,
+      ) as any[];
+
+      expect(matchedActivities).toHaveLength(1);
+      expect(matchedActivities[0].activity_type).toBe(ActivityType.morning);
+    });
+
     it('positive: strips emoji characters from user goals before querying templates', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
       const dtoWithEmojiGoals = {

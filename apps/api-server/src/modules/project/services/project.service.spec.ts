@@ -7,6 +7,8 @@ import { ProjectMemberRepository } from '../repositories/project-member.reposito
 import { ProjectMemberRole } from '../domain/project-member-role.enum';
 import { ProjectMemberInvitationStatus } from '../domain/project-member-invitation-status.enum';
 import { DEFAULT_PROJECT_STATUSES } from '../domain/project-status.model';
+import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
+import { PageOrder } from '../../../shared/domain/page-order.enum';
 
 const ProjectRepositoryMock = {
   orm: {
@@ -16,7 +18,7 @@ const ProjectRepositoryMock = {
   },
   getProjectById: jest.fn(),
   getProjectWithTaskCount: jest.fn(),
-  getAllUserProjects: jest.fn(),
+  getUserProjectsPaginated: jest.fn(),
   softDelete: jest.fn(),
   update: jest.fn(),
 };
@@ -125,22 +127,45 @@ describe('ProjectService', () => {
 
   describe('getUserProjects', () => {
     it('positive: should return all user projects', async () => {
-      ProjectRepositoryMock.getAllUserProjects.mockResolvedValueOnce([projectDummy]);
+      const queryDto: GetProjectsQueryDto = {
+        page: 1,
+        take: 20,
+        skip: 0,
+        order: PageOrder.DESC,
+      };
+      ProjectRepositoryMock.getUserProjectsPaginated.mockResolvedValueOnce([[projectDummy], 1]);
 
-      const result = await projectService.getUserProjects(userDummy.id);
+      const result = await projectService.getUserProjects(userDummy.id, queryDto);
 
+      expect(result.data).toHaveLength(1);
+      expect(result.meta.itemCount).toBe(1);
+      expect(result.meta.page).toBe(1);
+      expect(result.meta.take).toBe(20);
+      expect(result.meta.order).toBe(PageOrder.DESC);
+      expect(result.data[0].name).toBe('Test Project');
       expect(result.projects).toHaveLength(1);
       expect(result.total_count).toBe(1);
-      expect(result.projects[0].name).toBe('Test Project');
+      expect(ProjectRepositoryMock.getUserProjectsPaginated).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
 
     it('positive: should return empty list when user has no projects', async () => {
-      ProjectRepositoryMock.getAllUserProjects.mockResolvedValueOnce([]);
+      const queryDto: GetProjectsQueryDto = {
+        page: 1,
+        take: 20,
+        skip: 0,
+        order: PageOrder.DESC,
+      };
+      ProjectRepositoryMock.getUserProjectsPaginated.mockResolvedValueOnce([[], 0]);
 
-      const result = await projectService.getUserProjects(userDummy.id);
+      const result = await projectService.getUserProjects(userDummy.id, queryDto);
 
+      expect(result.data).toHaveLength(0);
+      expect(result.meta.itemCount).toBe(0);
+      expect(result.meta.page).toBe(1);
+      expect(result.meta.take).toBe(20);
       expect(result.projects).toHaveLength(0);
       expect(result.total_count).toBe(0);
+      expect(ProjectRepositoryMock.getUserProjectsPaginated).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
   });
 

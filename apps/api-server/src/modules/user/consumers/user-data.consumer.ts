@@ -43,7 +43,15 @@ export class UserPersonalDataConsumer {
       });
       const userFocusBearData = await this.userRepository.orm.findOne({
         where: { id: user_id },
-        relations: ['devices', 'activities', 'activities.log_quantity_questions', 'focus_modes'],
+        relationLoadStrategy: 'query',
+        relations: [
+          'devices',
+          'activities',
+          'activities.log_quantity_questions',
+          'focus_modes',
+          'to_dos',
+          'notifications',
+        ],
       });
       const auth0Promise = this.auth0ManagementService.getAuth0User(userFocusBearData.auth0_id);
       const revenueCatPromise = this.revenueCatService.getOrCreateSubscriber(user_id);

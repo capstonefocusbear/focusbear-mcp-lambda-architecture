@@ -9,6 +9,10 @@ export const BaseRepositoryMock = {
     findOneBy: jest.fn(),
     insert: jest.fn(),
     create: jest.fn(),
+    createQueryBuilder: jest.fn(),
+    manager: {
+      transaction: jest.fn(),
+    },
     // ... rest methods can be added on demand
   },
   create: jest.fn(),
@@ -128,6 +132,7 @@ export const TeamRepositoryMock = {
   ...BaseRepositoryMock,
   getTeamMembers: jest.fn(),
   getTeamIncludingUnregistered: jest.fn(),
+  getTeamMembersIncludingUnregistered: jest.fn(),
 };
 
 export const TeamToMemberRepositoryMock = {
@@ -137,6 +142,10 @@ export const TeamToMemberRepositoryMock = {
 export const TeamToAdminRepositoryMock = {
   ...BaseRepositoryMock,
   getTeamAdmins: jest.fn(),
+};
+
+export const TeamJoinCodeRepositoryMock = {
+  ...BaseRepositoryMock,
 };
 
 export const HabitPackRepositoryMock = {

@@ -125,21 +125,21 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     messages: null,
   },
   convertBrainDumpToTasks: {
-    model: GPT_5_MINI,
+    model: GPT_5_2,
+    temperature: 0,
     n: 1,
+    max_completion_tokens: 512,
     messages: null,
   },
 
   createSubtasks: {
     model: GPT_5_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
   },
 
   checkUserName: {
     model: GPT_5_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
   },

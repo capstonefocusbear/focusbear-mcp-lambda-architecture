@@ -159,11 +159,13 @@ export class ProjectService {
       throw new BadRequestException('This email has already been invited to the project');
     }
 
+    const invitedRole = dto.role || ProjectMemberRole.MEMBER;
+
     const member = new ProjectMember(
       {
         project_id: projectId,
         email: dto.email,
-        role: dto.role || ProjectMemberRole.MEMBER,
+        role: invitedRole,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
         invitation_sent_at: new Date(),
       },
@@ -173,7 +175,7 @@ export class ProjectService {
     const savedMember = await this.projectMemberRepository.orm.save(member);
 
     try {
-      const inviteUrl = await this.generateInviteUrl(dto.email, projectId, project.name, userId, origin);
+      const inviteUrl = await this.generateInviteUrl(dto.email, projectId, project.name, userId, invitedRole, origin);
       await this.sendInvitationEmail(dto.email, inviteUrl, project.name, userId);
     } catch (error) {
       this.logger.error(`Failed to send project invitation email to ${dto.email}`, error?.stack);
@@ -320,6 +322,7 @@ export class ProjectService {
     projectId: string,
     projectName: string,
     adminId: string,
+    role: ProjectMemberRole,
     origin?: string,
   ): Promise<string> {
     const payload = new ProjectMemberInvitationPayload({
@@ -327,7 +330,7 @@ export class ProjectService {
       email,
       project_id: projectId,
       project_name: projectName,
-      role: 'member',
+      role,
     });
     const secret = this.configService.get('tokens.invitation.secret');
     const token = await this.jwtService.asyncSign({ ...payload }, secret);

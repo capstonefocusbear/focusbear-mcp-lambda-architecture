@@ -307,7 +307,7 @@ describe('ProjectService', () => {
         id: randomUUID(),
         project_id: projectDummy.id,
         email: 'newmember@example.com',
-        role: ProjectMemberRole.MEMBER,
+        role: ProjectMemberRole.ADMIN,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
       };
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
@@ -326,6 +326,7 @@ describe('ProjectService', () => {
 
       const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
         email: 'newmember@example.com',
+        role: ProjectMemberRole.ADMIN,
       });
 
       expect(result.email).toBe('newmember@example.com');
@@ -334,6 +335,12 @@ describe('ProjectService', () => {
         expect.objectContaining({
           to: 'newmember@example.com',
         }),
+      );
+      expect(JwtServiceMock.asyncSign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: ProjectMemberRole.ADMIN,
+        }),
+        'test-secret',
       );
     });
 

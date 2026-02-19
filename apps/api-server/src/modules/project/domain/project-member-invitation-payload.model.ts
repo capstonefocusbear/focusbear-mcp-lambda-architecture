@@ -1,3 +1,5 @@
+import { ProjectMemberRole } from './project-member-role.enum';
+
 export class ProjectMemberInvitationPayload {
   constructor(invitePayload: ProjectMemberInvitationPayload) {
     Object.assign(this, { ...invitePayload });
@@ -11,5 +13,5 @@ export class ProjectMemberInvitationPayload {
 
   project_name: string;
 
-  role: string;
+  role: ProjectMemberRole;
 }

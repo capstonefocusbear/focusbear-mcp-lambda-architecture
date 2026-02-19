@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class updateProjectMemberInvitationStatusAddFailed1771515000000 implements MigrationInterface {
+export class UpdateProjectMemberInvitationStatusAddFailed1771476485530 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TYPE "project_member_invitation_status_enum" ADD VALUE 'failed';

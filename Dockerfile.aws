@@ -18,7 +18,7 @@ RUN apt-get update \
     && apt-get install -y curl
 
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --prefer-offline
+RUN npm ci --include=dev --no-audit --prefer-offline
 
 COPY . .
 

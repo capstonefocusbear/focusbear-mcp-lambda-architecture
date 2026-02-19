@@ -6,7 +6,7 @@ WORKDIR /app/backend
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --prefer-offline
+RUN npm ci --include=dev --no-audit --prefer-offline
 COPY . .
 RUN npm run build
 

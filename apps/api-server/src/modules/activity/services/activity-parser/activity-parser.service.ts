@@ -66,6 +66,7 @@ export class ActivityParserService {
         created_at,
         tutorial,
         cutoff_time_for_doing_activity,
+        geofence_id,
       }: Activity) => {
         const currentEmoji = activity_data?.habit_icon;
         const needsEmojiGeneration = !currentEmoji || currentEmoji === '';
@@ -91,6 +92,7 @@ export class ActivityParserService {
           impact_category,
           created_at,
           ...activity_data,
+          ...(geofence_id ? { geofence_id } : {}),
           tutorial: transformTutorial(tutorial),
           cutoff_time_for_doing_activity,
           activity_type: type,
@@ -266,6 +268,7 @@ export class ActivityParserService {
       log_quantity_question,
       impact_category,
       cutoff_time_for_doing_activity,
+      geofence_id,
       ...rest
     }: UpdateActivityDto,
     { type, user_id, activity_sequence_id },
@@ -300,6 +303,7 @@ export class ActivityParserService {
       check_list,
       impact_category,
       cutoff_time_for_doing_activity,
+      geofence_id,
     });
     const result = [activity];
     if (has_choices) result.push(...this.deserializeChoices(choices, activity));
@@ -331,6 +335,7 @@ export class ActivityParserService {
         log_summary_type,
         completion_requirements,
         linked_activity_id,
+        geofence_id,
         activity_template_id,
         // destructure log_quantity_question to remove it from activity_data field as it will be saved
         // in the new format in getLogQuantityQuestions function
@@ -354,6 +359,7 @@ export class ActivityParserService {
           completion_requirements,
           linked_activity_id,
           activity_template_id,
+          geofence_id,
         }),
     );
   }

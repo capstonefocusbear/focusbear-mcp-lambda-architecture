@@ -2,7 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'crypto';
 import { userDummy } from '../../../../test/dummies';
-import { ActivitySequenceRepositoryMock, GeofenceRepositoryMock } from '../../../../test/mocks';
+import { ActivityRepositoryMock, ActivitySequenceRepositoryMock, GeofenceRepositoryMock } from '../../../../test/mocks';
+import { ActivityRepository } from '../../activity/repositories/activity.repository';
 import { ActivitySequenceRepository } from '../../activity/repositories/activity-sequence.repository';
 import { Geofence } from '../entities/geofence.entity';
 import { GeofenceRepository } from '../repositories/geofence.repository';
@@ -13,12 +14,14 @@ describe('GeofenceService', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [GeofenceService, GeofenceRepository, ActivitySequenceRepository],
+      providers: [GeofenceService, GeofenceRepository, ActivitySequenceRepository, ActivityRepository],
     })
       .overrideProvider(GeofenceRepository)
       .useValue(GeofenceRepositoryMock)
       .overrideProvider(ActivitySequenceRepository)
       .useValue(ActivitySequenceRepositoryMock)
+      .overrideProvider(ActivityRepository)
+      .useValue(ActivityRepositoryMock)
       .compile();
 
     geofenceService = moduleRef.get<GeofenceService>(GeofenceService);
@@ -53,6 +56,29 @@ describe('GeofenceService', () => {
       expect(exception).toBeInstanceOf(NotFoundException);
       expect(exception.message).toEqual('Associated routine not found');
       expect(GeofenceRepositoryMock.orm.save).not.toHaveBeenCalled();
+    });
+
+    it('Positive: should sync geofence id to routine activities when routine is provided', async () => {
+      const routineId = randomUUID();
+      const geofenceId = randomUUID();
+      ActivitySequenceRepositoryMock.findOneByIdForUser.mockResolvedValueOnce({ id: routineId });
+      GeofenceRepositoryMock.orm.save.mockResolvedValueOnce({
+        id: geofenceId,
+        user_id: userDummy.id,
+        associated_routine_id: routineId,
+      });
+
+      await geofenceService.createGeofence(userDummy.id, {
+        name: 'Home',
+        latitude: 1,
+        longitude: 2,
+        associated_routine_id: routineId,
+      });
+
+      expect(ActivityRepositoryMock.orm.update).toHaveBeenCalledWith(
+        { user_id: userDummy.id, activity_sequence_id: routineId },
+        { geofence_id: geofenceId },
+      );
     });
   });
 
@@ -113,6 +139,10 @@ describe('GeofenceService', () => {
       expect(ActivitySequenceRepositoryMock.findOneByIdForUser).not.toHaveBeenCalled();
       expect(GeofenceRepositoryMock.orm.save).toHaveBeenCalledWith(
         expect.objectContaining({ associated_routine_id: null }),
+      );
+      expect(ActivityRepositoryMock.orm.update).toHaveBeenCalledWith(
+        { user_id: userDummy.id, geofence_id: geofenceId },
+        { geofence_id: null },
       );
     });
   });

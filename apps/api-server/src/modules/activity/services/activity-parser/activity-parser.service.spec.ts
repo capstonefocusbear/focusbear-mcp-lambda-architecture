@@ -64,6 +64,29 @@ describe('ActivityParserService', () => {
       expect(result.morning_activities).toBeArray();
     });
 
+    it('positive: should include geofence_id in serialized habit when present', async () => {
+      const geofenceId = randomUUID();
+      const sequenceId = randomUUID();
+      const result = activityParserService.serialize([
+        {
+          type: ActivityType.morning,
+          id: sequenceId,
+          activity_ids: ['activity-1'],
+          activities: [
+            {
+              id: 'activity-1',
+              activity_sequence_id: sequenceId,
+              geofence_id: geofenceId,
+              duration_seconds: 60,
+              activity_data: { name: 'Hydrate', habit_icon: '💧' },
+            } as any,
+          ],
+        } as any,
+      ]);
+
+      expect(result.morning_activities?.[0]?.geofence_id).toBe(geofenceId);
+    });
+
     it('positive: should add emoji generation job for activities without habit icons', async () => {
       // Create activity sequences with activities that have no habit icons
       const activitySequencesWithNoIcons = [

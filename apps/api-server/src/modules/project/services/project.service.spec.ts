@@ -302,6 +302,14 @@ describe('ProjectService', () => {
   });
 
   describe('inviteMember', () => {
+    it('negative: should throw NotFoundException when project does not exist', async () => {
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(null);
+
+      await expect(projectService.inviteMember(userDummy.id, randomUUID(), { email: 'newmember@example.com' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
     it('positive: should invite a new member and send invitation email', async () => {
       const newMember = {
         id: randomUUID(),

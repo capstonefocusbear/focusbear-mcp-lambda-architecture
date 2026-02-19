@@ -364,7 +364,7 @@ export class ProjectService {
       to: memberEmail,
       from: FOCUS_BEAR_EMAILS.SUPPORT,
       templateId: EMAIL_TEMPLATE_IDS.PROJECT_INVITE,
-      dynamicTemplateData: { invite_url: inviteUrl, team_name: projectName },
+      dynamicTemplateData: { invite_url: inviteUrl, team_name: projectName, project_name: projectName },
       bcc,
     });
   }

@@ -334,6 +334,9 @@ describe('ProjectService', () => {
       expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'newmember@example.com',
+          dynamicTemplateData: expect.objectContaining({
+            project_name: projectDummy.name,
+          }),
         }),
       );
       expect(JwtServiceMock.asyncSign).toHaveBeenCalledWith(

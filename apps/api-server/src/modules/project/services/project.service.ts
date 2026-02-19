@@ -17,9 +17,11 @@ import { ProjectMemberInvitationStatus } from '../domain/project-member-invitati
 import { ProjectMemberInvitationPayload } from '../domain/project-member-invitation-payload.model';
 import { DEFAULT_PROJECT_STATUSES } from '../domain/project-status.model';
 import { ProjectResponseDto } from '../dto/project-response.dto';
-import { ProjectListResponseDto } from '../dto/project-list-response.dto';
 import { ProjectMemberResponseDto } from '../dto/project-member-response.dto';
 import { EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
+import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
+import { GetProjectsResponseDto } from '../dto/get-projects-response.dto';
 
 @Injectable()
 export class ProjectService {
@@ -65,12 +67,18 @@ export class ProjectService {
     return this.mapProjectToResponse(savedProject);
   }
 
-  async getUserProjects(userId: string): Promise<ProjectListResponseDto> {
-    const projects = await this.projectRepository.getAllUserProjects(userId);
-    return {
-      projects: projects.map((p) => this.mapProjectToResponse(p)),
-      total_count: projects.length,
-    };
+  async getUserProjects(userId: string, queryDto: GetProjectsQueryDto): Promise<GetProjectsResponseDto> {
+    const [projects, total] = await this.projectRepository.getUserProjectsPaginated(userId, queryDto);
+    const mappedProjects = projects.map((p) => this.mapProjectToResponse(p));
+    const meta = new PaginationMetaDto({
+      paginationOptionsDto: queryDto,
+      itemCount: total,
+    });
+
+    return new GetProjectsResponseDto(
+      mappedProjects,
+      meta,
+    );
   }
 
   async getProjectById(userId: string, projectId: string): Promise<ProjectResponseDto> {

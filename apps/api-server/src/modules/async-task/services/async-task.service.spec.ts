@@ -25,6 +25,7 @@ const AsyncTaskRepositoryMock = {
   findById: jest.fn(),
   update: jest.fn(),
   findByStatus: jest.fn(),
+  findLatestActiveByRequestHash: jest.fn(),
 };
 
 describe('AsyncTaskService', () => {
@@ -346,6 +347,45 @@ describe('AsyncTaskService', () => {
       });
 
       await Promise.all(promises);
+    });
+  });
+
+  describe('findActiveTaskByRequestHash', () => {
+    it('should return active task when repository finds one', async () => {
+      const task = new AsyncTask({
+        id: randomUUID(),
+        status: AsyncTaskStatus.PENDING,
+        metadata: { taskType: 'habit-import', userId: 'user-123', requestHash: 'hash-abc' },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      AsyncTaskRepositoryMock.findLatestActiveByRequestHash.mockResolvedValue(task);
+
+      const result = await asyncTaskService.findActiveTaskByRequestHash('habit-import', 'user-123', 'hash-abc');
+
+      expect(AsyncTaskRepositoryMock.findLatestActiveByRequestHash).toHaveBeenCalledWith(
+        'habit-import',
+        'user-123',
+        'hash-abc',
+      );
+      expect(result).toEqual(task);
+    });
+
+    it('should return null when repository throws', async () => {
+      const error = new Error('query failed');
+      AsyncTaskRepositoryMock.findLatestActiveByRequestHash.mockRejectedValue(error);
+
+      const result = await asyncTaskService.findActiveTaskByRequestHash('habit-import', 'user-123', 'hash-abc');
+
+      expect(result).toBeNull();
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        error,
+        expect.objectContaining({
+          level: 'warning',
+          tags: { context: 'async-task-find-active-by-request-hash' },
+        }),
+      );
     });
   });
 });

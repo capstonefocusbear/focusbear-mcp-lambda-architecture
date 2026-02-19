@@ -4,6 +4,8 @@ import { BaseRepository } from '../../../shared/repositories/base-repository.rep
 import { AsyncTask } from '../entities/async-task.entity';
 import { AsyncTaskStatus } from '../domain/async-task-status.enum';
 
+const PENDING_TASK_DEDUP_MAX_AGE_MINUTES = 5;
+
 @Injectable()
 export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
   constructor(private readonly connection: Connection) {
@@ -27,5 +29,37 @@ export class AsyncTaskRepository extends BaseRepository<AsyncTask> {
 
   async findById(id: string): Promise<AsyncTask> {
     return this.orm.findOneBy({ id });
+  }
+
+  async findLatestActiveByRequestHash(
+    taskType: string,
+    userId: string,
+    requestHash: string,
+  ): Promise<AsyncTask | null> {
+    if (!taskType || !userId || !requestHash) {
+      return null;
+    }
+
+    return this.orm
+      .createQueryBuilder('async_task')
+      .where(
+        `(
+          async_task.status = :processingStatus
+          OR (
+            async_task.status = :pendingStatus
+            AND async_task.updated_at >= NOW() - make_interval(mins => :pendingMaxAgeMinutes)
+          )
+        )`,
+        {
+          processingStatus: AsyncTaskStatus.PROCESSING,
+          pendingStatus: AsyncTaskStatus.PENDING,
+          pendingMaxAgeMinutes: PENDING_TASK_DEDUP_MAX_AGE_MINUTES,
+        },
+      )
+      .andWhere("async_task.metadata ->> 'taskType' = :taskType", { taskType })
+      .andWhere("async_task.metadata ->> 'userId' = :userId", { userId })
+      .andWhere("async_task.metadata ->> 'requestHash' = :requestHash", { requestHash })
+      .orderBy('async_task.created_at', 'DESC')
+      .getOne();
   }
 }

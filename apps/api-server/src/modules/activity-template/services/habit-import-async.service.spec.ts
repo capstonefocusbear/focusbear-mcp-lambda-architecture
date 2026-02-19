@@ -13,10 +13,13 @@ describe('HabitImportAsyncService', () => {
 
   const asyncTaskServiceMock = {
     createAsyncTask: jest.fn(),
+    findActiveTaskByRequestHash: jest.fn(),
+    updateStatusWithMetadata: jest.fn(),
   } as unknown as jest.Mocked<AsyncTaskService>;
 
   const queueMock = {
     add: jest.fn(),
+    getJob: jest.fn(),
   } as unknown as jest.Mocked<Queue>;
 
   beforeEach(async () => {
@@ -51,6 +54,7 @@ describe('HabitImportAsyncService', () => {
         routineType: 'morning',
       };
 
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
       asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-1', metadata: {} } as any);
 
       const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
@@ -78,7 +82,7 @@ describe('HabitImportAsyncService', () => {
           routineType: 'morning',
         }),
         expect.objectContaining({
-          jobId: 'task-1',
+          jobId: expect.stringMatching(/^habit-import:/),
           removeOnComplete: true,
           removeOnFail: false,
           timeout: 180000,
@@ -87,6 +91,7 @@ describe('HabitImportAsyncService', () => {
         }),
       );
 
+      expect(asyncTaskServiceMock.updateStatusWithMetadata).not.toHaveBeenCalled();
       expect(result).toEqual({ asyncTaskId: 'task-1' });
     });
 
@@ -96,6 +101,7 @@ describe('HabitImportAsyncService', () => {
         mediaType: 'audio',
       };
 
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
       asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-2', metadata: {} } as any);
 
       const result = await service.enqueueHabitImport(dto, 'user-456', 'mobile');
@@ -132,6 +138,7 @@ describe('HabitImportAsyncService', () => {
         mediaType: 'image',
       };
 
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
       asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-3', metadata: {} } as any);
 
       await service.enqueueHabitImport(dto, 'user-789');
@@ -150,6 +157,7 @@ describe('HabitImportAsyncService', () => {
       };
 
       const error = new Error('Queue connection failed');
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
       asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-4', metadata: {} } as any);
       queueMock.add.mockRejectedValueOnce(error);
 
@@ -173,6 +181,7 @@ describe('HabitImportAsyncService', () => {
         routineType: 'morning',
       };
 
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValue(null);
       asyncTaskServiceMock.createAsyncTask.mockResolvedValue({ id: 'task-hash', metadata: {} } as any);
 
       await service.enqueueHabitImport(dto, 'user-hash', 'api');
@@ -195,6 +204,7 @@ describe('HabitImportAsyncService', () => {
         mediaType: 'image',
       };
 
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValue(null);
       asyncTaskServiceMock.createAsyncTask.mockResolvedValue({ id: 'task-hash', metadata: {} } as any);
 
       await service.enqueueHabitImport(dto1, 'user-hash', 'api');
@@ -204,6 +214,94 @@ describe('HabitImportAsyncService', () => {
       const secondCallHash = (queueMock.add.mock.calls[1][1] as any).requestHash;
 
       expect(firstCallHash).not.toBe(secondCallHash);
+    });
+
+    it('should return existing active task and skip enqueue for duplicates', async () => {
+      const dto: HabitImportUploadedDto = {
+        mediaKey: 'same-key.png',
+        mediaType: 'image',
+      };
+
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce({ id: 'existing-task-9' } as any);
+
+      const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
+
+      expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
+      expect(queueMock.add).not.toHaveBeenCalled();
+      expect(result).toEqual({ asyncTaskId: 'existing-task-9' });
+    });
+
+    it('should reuse in-flight job asyncTaskId from queue and skip creating new task', async () => {
+      const dto: HabitImportUploadedDto = {
+        mediaKey: 'same-key.png',
+        mediaType: 'image',
+      };
+
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
+      queueMock.getJob.mockResolvedValueOnce({
+        data: { asyncTaskId: 'job-owned-task-1' },
+        getState: jest.fn().mockResolvedValue('active'),
+      } as any);
+
+      const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
+
+      expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
+      expect(queueMock.add).not.toHaveBeenCalled();
+      expect(result).toEqual({ asyncTaskId: 'job-owned-task-1' });
+    });
+
+    it('should remove terminal duplicate job before enqueueing a new one', async () => {
+      const dto: HabitImportUploadedDto = {
+        mediaKey: 'same-key.png',
+        mediaType: 'image',
+      };
+
+      const remove = jest.fn().mockResolvedValue(undefined);
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
+      queueMock.getJob.mockResolvedValueOnce({
+        data: { asyncTaskId: 'old-task-1' },
+        getState: jest.fn().mockResolvedValue('failed'),
+        remove,
+      } as any);
+      asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-new-1', metadata: {} } as any);
+
+      const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
+
+      expect(remove).toHaveBeenCalled();
+      expect(asyncTaskServiceMock.createAsyncTask).toHaveBeenCalled();
+      expect(queueMock.add).toHaveBeenCalled();
+      expect(result).toEqual({ asyncTaskId: 'task-new-1' });
+    });
+
+    it('should fail new async task and return canonical in-flight asyncTaskId when dedup wins after enqueue', async () => {
+      const dto: HabitImportUploadedDto = {
+        mediaKey: 'same-key.png',
+        mediaType: 'image',
+      };
+
+      asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
+      asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-new-2', metadata: {} } as any);
+      queueMock.getJob.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        data: { asyncTaskId: 'task-existing-2' },
+        getState: jest.fn().mockResolvedValue('active'),
+      } as any);
+      queueMock.add.mockResolvedValueOnce({ id: 'habit-import:dedup-hash' } as any);
+
+      const result = await service.enqueueHabitImport(dto, 'user-123', 'api');
+
+      expect(asyncTaskServiceMock.updateStatusWithMetadata).toHaveBeenCalledWith(
+        'task-new-2',
+        'failed',
+        expect.objectContaining({
+          taskType: 'habit-import',
+          userId: 'user-123',
+        }),
+        expect.objectContaining({
+          duplicateOfAsyncTaskId: 'task-existing-2',
+          error: 'Duplicate queue job detected after enqueue',
+        }),
+      );
+      expect(result).toEqual({ asyncTaskId: 'task-existing-2' });
     });
   });
 });

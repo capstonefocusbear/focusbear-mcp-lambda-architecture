@@ -4,8 +4,10 @@ import { Queue } from 'bull';
 import { createHash } from 'crypto';
 import { InjectSentry, SentryService } from '@app/observability';
 import { AsyncTaskService } from '../../async-task/services/async-task.service';
+import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 import { GetRoutineSuggestionsDto } from '../dto/get-routine-suggestions.dto';
 import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
+import { getInFlightAsyncTaskIdByJobId, reuseInFlightOrCleanupTerminalJob } from './async-task-dedup.util';
 
 export interface RoutineSuggestionsJobData {
   asyncTaskId: string;
@@ -16,6 +18,8 @@ export interface RoutineSuggestionsJobData {
 
 @Injectable()
 export class RoutineSuggestionsAsyncService {
+  private static readonly TASK_TYPE = 'routine-suggestions';
+
   constructor(
     private readonly asyncTaskService: AsyncTaskService,
     @InjectQueue(BullQueues.ROUTINE_SUGGESTIONS) private readonly routineSuggestionsQueue: Queue,
@@ -27,37 +31,78 @@ export class RoutineSuggestionsAsyncService {
     userId: string,
     source?: string,
   ): Promise<{ asyncTaskId: string }> {
+    const requestHash = this.computeRequestHash(dto, userId);
+    const jobId = `${RoutineSuggestionsAsyncService.TASK_TYPE}:${requestHash}`;
+    const existingTask = await this.asyncTaskService.findActiveTaskByRequestHash(
+      RoutineSuggestionsAsyncService.TASK_TYPE,
+      userId,
+      requestHash,
+    );
+    if (existingTask?.id) {
+      return { asyncTaskId: existingTask.id };
+    }
+    const existingQueueTaskId = await reuseInFlightOrCleanupTerminalJob({
+      queue: this.routineSuggestionsQueue,
+      queueName: BullQueues.ROUTINE_SUGGESTIONS,
+      sentry: this.sentry,
+      jobId,
+    });
+    if (existingQueueTaskId) {
+      return { asyncTaskId: existingQueueTaskId };
+    }
+
     const normalizedGoalCount = dto.user_goals?.length ?? 0;
     const metadata = {
-      taskType: 'routine-suggestions',
+      taskType: RoutineSuggestionsAsyncService.TASK_TYPE,
       userId,
       goalCount: normalizedGoalCount,
       routine: dto.routine ?? null,
       durationMinutes: dto.routine_duration ?? null,
       groupByGoals: dto.groupByGoals ?? false,
       source: source ?? 'unknown',
-      requestHash: this.computeRequestHash(dto, userId),
+      requestHash,
     };
 
     const asyncTask = await this.asyncTaskService.createAsyncTask({ metadata });
 
     try {
-      await this.routineSuggestionsQueue.add(
+      const queuedJob = await this.routineSuggestionsQueue.add(
         BullWorkers.PROCESS_ROUTINE_SUGGESTIONS,
         {
           asyncTaskId: asyncTask.id,
           userId,
           request: dto,
-          requestHash: metadata.requestHash,
+          requestHash,
         } satisfies RoutineSuggestionsJobData,
         {
-          jobId: asyncTask.id,
+          jobId,
           removeOnComplete: true,
           removeOnFail: false,
           timeout: 120000,
         },
       );
+
+      const queuedJobId =
+        typeof queuedJob?.id === 'string' || typeof queuedJob?.id === 'number' ? String(queuedJob.id) : jobId;
+      const inFlightAsyncTaskId = await getInFlightAsyncTaskIdByJobId(this.routineSuggestionsQueue, queuedJobId);
+      if (inFlightAsyncTaskId && inFlightAsyncTaskId !== asyncTask.id) {
+        await this.asyncTaskService.updateStatusWithMetadata(asyncTask.id, AsyncTaskStatus.FAILED, metadata, {
+          processingFailed: new Date(),
+          duplicateOfAsyncTaskId: inFlightAsyncTaskId,
+          error: 'Duplicate queue job detected after enqueue',
+        });
+        return { asyncTaskId: inFlightAsyncTaskId };
+      }
     } catch (error) {
+      const duplicateQueueTaskId = await getInFlightAsyncTaskIdByJobId(this.routineSuggestionsQueue, jobId);
+      if (duplicateQueueTaskId) {
+        await this.asyncTaskService.updateStatusWithMetadata(asyncTask.id, AsyncTaskStatus.FAILED, metadata, {
+          processingFailed: new Date(),
+          duplicateOfAsyncTaskId: duplicateQueueTaskId,
+          error: 'Duplicate queue job detected while enqueuing',
+        });
+        return { asyncTaskId: duplicateQueueTaskId };
+      }
       this.sentry.instance().captureException(error, {
         level: 'error',
         extra: { userId, asyncTaskId: asyncTask.id, queue: BullQueues.ROUTINE_SUGGESTIONS },

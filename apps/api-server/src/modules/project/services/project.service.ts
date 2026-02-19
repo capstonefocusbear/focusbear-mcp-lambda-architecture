@@ -155,25 +155,42 @@ export class ProjectService {
 
     // Check if member already exists
     const existingMember = await this.projectMemberRepository.getMemberByProjectAndEmail(projectId, dto.email);
-    if (existingMember) {
-      throw new BadRequestException('This email has already been invited to the project');
+    if (existingMember?.invitation_status === ProjectMemberInvitationStatus.ACCEPTED) {
+      throw new BadRequestException('This email is already a member of the project');
     }
 
     const invitedRole = dto.role || ProjectMemberRole.MEMBER;
     const inviteUrl = await this.generateInviteUrl(dto.email, projectId, project.name, userId, invitedRole, origin);
+    const invitationSentAt = new Date();
+    let savedMember: ProjectMember;
 
-    const member = new ProjectMember(
-      {
-        project_id: projectId,
-        email: dto.email,
+    if (existingMember) {
+      const updatedMember = await this.projectMemberRepository.update(existingMember.id, {
         role: invitedRole,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
-        invitation_sent_at: new Date(),
-      },
-      { generateId: true },
-    );
+        invitation_sent_at: invitationSentAt,
+      });
+      savedMember = updatedMember || {
+        ...existingMember,
+        role: invitedRole,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+        invitation_sent_at: invitationSentAt,
+      };
+    } else {
+      const member = new ProjectMember(
+        {
+          project_id: projectId,
+          email: dto.email,
+          role: invitedRole,
+          invitation_status: ProjectMemberInvitationStatus.PENDING,
+          invitation_sent_at: invitationSentAt,
+        },
+        { generateId: true },
+      );
 
-    const savedMember = await this.projectMemberRepository.orm.save(member);
+      savedMember = await this.projectMemberRepository.orm.save(member);
+    }
+
     let responseMember = savedMember;
 
     try {

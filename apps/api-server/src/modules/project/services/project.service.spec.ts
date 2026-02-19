@@ -355,6 +355,48 @@ describe('ProjectService', () => {
       );
     });
 
+    it('positive: should re-invite an existing failed invitation', async () => {
+      const failedMember = {
+        id: randomUUID(),
+        project_id: projectDummy.id,
+        email: 'newmember@example.com',
+        role: ProjectMemberRole.MEMBER,
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      };
+      const pendingMember = {
+        ...failedMember,
+        role: ProjectMemberRole.ADMIN,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+      };
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(failedMember);
+      ProjectMemberRepositoryMock.update.mockResolvedValueOnce(pendingMember);
+      JwtServiceMock.asyncSign.mockResolvedValueOnce('mock-token');
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: 'admin@example.com' });
+      SendGridServiceMock.sendEmail.mockResolvedValueOnce(undefined);
+
+      const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
+        email: 'newmember@example.com',
+        role: ProjectMemberRole.ADMIN,
+      });
+
+      expect(result.role).toBe(ProjectMemberRole.ADMIN);
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.PENDING);
+      expect(ProjectMemberRepositoryMock.orm.save).not.toHaveBeenCalled();
+      expect(ProjectMemberRepositoryMock.update).toHaveBeenCalledWith(failedMember.id, {
+        role: ProjectMemberRole.ADMIN,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+        invitation_sent_at: expect.any(Date),
+      });
+    });
+
     it('positive: should mark invitation as failed when email sending fails', async () => {
       const newMember = {
         id: randomUUID(),
@@ -410,9 +452,14 @@ describe('ProjectService', () => {
       expect(ProjectMemberRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
 
-    it('negative: should throw BadRequestException when email already invited', async () => {
+    it('negative: should throw BadRequestException when email is already an accepted member', async () => {
+      const acceptedMember = {
+        ...memberDummy,
+        email: 'existing@example.com',
+        invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
+      };
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
-      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(memberDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(acceptedMember);
 
       await expect(
         projectService.inviteMember(userDummy.id, projectDummy.id, { email: 'existing@example.com' }),
@@ -579,6 +626,31 @@ describe('ProjectService', () => {
       ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(acceptedMember);
 
       await expect(projectService.acceptInvitation(userDummy.id, projectDummy.id)).rejects.toThrow(BadRequestException);
+    });
+
+    it('positive: should accept invitation by email fallback when user link is missing', async () => {
+      const pendingMember = {
+        ...memberDummy,
+        id: randomUUID(),
+        user_id: null,
+        email: userDummy.email,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+      };
+      const acceptedMember = {
+        ...pendingMember,
+        user_id: userDummy.id,
+        invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
+      };
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(pendingMember);
+      ProjectMemberRepositoryMock.linkUserToInvitation.mockResolvedValueOnce(undefined);
+      ProjectMemberRepositoryMock.acceptInvitation.mockResolvedValueOnce(acceptedMember);
+
+      const result = await projectService.acceptInvitation(userDummy.id, projectDummy.id, userDummy.email);
+
+      expect(ProjectMemberRepositoryMock.getMemberByProjectAndEmail).toHaveBeenCalledWith(projectDummy.id, userDummy.email);
+      expect(ProjectMemberRepositoryMock.linkUserToInvitation).toHaveBeenCalledWith(pendingMember.id, userDummy.id);
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.ACCEPTED);
     });
   });
 

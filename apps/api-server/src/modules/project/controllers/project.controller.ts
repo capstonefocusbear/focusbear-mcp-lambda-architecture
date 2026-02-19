@@ -97,7 +97,7 @@ export class ProjectController {
     @Param() params: AcceptInvitationParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ProjectMemberResponseDto> {
-    return this.projectService.acceptInvitation(user.id, params.project_id);
+    return this.projectService.acceptInvitation(user.id, params.project_id, user.email);
   }
 
   @Post(':project_id/members/decline')
@@ -105,6 +105,6 @@ export class ProjectController {
     @Param() params: AcceptInvitationParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<void> {
-    return this.projectService.declineInvitation(user.id, params.project_id);
+    return this.projectService.declineInvitation(user.id, params.project_id, user.email);
   }
 }

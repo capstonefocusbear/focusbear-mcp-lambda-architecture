@@ -344,7 +344,7 @@ describe('ProjectService', () => {
       );
     });
 
-    it('positive: should still return member even if email sending fails', async () => {
+    it('positive: should mark invitation as failed when email sending fails', async () => {
       const newMember = {
         id: randomUUID(),
         project_id: projectDummy.id,
@@ -352,17 +352,51 @@ describe('ProjectService', () => {
         role: ProjectMemberRole.MEMBER,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
       };
+      const failedMember = {
+        ...newMember,
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      };
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
       ProjectMemberRepositoryMock.orm.save.mockResolvedValueOnce(newMember);
-      JwtServiceMock.asyncSign.mockRejectedValueOnce(new Error('JWT signing failed'));
+      JwtServiceMock.asyncSign.mockResolvedValueOnce('mock-token');
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+      SendGridServiceMock.sendEmail.mockRejectedValueOnce(new Error('SendGrid failed'));
+      ProjectMemberRepositoryMock.update.mockResolvedValueOnce(failedMember);
 
       const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
         email: 'newmember@example.com',
       });
 
       expect(result.email).toBe('newmember@example.com');
-      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.PENDING);
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.FAILED);
+      expect(ProjectMemberRepositoryMock.update).toHaveBeenCalledWith(newMember.id, {
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      });
+    });
+
+    it('negative: should throw when invitation token generation fails', async () => {
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
+      JwtServiceMock.asyncSign.mockRejectedValueOnce(new Error('JWT signing failed'));
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+
+      await expect(
+        projectService.inviteMember(userDummy.id, projectDummy.id, {
+          email: 'newmember@example.com',
+        }),
+      ).rejects.toThrow('JWT signing failed');
+      expect(ProjectMemberRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
 
     it('negative: should throw BadRequestException when email already invited', async () => {

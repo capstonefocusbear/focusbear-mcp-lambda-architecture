@@ -160,6 +160,7 @@ export class ProjectService {
     }
 
     const invitedRole = dto.role || ProjectMemberRole.MEMBER;
+    const inviteUrl = await this.generateInviteUrl(dto.email, projectId, project.name, userId, invitedRole, origin);
 
     const member = new ProjectMember(
       {
@@ -173,15 +174,19 @@ export class ProjectService {
     );
 
     const savedMember = await this.projectMemberRepository.orm.save(member);
+    let responseMember = savedMember;
 
     try {
-      const inviteUrl = await this.generateInviteUrl(dto.email, projectId, project.name, userId, invitedRole, origin);
       await this.sendInvitationEmail(dto.email, inviteUrl, project.name, userId);
     } catch (error) {
+      const updatedMember = await this.projectMemberRepository.update(savedMember.id, {
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      });
+      responseMember = updatedMember || { ...savedMember, invitation_status: ProjectMemberInvitationStatus.FAILED };
       this.logger.error(`Failed to send project invitation email to ${dto.email}`, error?.stack);
     }
 
-    return this.mapMemberToResponse(savedMember);
+    return this.mapMemberToResponse(responseMember);
   }
 
   async removeMember(userId: string, projectId: string, memberId: string): Promise<void> {

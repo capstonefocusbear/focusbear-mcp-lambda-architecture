@@ -108,10 +108,20 @@ jobs:
           export RETRY_INTERVAL=2
           export SMOKE_DEBUG=1
           npm run smoke-test
+          EXIT=$?
           kill %1 2>/dev/null || true
+          exit $EXIT
 
       - name: Show server log on smoke failure
         if: failure()
         run: |
           echo "=== Server log (last 80 lines) ==="
           tail -80 server.log || true
+
+      - name: Upload server log on smoke failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-server-log
+          path: server.log
+          retention-days: 7

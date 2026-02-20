@@ -117,7 +117,7 @@ check_endpoint "GET" "/user-data" "401" "User data requires authentication"
 check_endpoint "GET" "/user-stats/leaderboard" "401" "User stats require authentication"
 check_endpoint "GET" "/to-do" "401" "To-do list requires authentication"
 check_endpoint "GET" "/focus-mode" "401" "Focus mode requires authentication"
-check_endpoint "GET" "/habit-packs" "401" "Habit packs require authentication"
+check_endpoint "GET" "/habit-packs" "200" "Habit packs list (public catalog)"
 check_endpoint "GET" "/announcements" "401" "Announcements require authentication"
 
 echo ""

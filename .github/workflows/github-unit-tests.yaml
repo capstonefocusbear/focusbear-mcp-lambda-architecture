@@ -83,6 +83,9 @@ jobs:
       FIELD_TRANSFORMER_ENCRYPTION_KEY: "00000000000000000000000000000000"
       AUTH0_DOMAIN: https://example.auth0.com/
       AUTH0_IDENTIFIER: https://example.auth0.com/api/v2/
+      PUSHER_BEAMS_INSTANCE_ID: "ci-dummy-instance"
+      PUSHER_BEAMS_PRIMARY_KEY: "ci-dummy-key"
+      SENDGRID_KEY: "SG.ci-dummy-key-for-smoke-test"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

@@ -12,7 +12,7 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI from 'openai';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
 import { sanitizeUrl } from '@braintree/sanitize-url';
@@ -68,6 +68,8 @@ export class OpenAIService {
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
+
+  private readonly metadataCacheTtlMs = 24 * 60 * 60 * 1000;
 
   private getUntrustedUserInputPrompt(): ChatCompletionMessageParam {
     const promptContent = this.promptCacheService.getPrompt('untrusted-user-input');
@@ -749,14 +751,10 @@ export class OpenAIService {
    */
   async getMetadata(url: string): Promise<{ title: string | null; description: string | null }> {
     try {
-      const cacheFile = join(this.cacheDir, `${encodeURIComponent(url)}.json`);
-      try {
-        const cachedMetadata = await fs.readFile(cacheFile, 'utf-8');
-        return JSON.parse(cachedMetadata);
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          this.sentryService.instance().captureException(err);
-        }
+      const cacheFile = this.getMetadataCacheFilePath(url);
+      const cachedMetadata = await this.getCachedMetadataIfFresh(cacheFile);
+      if (cachedMetadata) {
+        return cachedMetadata;
       }
 
       let response;
@@ -854,6 +852,33 @@ export class OpenAIService {
     } catch (error) {
       this.sentryService.instance().captureException(error, { extra: { url } });
       return { title: null, description: null };
+    }
+  }
+
+  private getMetadataCacheFilePath(url: string): string {
+    const cacheKey = createHash('sha256').update(url).digest('hex');
+    return join(this.cacheDir, `${cacheKey}.json`);
+  }
+
+  private async getCachedMetadataIfFresh(
+    cacheFile: string,
+  ): Promise<{ title: string | null; description: string | null } | null> {
+    try {
+      const cacheStats = await fs.stat(cacheFile);
+      const cacheAgeMs = Date.now() - cacheStats.mtimeMs;
+
+      if (cacheAgeMs > this.metadataCacheTtlMs) {
+        await fs.unlink(cacheFile).catch(() => undefined);
+        return null;
+      }
+
+      const cachedMetadata = await fs.readFile(cacheFile, 'utf-8');
+      return JSON.parse(cachedMetadata);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        this.sentryService.instance().captureException(err);
+      }
+      return null;
     }
   }
 

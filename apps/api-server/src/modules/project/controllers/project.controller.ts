@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
@@ -71,8 +72,10 @@ export class ProjectController {
     @Param() params: InviteProjectMemberParamsDto,
     @Body() dto: InviteProjectMemberDto,
     @AuthContext() { user }: Passport,
+    @Req() request: Request,
   ): Promise<ProjectMemberResponseDto> {
-    return this.projectService.inviteMember(user.id, params.project_id, dto);
+    const { origin } = request.headers as { origin?: string };
+    return this.projectService.inviteMember(user.id, params.project_id, dto, origin);
   }
 
   @Delete(':project_id/members/:member_id')
@@ -94,7 +97,7 @@ export class ProjectController {
     @Param() params: AcceptInvitationParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<ProjectMemberResponseDto> {
-    return this.projectService.acceptInvitation(user.id, params.project_id);
+    return this.projectService.acceptInvitation(user.id, params.project_id, user.email);
   }
 
   @Post(':project_id/members/decline')
@@ -102,6 +105,6 @@ export class ProjectController {
     @Param() params: AcceptInvitationParamsDto,
     @AuthContext() { user }: Passport,
   ): Promise<void> {
-    return this.projectService.declineInvitation(user.id, params.project_id);
+    return this.projectService.declineInvitation(user.id, params.project_id, user.email);
   }
 }

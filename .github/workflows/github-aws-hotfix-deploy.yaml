@@ -59,6 +59,11 @@ jobs:
             --parameters ParameterKey=imageTag,ParameterValue=${{ github.sha }} \
             --capabilities CAPABILITY_IAM
 
+      - name: Wait for Server Stack update
+        run: |
+          aws cloudformation wait stack-update-complete \
+            --stack-name ${{ vars.PROD_SERVER_STACK_NAME }}
+
       - name: Update Cron Stack with new image
         run: |
           aws cloudformation update-stack \
@@ -66,3 +71,8 @@ jobs:
             --use-previous-template \
             --parameters ParameterKey=imageTag,ParameterValue=${{ github.sha }} \
             --capabilities CAPABILITY_IAM
+
+      - name: Wait for Cron Stack update
+        run: |
+          aws cloudformation wait stack-update-complete \
+            --stack-name ${{ vars.PROD_CRON_STACK_NAME }}

@@ -3,15 +3,23 @@ import * as path from 'path';
 import { globSync } from 'glob';
 import { allEntities } from './all-entities';
 
-/** Match "export class EntityName" in entity files (handles default and named exports) */
+/**
+ * Match "export class EntityName" in entity files (handles default and named exports).
+ * Note: .match() returns only the first match; if a file ever has two @Entity classes,
+ * the second would not be discovered by this guard.
+ */
 const ENTITY_CLASS_REGEX = /export\s+(?:default\s+)?class\s+(\w+)/;
 /** Match files that define a TypeORM entity (including non-.entity.ts names) */
 const ENTITY_DECORATOR_REGEX = /@Entity\s*\(/;
 
+/** Monorepo root derived from this file's location so stripe path works regardless of process.cwd(). */
+const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..');
+const STRIPE_ENTITIES_DIR = path.join(REPO_ROOT, 'libs', 'stripe', 'src', 'entities');
+
 function discoverEntityClassesFromFiles(): Set<string> {
   const configDir = __dirname;
   const srcRoot = path.join(configDir, '..');
-  const stripeRoot = path.join(configDir, '..', '..', '..', '..', 'libs', 'stripe', 'src', 'entities');
+  const stripeRoot = STRIPE_ENTITIES_DIR;
 
   // Discover all .ts files in modules (any name) and stripe entities, then keep only those containing @Entity()
   const apiServerPattern = path.join(srcRoot, 'modules', '**', '*.ts');

@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EntityManager, In } from 'typeorm';
 import { ResponseMessage } from '../../../shared/domain/response-message.model';
 import { ActivitySequenceRepository } from '../../activity/repositories/activity-sequence.repository';
+import { Activity } from '../../activity/entities/activity.entity';
 import { GeofenceRepository } from '../repositories/geofence.repository';
 import { CreateGeofenceDto } from '../dto/create-geofence.dto';
 import { UpdateGeofenceDto } from '../dto/update-geofence.dto';
@@ -36,36 +38,58 @@ export class GeofenceService {
       trigger_after_time: createGeofenceDto.trigger_after_time,
       associated_routine_id: createGeofenceDto.associated_routine_id,
     });
-    return this.geofenceRepository.orm.save(geofence);
+    return this.geofenceRepository.orm.manager.transaction(async (manager: EntityManager) => {
+      const savedGeofence = await manager.save(Geofence, geofence);
+      await this.syncActivitiesForGeofenceAssociation(
+        manager,
+        user_id,
+        savedGeofence.id,
+        null,
+        savedGeofence.associated_routine_id ?? null,
+      );
+      return savedGeofence;
+    });
   }
 
   async updateGeofence(user_id: string, geofence_id: string, updateGeofenceDto: UpdateGeofenceDto): Promise<Geofence> {
-    const existingGeofence = await this.geofenceRepository.findByIdAndUserId(geofence_id, user_id);
-    if (!existingGeofence) {
-      throw new NotFoundException(`Geofence with ID: ${geofence_id} not found`);
-    }
+    return this.geofenceRepository.orm.manager.transaction(async (manager: EntityManager) => {
+      const existingGeofence = await manager.findOne(Geofence, { where: { id: geofence_id, user_id } });
+      if (!existingGeofence) {
+        throw new NotFoundException(`Geofence with ID: ${geofence_id} not found`);
+      }
 
-    if (updateGeofenceDto.name !== undefined) {
-      existingGeofence.name = updateGeofenceDto.name;
-    }
-    if (updateGeofenceDto.latitude !== undefined) {
-      existingGeofence.latitude = String(updateGeofenceDto.latitude);
-    }
-    if (updateGeofenceDto.longitude !== undefined) {
-      existingGeofence.longitude = String(updateGeofenceDto.longitude);
-    }
-    if (updateGeofenceDto.radius !== undefined) {
-      existingGeofence.radius = updateGeofenceDto.radius;
-    }
-    if (updateGeofenceDto.trigger_after_time !== undefined) {
-      existingGeofence.trigger_after_time = updateGeofenceDto.trigger_after_time;
-    }
-    if (updateGeofenceDto.associated_routine_id !== undefined) {
-      await this.assertAssociatedRoutineOwnership(user_id, updateGeofenceDto.associated_routine_id);
-      existingGeofence.associated_routine_id = updateGeofenceDto.associated_routine_id ?? null;
-    }
+      const previousAssociatedRoutineId = existingGeofence.associated_routine_id ?? null;
 
-    return this.geofenceRepository.orm.save(existingGeofence);
+      if (updateGeofenceDto.name !== undefined) {
+        existingGeofence.name = updateGeofenceDto.name;
+      }
+      if (updateGeofenceDto.latitude !== undefined) {
+        existingGeofence.latitude = String(updateGeofenceDto.latitude);
+      }
+      if (updateGeofenceDto.longitude !== undefined) {
+        existingGeofence.longitude = String(updateGeofenceDto.longitude);
+      }
+      if (updateGeofenceDto.radius !== undefined) {
+        existingGeofence.radius = updateGeofenceDto.radius;
+      }
+      if (updateGeofenceDto.trigger_after_time !== undefined) {
+        existingGeofence.trigger_after_time = updateGeofenceDto.trigger_after_time;
+      }
+      if (updateGeofenceDto.associated_routine_id !== undefined) {
+        await this.assertAssociatedRoutineOwnership(user_id, updateGeofenceDto.associated_routine_id);
+        existingGeofence.associated_routine_id = updateGeofenceDto.associated_routine_id ?? null;
+      }
+
+      const savedGeofence = await manager.save(Geofence, existingGeofence);
+      await this.syncActivitiesForGeofenceAssociation(
+        manager,
+        user_id,
+        geofence_id,
+        previousAssociatedRoutineId,
+        savedGeofence.associated_routine_id ?? null,
+      );
+      return savedGeofence;
+    });
   }
 
   async deleteGeofence(user_id: string, geofence_id: string): Promise<ResponseMessage> {
@@ -89,6 +113,31 @@ export class GeofenceService {
     const routine = await this.activitySequenceRepository.findOneByIdForUser(associated_routine_id, user_id);
     if (!routine) {
       throw new NotFoundException('Associated routine not found');
+    }
+  }
+
+  private async syncActivitiesForGeofenceAssociation(
+    manager: EntityManager,
+    user_id: string,
+    geofence_id: string,
+    previousAssociatedRoutineId?: string | null,
+    nextAssociatedRoutineId?: string | null,
+  ): Promise<void> {
+    if (previousAssociatedRoutineId && previousAssociatedRoutineId !== nextAssociatedRoutineId) {
+      await manager.update(Activity, { user_id, geofence_id }, { geofence_id: null });
+    }
+
+    if (nextAssociatedRoutineId) {
+      await manager.update(Activity, { user_id, activity_sequence_id: nextAssociatedRoutineId }, { geofence_id });
+
+      const parentActivities = await manager.find(Activity, {
+        where: { user_id, activity_sequence_id: nextAssociatedRoutineId },
+        select: ['id'],
+      });
+      const parentActivityIds = parentActivities.map(({ id }) => id);
+      if (parentActivityIds.length > 0) {
+        await manager.update(Activity, { user_id, parent_id: In(parentActivityIds) }, { geofence_id });
+      }
     }
   }
 }

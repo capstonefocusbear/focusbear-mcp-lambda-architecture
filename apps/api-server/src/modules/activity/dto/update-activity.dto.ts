@@ -165,4 +165,9 @@ export class UpdateActivityDto extends ActivityData {
   @IsString()
   @IsMilitaryTime()
   cutoff_time_for_doing_activity?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  @ApiProperty({ required: false, nullable: true })
+  geofence_id?: string | null;
 }

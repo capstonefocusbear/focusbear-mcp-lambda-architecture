@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 export class UpdateGeofenceDto {
   @IsOptional()
@@ -32,6 +32,7 @@ export class UpdateGeofenceDto {
   trigger_after_time?: string;
 
   @IsOptional()
+  @ValidateIf((o) => o.associated_routine_id !== null)
   @IsUUID('4')
-  associated_routine_id?: string;
+  associated_routine_id?: string | null;
 }

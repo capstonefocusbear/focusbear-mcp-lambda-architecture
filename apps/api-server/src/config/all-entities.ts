@@ -3,7 +3,7 @@
  * Both api-server (typeorm.config.ts) and cron-jobs (data-source.ts) must use this list.
  * Add new entities here when adding new entity files; the all-entities.spec.ts test in CI will fail if entities are missing.
  */
-import { Feedback } from '@app/stripe/entities/feedback.entity';
+import { Feedback } from '../../../../libs/stripe/src/entities/feedback.entity';
 import { ActivitySequence } from '../modules/activity/entities/activity-sequence.entity';
 import { Activity } from '../modules/activity/entities/activity.entity';
 import { CompletedActivitySequence } from '../modules/activity/entities/completed-activity-sequence.entity';

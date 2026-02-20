@@ -92,7 +92,7 @@ export class ActivityParserService {
           impact_category,
           created_at,
           ...activity_data,
-          ...(geofence_id ? { geofence_id } : {}),
+          geofence_id: geofence_id ?? null,
           tutorial: transformTutorial(tutorial),
           cutoff_time_for_doing_activity,
           activity_type: type,

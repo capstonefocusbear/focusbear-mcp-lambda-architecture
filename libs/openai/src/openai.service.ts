@@ -323,14 +323,10 @@ export class OpenAIService {
 
     // 1. Always fetch metadata from the server to detect redirects and auth errors.
     const fetchedMetadata = await this.getMetadata(sanitizedUrl);
-    console.log('[DEBUG] Raw URL: ', url);
-    console.log('[DEBUG] Sanitized URL: ', sanitizedUrl);
-    console.log('[DEBUG] 1. Metadata from getMetadata:', fetchedMetadata);
 
     // 2. Establish a priority-based fallback for the title and description.
     let finalTitle = fetchedMetadata.title || tab_title || '';
     let finalDescription = fetchedMetadata.description || meta_description || '';
-    console.log(`[DEBUG] 2. Description after fallback: "${finalDescription.substring(0, 100)}..."`);
 
     // 3. Specifically handle the "Login Required" signal from our smart scraper.
     if (fetchedMetadata.title === 'Login Required') {
@@ -345,11 +341,9 @@ export class OpenAIService {
         message: 'Junk JS pattern detected in final description, replacing matches.',
         data: { url, originalDescription: finalDescription },
       });
-      console.log('[DEBUG] 3. Junk JS pattern WAS DETECTED.');
       // Instead of clearing, we now replace only the bad parts.
       finalDescription = finalDescription.replace(junkJsPattern, ' [filtered script content] ').trim();
     }
-    console.log(`[DEBUG] FINAL Description after Junk filter: ${finalDescription.substring(0, 100)}`);
 
     try {
       // The rest of the function proceeds as before, but now with much cleaner data.

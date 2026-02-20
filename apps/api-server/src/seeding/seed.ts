@@ -18,6 +18,8 @@ import { CompletedActivitySeeder } from './completed-activity.seeder';
 import { ProjectFactory } from './project.factory';
 import { ProjectMemberFactory } from './project-member.factory';
 import { ProjectsSeeder } from './projects.seeder';
+import { ToDoFactory } from './to-do.factory';
+import { ToDoSeeder } from './to-do.seeder';
 
 const options: DataSourceOptions & SeederOptions = {
   ...typeormConfig(),
@@ -35,8 +37,9 @@ const options: DataSourceOptions & SeederOptions = {
     CompletedActivityFactory,
     ProjectFactory,
     ProjectMemberFactory,
+    ToDoFactory,
   ],
-  seeds: [MainSeeder, CompletedFocusBlocksSeeder, CompletedActivitySeeder, ProjectsSeeder],
+  seeds: [MainSeeder, CompletedFocusBlocksSeeder, CompletedActivitySeeder, ProjectsSeeder, ToDoSeeder],
 };
 
 const datasource = new DataSource(options);

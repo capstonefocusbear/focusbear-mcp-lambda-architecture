@@ -75,10 +75,7 @@ export class ProjectService {
       itemCount: total,
     });
 
-    return new GetProjectsResponseDto(
-      mappedProjects,
-      meta,
-    );
+    return new GetProjectsResponseDto(mappedProjects, meta);
   }
 
   async getProjectById(userId: string, projectId: string): Promise<ProjectResponseDto> {

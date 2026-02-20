@@ -94,5 +94,6 @@ export class ActivityChoiceData {
 
   @IsOptional()
   @IsUUID('4')
-  geofence_id?: string;
+  @ApiProperty({ required: false, nullable: true })
+  geofence_id?: string | null;
 }

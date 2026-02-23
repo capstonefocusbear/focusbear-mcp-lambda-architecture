@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateTaskReactionsTable1771804800000 implements MigrationInterface {
+export class CreateTaskReactionsTable1771837093727 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "task_reactions" (
@@ -27,8 +27,8 @@ export class CreateTaskReactionsTable1771804800000 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_task_reactions_user_id"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_task_reactions_task_id"`);
-    await queryRunner.query(`DROP TABLE "task_reactions"`);
+    await queryRunner.query('DROP INDEX IF EXISTS "IDX_task_reactions_user_id"');
+    await queryRunner.query('DROP INDEX IF EXISTS "IDX_task_reactions_task_id"');
+    await queryRunner.query('DROP TABLE "task_reactions"');
   }
 }

@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { TaskReactionRepository } from '../repositories/task-reaction.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
 import { ProjectMemberRepository } from '../../project/repositories/project-member.repository';
@@ -27,11 +28,7 @@ export class TaskReactionService {
       throw new ForbiddenException('You do not have access to this task');
     }
 
-    const existingReaction = await this.taskReactionRepository.getReactionByTaskUserEmoji(
-      taskId,
-      userId,
-      dto.emoji,
-    );
+    const existingReaction = await this.taskReactionRepository.getReactionByTaskUserEmoji(taskId, userId, dto.emoji);
 
     if (existingReaction) {
       throw new ConflictException('You have already reacted with this emoji');
@@ -48,7 +45,15 @@ export class TaskReactionService {
       { generateId: true },
     );
 
-    const savedReaction = await this.taskReactionRepository.orm.save(reaction);
+    let savedReaction: TaskReaction;
+    try {
+      savedReaction = await this.taskReactionRepository.orm.save(reaction);
+    } catch (error) {
+      if (this.isDuplicateTaskReactionError(error)) {
+        throw new ConflictException('You have already reacted with this emoji');
+      }
+      throw error;
+    }
 
     return this.mapReactionToResponse(savedReaction);
   }
@@ -116,5 +121,14 @@ export class TaskReactionService {
       created_at: reaction.created_at,
       updated_at: reaction.updated_at,
     };
+  }
+
+  private isDuplicateTaskReactionError(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+
+    const driverError = error.driverError as { code?: string; constraint?: string } | undefined;
+    return driverError?.code === '23505' && driverError.constraint === 'UQ_task_user_emoji';
   }
 }

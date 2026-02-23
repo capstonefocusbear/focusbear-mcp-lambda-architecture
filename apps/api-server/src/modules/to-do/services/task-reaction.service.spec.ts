@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { QueryFailedError } from 'typeorm';
 import { TaskReactionService } from './task-reaction.service';
 import { TaskReactionRepository } from '../repositories/task-reaction.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
@@ -88,27 +89,44 @@ describe('TaskReactionService', () => {
     it('negative: should throw NotFoundException when task does not exist', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
-      await expect(
-        taskReactionService.createReaction(userDummy.id, randomUUID(), { emoji: '👍' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(taskReactionService.createReaction(userDummy.id, randomUUID(), { emoji: '👍' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('negative: should throw ForbiddenException when user has no access to task', async () => {
       const otherTask = { ...taskDummy, user_id: randomUUID(), assignee_id: null, project_id: null };
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(otherTask);
 
-      await expect(
-        taskReactionService.createReaction(userDummy.id, otherTask.id, { emoji: '👍' }),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(taskReactionService.createReaction(userDummy.id, otherTask.id, { emoji: '👍' })).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('negative: should throw ConflictException when reaction already exists', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
       TaskReactionRepositoryMock.getReactionByTaskUserEmoji.mockResolvedValueOnce(reactionDummy);
 
-      await expect(
-        taskReactionService.createReaction(userDummy.id, taskDummy.id, { emoji: '👍' }),
-      ).rejects.toThrow(ConflictException);
+      await expect(taskReactionService.createReaction(userDummy.id, taskDummy.id, { emoji: '👍' })).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('negative: should throw ConflictException when duplicate insert race hits unique constraint', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskReactionRepositoryMock.getReactionByTaskUserEmoji.mockResolvedValueOnce(null);
+      TaskReactionRepositoryMock.orm.save.mockRejectedValueOnce(
+        new QueryFailedError('INSERT INTO task_reactions ...', [], {
+          name: 'QueryFailedError',
+          message: 'duplicate key value violates unique constraint "UQ_task_user_emoji"',
+          code: '23505',
+          constraint: 'UQ_task_user_emoji',
+        } as any),
+      );
+
+      await expect(taskReactionService.createReaction(userDummy.id, taskDummy.id, { emoji: '👍' })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('positive: should allow assignee to create reaction', async () => {

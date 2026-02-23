@@ -13,7 +13,7 @@ export class HasTeamSubscription implements CanActivate {
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const request = ctx.switchToHttp().getRequest();
-    const { team_id } = request.body;
+    const team_id = request.body?.team_id ?? request.query?.team_id;
     let isAllowed = true;
     let message = '';
     let statusCode = HttpStatus.BAD_REQUEST;

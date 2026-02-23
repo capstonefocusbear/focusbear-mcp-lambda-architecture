@@ -70,6 +70,7 @@ import { ProjectMember } from '../modules/project/entities/project-member.entity
 import { TaskComment } from '../modules/to-do/entities/task-comment.entity';
 import { TaskAttachment } from '../modules/to-do/entities/task-attachment.entity';
 import { CommentAttachment } from '../modules/to-do/entities/comment-attachment.entity';
+import { TaskReaction } from '../modules/to-do/entities/task-reaction.entity';
 import { Note } from '../modules/note/entities/note.entity';
 import { NoteTag } from '../modules/note/entities/note-tag.entity';
 import { WebhookSubscription } from '../modules/webhook/entities/webhook-subscription.entity';
@@ -144,6 +145,7 @@ export const allEntities: Function[] = [
   TaskComment,
   TaskAttachment,
   CommentAttachment,
+  TaskReaction,
   Note,
   NoteTag,
   WebhookSubscription,

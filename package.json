@@ -174,18 +174,20 @@
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
     "undici": "6.23.0",
-    "brace-expansion": "^5.0.2",
+    "brace-expansion": "^2.0.2",
     "form-data": "^4.0.4",
     "tmp": "0.2.4",
     "glob": {
-      ".": "11.1.0"
+      ".": "11.1.0",
+      "minimatch": {
+        "brace-expansion": "^5.0.2"
+      }
     },
     "@modelcontextprotocol/sdk": "^1.24.1",
     "jws": "4.0.1",
     "jsdiff": "^8.03",
     "hono": "^4.11.10",
-    "fast-xml-parser": "^5.3.6",
-    "minimatch": "^10.2.1"
+    "fast-xml-parser": "^5.3.6"
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",
@@ -201,18 +203,20 @@
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
     "undici": "6.23.0",
-    "brace-expansion": "^5.0.2",
+    "brace-expansion": "^2.0.2",
     "form-data": "^4.0.4",
     "tmp": "0.2.4",
     "glob": {
-      ".": "11.1.0"
+      ".": "11.1.0",
+      "minimatch": {
+        "brace-expansion": "^5.0.2"
+      }
     },
     "@modelcontextprotocol/sdk": "^1.24.1",
     "jws": "4.0.1",
     "jsdiff": "^8.03",
     "hono": "^4.11.10",
-    "fast-xml-parser": "^5.3.6",
-    "minimatch": "^10.2.1"
+    "fast-xml-parser": "^5.3.6"
   },
   "husky": {
     "hooks": {

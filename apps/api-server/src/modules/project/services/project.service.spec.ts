@@ -1,12 +1,19 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
+import { SendGridService } from '@app/send-grid';
+import { JwtService } from '@app/jwt';
+import { Auth0ManagementService } from '@app/auth0';
 import { ProjectService } from './project.service';
 import { ProjectRepository } from '../repositories/project.repository';
 import { ProjectMemberRepository } from '../repositories/project-member.repository';
+import { UserRepository } from '../../user/repositories/user.repository';
 import { ProjectMemberRole } from '../domain/project-member-role.enum';
 import { ProjectMemberInvitationStatus } from '../domain/project-member-invitation-status.enum';
 import { DEFAULT_PROJECT_STATUSES } from '../domain/project-status.model';
+import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
+import { PageOrder } from '../../../shared/domain/page-order.enum';
 
 const ProjectRepositoryMock = {
   orm: {
@@ -16,7 +23,7 @@ const ProjectRepositoryMock = {
   },
   getProjectById: jest.fn(),
   getProjectWithTaskCount: jest.fn(),
-  getAllUserProjects: jest.fn(),
+  getUserProjectsPaginated: jest.fn(),
   softDelete: jest.fn(),
   update: jest.fn(),
 };
@@ -37,12 +44,35 @@ const ProjectMemberRepositoryMock = {
   update: jest.fn(),
 };
 
+const UserRepositoryMock = {
+  orm: {
+    findOneBy: jest.fn(),
+  },
+};
+
+const SendGridServiceMock = {
+  sendEmail: jest.fn(),
+};
+
+const JwtServiceMock = {
+  asyncSign: jest.fn(),
+};
+
+const ConfigServiceMock = {
+  get: jest.fn(),
+};
+
+const Auth0ManagementServiceMock = {
+  getAuth0User: jest.fn(),
+};
+
 describe('ProjectService', () => {
   let projectService: ProjectService;
 
   const userDummy = {
     id: randomUUID(),
     email: 'test@example.com',
+    auth0_id: 'auth0|123',
   };
 
   const projectDummy = {
@@ -67,12 +97,31 @@ describe('ProjectService', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [ProjectService, ProjectRepository, ProjectMemberRepository],
+      providers: [
+        ProjectService,
+        ProjectRepository,
+        ProjectMemberRepository,
+        UserRepository,
+        SendGridService,
+        JwtService,
+        ConfigService,
+        Auth0ManagementService,
+      ],
     })
       .overrideProvider(ProjectRepository)
       .useValue(ProjectRepositoryMock)
       .overrideProvider(ProjectMemberRepository)
       .useValue(ProjectMemberRepositoryMock)
+      .overrideProvider(UserRepository)
+      .useValue(UserRepositoryMock)
+      .overrideProvider(SendGridService)
+      .useValue(SendGridServiceMock)
+      .overrideProvider(JwtService)
+      .useValue(JwtServiceMock)
+      .overrideProvider(ConfigService)
+      .useValue(ConfigServiceMock)
+      .overrideProvider(Auth0ManagementService)
+      .useValue(Auth0ManagementServiceMock)
       .compile();
 
     projectService = moduleRef.get<ProjectService>(ProjectService);
@@ -125,22 +174,45 @@ describe('ProjectService', () => {
 
   describe('getUserProjects', () => {
     it('positive: should return all user projects', async () => {
-      ProjectRepositoryMock.getAllUserProjects.mockResolvedValueOnce([projectDummy]);
+      const queryDto: GetProjectsQueryDto = {
+        page: 1,
+        take: 20,
+        skip: 0,
+        order: PageOrder.DESC,
+      };
+      ProjectRepositoryMock.getUserProjectsPaginated.mockResolvedValueOnce([[projectDummy], 1]);
 
-      const result = await projectService.getUserProjects(userDummy.id);
+      const result = await projectService.getUserProjects(userDummy.id, queryDto);
 
+      expect(result.data).toHaveLength(1);
+      expect(result.meta.itemCount).toBe(1);
+      expect(result.meta.page).toBe(1);
+      expect(result.meta.take).toBe(20);
+      expect(result.meta.order).toBe(PageOrder.DESC);
+      expect(result.data[0].name).toBe('Test Project');
       expect(result.projects).toHaveLength(1);
       expect(result.total_count).toBe(1);
-      expect(result.projects[0].name).toBe('Test Project');
+      expect(ProjectRepositoryMock.getUserProjectsPaginated).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
 
     it('positive: should return empty list when user has no projects', async () => {
-      ProjectRepositoryMock.getAllUserProjects.mockResolvedValueOnce([]);
+      const queryDto: GetProjectsQueryDto = {
+        page: 1,
+        take: 20,
+        skip: 0,
+        order: PageOrder.DESC,
+      };
+      ProjectRepositoryMock.getUserProjectsPaginated.mockResolvedValueOnce([[], 0]);
 
-      const result = await projectService.getUserProjects(userDummy.id);
+      const result = await projectService.getUserProjects(userDummy.id, queryDto);
 
+      expect(result.data).toHaveLength(0);
+      expect(result.meta.itemCount).toBe(0);
+      expect(result.meta.page).toBe(1);
+      expect(result.meta.take).toBe(20);
       expect(result.projects).toHaveLength(0);
       expect(result.total_count).toBe(0);
+      expect(ProjectRepositoryMock.getUserProjectsPaginated).toHaveBeenCalledWith(userDummy.id, queryDto);
     });
   });
 
@@ -230,7 +302,102 @@ describe('ProjectService', () => {
   });
 
   describe('inviteMember', () => {
-    it('positive: should invite a new member', async () => {
+    it('negative: should throw NotFoundException when project does not exist', async () => {
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(null);
+
+      await expect(projectService.inviteMember(userDummy.id, randomUUID(), { email: 'newmember@example.com' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('positive: should invite a new member and send invitation email', async () => {
+      const newMember = {
+        id: randomUUID(),
+        project_id: projectDummy.id,
+        email: 'newmember@example.com',
+        role: ProjectMemberRole.ADMIN,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+      };
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
+      ProjectMemberRepositoryMock.orm.save.mockResolvedValueOnce(newMember);
+      JwtServiceMock.asyncSign.mockResolvedValueOnce('mock-token');
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: 'admin@example.com' });
+      SendGridServiceMock.sendEmail.mockResolvedValueOnce(undefined);
+
+      const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
+        email: 'newmember@example.com',
+        role: ProjectMemberRole.ADMIN,
+      });
+
+      expect(result.email).toBe('newmember@example.com');
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.PENDING);
+      expect(SendGridServiceMock.sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'newmember@example.com',
+          dynamicTemplateData: expect.objectContaining({
+            project_name: projectDummy.name,
+          }),
+        }),
+      );
+      expect(JwtServiceMock.asyncSign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: ProjectMemberRole.ADMIN,
+        }),
+        'test-secret',
+      );
+    });
+
+    it('positive: should re-invite an existing failed invitation', async () => {
+      const failedMember = {
+        id: randomUUID(),
+        project_id: projectDummy.id,
+        email: 'newmember@example.com',
+        role: ProjectMemberRole.MEMBER,
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      };
+      const pendingMember = {
+        ...failedMember,
+        role: ProjectMemberRole.ADMIN,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+      };
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(failedMember);
+      ProjectMemberRepositoryMock.update.mockResolvedValueOnce(pendingMember);
+      JwtServiceMock.asyncSign.mockResolvedValueOnce('mock-token');
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: 'admin@example.com' });
+      SendGridServiceMock.sendEmail.mockResolvedValueOnce(undefined);
+
+      const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
+        email: 'newmember@example.com',
+        role: ProjectMemberRole.ADMIN,
+      });
+
+      expect(result.role).toBe(ProjectMemberRole.ADMIN);
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.PENDING);
+      expect(ProjectMemberRepositoryMock.orm.save).not.toHaveBeenCalled();
+      expect(ProjectMemberRepositoryMock.update).toHaveBeenCalledWith(failedMember.id, {
+        role: ProjectMemberRole.ADMIN,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+        invitation_sent_at: expect.any(Date),
+      });
+    });
+
+    it('positive: should mark invitation as failed when email sending fails', async () => {
       const newMember = {
         id: randomUUID(),
         project_id: projectDummy.id,
@@ -238,21 +405,61 @@ describe('ProjectService', () => {
         role: ProjectMemberRole.MEMBER,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
       };
+      const failedMember = {
+        ...newMember,
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      };
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
       ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
       ProjectMemberRepositoryMock.orm.save.mockResolvedValueOnce(newMember);
+      JwtServiceMock.asyncSign.mockResolvedValueOnce('mock-token');
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+      SendGridServiceMock.sendEmail.mockRejectedValueOnce(new Error('SendGrid failed'));
+      ProjectMemberRepositoryMock.update.mockResolvedValueOnce(failedMember);
 
       const result = await projectService.inviteMember(userDummy.id, projectDummy.id, {
         email: 'newmember@example.com',
       });
 
       expect(result.email).toBe('newmember@example.com');
-      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.PENDING);
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.FAILED);
+      expect(ProjectMemberRepositoryMock.update).toHaveBeenCalledWith(newMember.id, {
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      });
     });
 
-    it('negative: should throw BadRequestException when email already invited', async () => {
+    it('negative: should throw when invitation token generation fails', async () => {
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
-      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(memberDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(null);
+      JwtServiceMock.asyncSign.mockRejectedValueOnce(new Error('JWT signing failed'));
+      ConfigServiceMock.get.mockImplementation((key: string) => {
+        if (key === 'tokens.invitation.secret') return 'test-secret';
+        if (key === 'server.devFrontendUrl') return 'http://localhost:3000';
+        if (key === 'server.frontEndUrl') return 'https://app.focusbear.io';
+        return undefined;
+      });
+
+      await expect(
+        projectService.inviteMember(userDummy.id, projectDummy.id, {
+          email: 'newmember@example.com',
+        }),
+      ).rejects.toThrow('JWT signing failed');
+      expect(ProjectMemberRepositoryMock.orm.save).not.toHaveBeenCalled();
+    });
+
+    it('negative: should throw BadRequestException when email is already an accepted member', async () => {
+      const acceptedMember = {
+        ...memberDummy,
+        email: 'existing@example.com',
+        invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
+      };
+      ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(projectDummy);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(acceptedMember);
 
       await expect(
         projectService.inviteMember(userDummy.id, projectDummy.id, { email: 'existing@example.com' }),
@@ -419,6 +626,31 @@ describe('ProjectService', () => {
       ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(acceptedMember);
 
       await expect(projectService.acceptInvitation(userDummy.id, projectDummy.id)).rejects.toThrow(BadRequestException);
+    });
+
+    it('positive: should accept invitation by email fallback when user link is missing', async () => {
+      const pendingMember = {
+        ...memberDummy,
+        id: randomUUID(),
+        user_id: null,
+        email: userDummy.email,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+      };
+      const acceptedMember = {
+        ...pendingMember,
+        user_id: userDummy.id,
+        invitation_status: ProjectMemberInvitationStatus.ACCEPTED,
+      };
+      ProjectMemberRepositoryMock.getMemberByProjectAndUser.mockResolvedValueOnce(null);
+      ProjectMemberRepositoryMock.getMemberByProjectAndEmail.mockResolvedValueOnce(pendingMember);
+      ProjectMemberRepositoryMock.linkUserToInvitation.mockResolvedValueOnce(undefined);
+      ProjectMemberRepositoryMock.acceptInvitation.mockResolvedValueOnce(acceptedMember);
+
+      const result = await projectService.acceptInvitation(userDummy.id, projectDummy.id, userDummy.email);
+
+      expect(ProjectMemberRepositoryMock.getMemberByProjectAndEmail).toHaveBeenCalledWith(projectDummy.id, userDummy.email);
+      expect(ProjectMemberRepositoryMock.linkUserToInvitation).toHaveBeenCalledWith(pendingMember.id, userDummy.id);
+      expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.ACCEPTED);
     });
   });
 

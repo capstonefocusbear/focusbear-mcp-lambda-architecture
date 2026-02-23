@@ -281,7 +281,7 @@ async function getMessage(routine: string, fileName: string, language: string): 
 }
 
 async function getUsersForStartup(language: string) {
-  const currentTime = DateTime.local();
+  const currentTime = DateTime.utc();
   const { timeStamp, timeStampPlusMinute, timeStrings } = buildTimeWindowStrings(currentTime);
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
@@ -297,7 +297,7 @@ async function getUsersForStartup(language: string) {
   const usersToReceiveNotification = users.filter((user) => {
     const lastNotified = user.routine_notification_times?.last_time_notified_of_morning_routine;
     if (!lastNotified) return true;
-    const lastMorningRoutineNotification = DateTime.fromJSDate(new Date(lastNotified));
+    const lastMorningRoutineNotification = DateTime.fromJSDate(new Date(lastNotified), { zone: 'utc' });
     const hasReceivedNotificationToday =
       lastMorningRoutineNotification.isValid && lastMorningRoutineNotification.hasSame(currentTime, 'day');
     return !hasReceivedNotificationToday;
@@ -310,7 +310,7 @@ async function getUsersForStartup(language: string) {
     const jeremyMatchesMorningTimestamp = !!jeremyInStartupFetch;
     const jeremyInStartup = usersToReceiveNotification.some((u) => u.id === JEREMYS_USER_ID);
     const lastMorningRaw = jeremyInStartupFetch?.routine_notification_times?.last_time_notified_of_morning_routine;
-    const lastMorning = lastMorningRaw ? DateTime.fromJSDate(new Date(lastMorningRaw)) : undefined;
+    const lastMorning = lastMorningRaw ? DateTime.fromJSDate(new Date(lastMorningRaw), { zone: 'utc' }) : undefined;
     console.log({
       JEREMYS_USER_ID,
       JEREMY_MORNING_MATCHED_TIMESTAMP: jeremyMatchesMorningTimestamp,
@@ -323,7 +323,7 @@ async function getUsersForStartup(language: string) {
 }
 
 async function getUsersForShutdown(language: string) {
-  const currentTime = DateTime.local();
+  const currentTime = DateTime.utc();
   const { timeStamp, timeStampPlusMinute, timeStrings } = buildTimeWindowStrings(currentTime);
   const thirtyDaysBeforeNow = currentTime.minus({ days: 30 });
   const updated_at = MoreThanOrEqual(thirtyDaysBeforeNow.toISO());
@@ -340,7 +340,7 @@ async function getUsersForShutdown(language: string) {
   const usersToReceiveNotification = users.filter((user) => {
     const lastNotified = user.routine_notification_times?.last_time_notified_of_evening_routine;
     if (!lastNotified) return true;
-    const lastEveningRoutineNotification = DateTime.fromJSDate(new Date(lastNotified));
+    const lastEveningRoutineNotification = DateTime.fromJSDate(new Date(lastNotified), { zone: 'utc' });
     const hasReceivedNotificationToday =
       lastEveningRoutineNotification.isValid && lastEveningRoutineNotification.hasSame(currentTime, 'day');
     return !hasReceivedNotificationToday;
@@ -353,7 +353,7 @@ async function getUsersForShutdown(language: string) {
     const jeremyMatchesEveningTimestamp = !!jeremyInShutdownFetch;
     const jeremyInShutdown = usersToReceiveNotification.some((u) => u.id === JEREMYS_USER_ID);
     const lastEveningRaw = jeremyInShutdownFetch?.routine_notification_times?.last_time_notified_of_evening_routine;
-    const lastEvening = lastEveningRaw ? DateTime.fromJSDate(new Date(lastEveningRaw)) : undefined;
+    const lastEvening = lastEveningRaw ? DateTime.fromJSDate(new Date(lastEveningRaw), { zone: 'utc' }) : undefined;
     console.log({
       JEREMYS_USER_ID,
       JEREMY_EVENING_MATCHED_TIMESTAMP: jeremyMatchesEveningTimestamp,
@@ -368,7 +368,7 @@ async function getUsersForShutdown(language: string) {
 async function updateUsersMorningRoutineNotification(users: User[]) {
   const updatedUsers = users.map((user) => {
     const userClone = { ...user };
-    userClone.routine_notification_times.last_time_notified_of_morning_routine = DateTime.local().toJSDate();
+    userClone.routine_notification_times.last_time_notified_of_morning_routine = DateTime.utc().toJSDate();
     return userClone;
   });
   await CronJobDataSource.manager.save(User, updatedUsers);
@@ -377,7 +377,7 @@ async function updateUsersMorningRoutineNotification(users: User[]) {
 async function updateUsersEveningRoutineNotification(users: User[]) {
   const updatedUsers = users.map((user) => {
     const userClone = { ...user };
-    userClone.routine_notification_times.last_time_notified_of_evening_routine = DateTime.local().toJSDate();
+    userClone.routine_notification_times.last_time_notified_of_evening_routine = DateTime.utc().toJSDate();
     return userClone;
   });
   await CronJobDataSource.manager.save(User, updatedUsers);

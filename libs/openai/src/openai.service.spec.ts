@@ -5,6 +5,7 @@ import { SENTRY_TOKEN, SentryModule, SentryService } from '@app/observability';
 import { I18nService } from 'nestjs-i18n';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { promises as fs } from 'fs';
+import { basename } from 'path';
 import axios from 'axios';
 import { Stream } from 'stream';
 import OpenAI from 'openai';
@@ -746,14 +747,18 @@ describe('OpenAIService', () => {
   describe('getMetadata', () => {
     // Use let to allow re-assignment in beforeEach
     let mockAxiosGet: jest.SpyInstance;
+    let mockStat: jest.SpyInstance;
     let mockReadFile: jest.SpyInstance;
+    let mockUnlink: jest.SpyInstance;
     let mockWriteFile: jest.SpyInstance;
     let mockSanitizeMetadata: jest.SpyInstance;
 
     beforeEach(() => {
       // Mock all external dependencies used by getMetadata
       mockAxiosGet = jest.spyOn(axios, 'get');
+      mockStat = jest.spyOn(fs, 'stat').mockRejectedValue({ code: 'ENOENT' }); // Default to cache miss
       mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' }); // Default to cache miss
+      mockUnlink = jest.spyOn(fs, 'unlink').mockResolvedValue(undefined);
       mockWriteFile = jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
       // Keep your sanitize mock as it isolates the test to getMetadata's logic
       mockSanitizeMetadata = jest
@@ -768,6 +773,7 @@ describe('OpenAIService', () => {
 
     it('should return cached metadata if available', async () => {
       const cachedData = { title: 'Cached Title', description: 'Cached Description' };
+      mockStat.mockResolvedValue({ mtimeMs: Date.now() });
       mockReadFile.mockResolvedValue(JSON.stringify(cachedData)); // Override default mock for this test
 
       const result = await service.getMetadata('https://example.com');
@@ -775,6 +781,42 @@ describe('OpenAIService', () => {
       expect(result).toEqual(cachedData);
       expect(mockReadFile).toHaveBeenCalled();
       expect(mockAxiosGet).not.toHaveBeenCalled(); // Should not fetch if cache is hit
+    });
+
+    it('should bypass stale cache, remove it, and fetch fresh metadata', async () => {
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      mockStat.mockResolvedValue({ mtimeMs: Date.now() - oneDayMs - 1 });
+      const mockHtml = '<html><head><title>Fresh Title</title></head><body>Fresh Description</body></html>';
+      mockAxiosGet.mockResolvedValue({
+        status: 200,
+        data: mockHtml,
+        request: { res: { responseUrl: 'https://example.com' } },
+      });
+
+      const result = await service.getMetadata('https://example.com');
+
+      expect(result.title).toBe('Fresh Title');
+      expect(result.description).toContain('Fresh Description');
+      expect(mockUnlink).toHaveBeenCalled();
+      expect(mockReadFile).not.toHaveBeenCalled();
+      expect(mockAxiosGet).toHaveBeenCalled();
+    });
+
+    it('should use a fixed-length cache filename for very long URLs', async () => {
+      const veryLongUrl = `https://video-downloads.googleusercontent.com/${'a'.repeat(8000)}`;
+      const mockHtml = '<html><head><title>Test Title</title></head><body>Test Description</body></html>';
+
+      mockAxiosGet.mockResolvedValue({
+        status: 200,
+        data: mockHtml,
+        request: { res: { responseUrl: veryLongUrl } },
+      });
+
+      await service.getMetadata(veryLongUrl);
+
+      const [cachePath] = mockWriteFile.mock.calls[0];
+      expect(typeof cachePath).toBe('string');
+      expect(basename(cachePath)).toMatch(/^[a-f0-9]{64}\.json$/);
     });
 
     it('should apply sanitizeMetadata to fetched title and description', async () => {

@@ -6,6 +6,7 @@ import { ToDo } from '../entities/to-do.entity';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
 import { SearchToDosDto } from '../dto/search-to-do.dto';
 import { RecentToDoDto } from '../dto/recent-to-do.dto';
+import { ToDoSortMode } from '../domain/to-do-sort-mode.enum';
 
 @Injectable()
 export class ToDoRepository extends BaseRepository<ToDo> {
@@ -76,6 +77,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       perspiration_gte,
       perspiration_lte,
       synced_project_id,
+      sort_mode,
     }: GetToDosQueryDto,
   ): Promise<[ToDo[], number]> {
     const query = this.orm
@@ -106,8 +108,13 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       .skip(skip)
       .where('to_do.user_id = :user_id', { user_id: userId });
 
-    // order by the score (normalized to scale of 10: overdue=10, due today=9.9, due in morethan 1 year=0.1, no due date=5)
-    query.orderBy('top_score', order === PageOrder.ASC ? 'ASC' : 'DESC');
+    const orderBy = order === PageOrder.ASC ? 'ASC' : 'DESC';
+    if (sort_mode === ToDoSortMode.CHRONOLOGICAL) {
+      query.orderBy('to_do.created_at', orderBy);
+    } else {
+      query.orderBy('top_score', orderBy);
+    }
+
     if (status) {
       query.andWhere('to_do.status = :status', { status });
     } else {

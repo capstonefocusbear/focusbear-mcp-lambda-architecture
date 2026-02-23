@@ -15,6 +15,8 @@ import { validate } from 'class-validator';
 import { randomUUID } from 'crypto';
 import { PusherBeamsService } from '@app/pusher-beams';
 import { PusherService } from '@app/pusher';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { I18nService } from 'nestjs-i18n';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { NotificationEvents } from '@app/pusher-beams/domains/notification-events.enum';
@@ -44,6 +46,7 @@ import { CustomRoutine } from '../../entities/custom-routine';
 import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 import { UpdateCustomRoutineDto } from '../../dto/update-custom-routine.dto.dto';
 import { timed } from '../../../../shared/utils/helpers';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 
 const PERFORMANCE_BUDGETS = {
   AUTH0_API_CALL: 500,
@@ -72,6 +75,8 @@ export class UserSettingsService {
     private readonly i18nService: I18nService,
     private readonly customRoutineRepository: CustomRoutineRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
+    @InjectQueue(BullQueues.SETTINGS_NOTIFICATION)
+    private readonly settingsNotificationQueue: Queue,
   ) {}
 
   async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -324,12 +329,7 @@ export class UserSettingsService {
       if (should_update_has_edited_settings) {
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
-          timed(() => this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id), {
-            operationName: 'pusher_broadcast',
-            budgetMs: PERFORMANCE_BUDGETS.PUSHER_BROADCAST,
-            logger: this.logger,
-            context: { user_id, device_id },
-          }).then(() => undefined),
+          this.queueSettingsNotification(user_id, device_id),
         ]);
       }
 
@@ -428,6 +428,45 @@ export class UserSettingsService {
     //   pushData,
     // });
     // await this.pusherBeams.publishToUsers([userId], publishRequest);
+  }
+
+  private async queueSettingsNotification(userId: string, deviceId: string): Promise<void> {
+    const startTime = Date.now();
+    try {
+      await this.settingsNotificationQueue.add(
+        BullWorkers.SEND_SETTINGS_NOTIFICATION,
+        { userId, deviceId },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
+        },
+      );
+
+      const queueTime = Date.now() - startTime;
+      if (queueTime > 50) {
+        this.logger.warn(
+          {
+            operationName: 'queue_settings_notification',
+            actualMs: queueTime,
+            budgetMs: 50,
+            userId,
+          },
+          `Slow queue add: ${queueTime}ms`,
+        );
+      }
+    } catch (error) {
+      // Queue failure shouldn't fail the API - log and continue
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        tags: { service: 'bull-queue', operation: 'add', queue: 'settings-notification' },
+        extra: { userId, deviceId },
+      });
+    }
   }
 
   calculateRelaxActivityDuration(cutoffTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {

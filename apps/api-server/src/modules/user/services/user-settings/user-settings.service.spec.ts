@@ -11,6 +11,7 @@ import { PusherBeamsService } from '@app/pusher-beams';
 import { PusherService } from '@app/pusher';
 import { I18nService } from 'nestjs-i18n';
 import { mockDeep } from 'jest-mock-extended';
+import { getQueueToken } from '@nestjs/bull';
 import {
   ActivitySequenceDummy,
   deserializedActivitiesDummy,
@@ -23,6 +24,7 @@ import {
   userSettingsDummy,
   dummyUserCutoffTimeActivities,
   dummyFreeTimeActivity,
+  QueueMock,
 } from '../../../../../test/dummies';
 import {
   ActivityParserServiceMock,
@@ -53,7 +55,7 @@ import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { UserService } from '../user/user.service';
 import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { ActivityPriority } from '../../../activity/domain/activity-priority.enum';
-import { ONE_HOUR_SECONDS } from '../../../../shared/utils/constants';
+import { BullQueues, ONE_HOUR_SECONDS } from '../../../../shared/utils/constants';
 import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 
 describe('UserSettingsService', () => {
@@ -87,6 +89,10 @@ describe('UserSettingsService', () => {
           useValue: i18nServiceMock,
         },
         CustomRoutineRepository,
+        {
+          provide: getQueueToken(BullQueues.SETTINGS_NOTIFICATION),
+          useValue: QueueMock,
+        },
       ],
     })
       .overrideProvider(UserRepository)

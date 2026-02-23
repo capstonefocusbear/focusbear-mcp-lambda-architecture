@@ -14,8 +14,8 @@ export class TaskReactionResponseDto {
   emoji: string;
 
   @ApiProperty({ description: 'Creation timestamp' })
-  created_at: Date;
+  created_at: string;
 
   @ApiProperty({ description: 'Last update timestamp' })
-  updated_at: Date;
+  updated_at: string;
 }

@@ -77,14 +77,15 @@ export class TaskReactionService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
+    const hasAccess = await this.userHasAccessToTask(userId, task);
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this task');
+    }
+
     const reaction = await this.taskReactionRepository.getReactionByTaskUserEmoji(taskId, userId, emoji);
 
     if (!reaction) {
       throw new NotFoundException('Reaction not found');
-    }
-
-    if (reaction.user_id !== userId) {
-      throw new ForbiddenException('You can only delete your own reactions');
     }
 
     await this.taskReactionRepository.deleteReactionByTaskUserEmoji(taskId, userId, emoji);

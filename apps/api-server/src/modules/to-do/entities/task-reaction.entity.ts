@@ -1,9 +1,10 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 import { ToDo } from './to-do.entity';
 
 @Entity('task_reactions')
+@Unique('UQ_task_user_emoji', ['task_id', 'user_id', 'emoji'])
 export class TaskReaction extends BaseEntity {
   constructor({ id, ...data }: Partial<TaskReaction> = {}, options = { generateId: false }) {
     super(id, options);

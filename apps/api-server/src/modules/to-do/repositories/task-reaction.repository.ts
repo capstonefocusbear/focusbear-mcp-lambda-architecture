@@ -12,7 +12,6 @@ export class TaskReactionRepository extends BaseRepository<TaskReaction> {
   async getReactionsByTaskId(taskId: string): Promise<TaskReaction[]> {
     return this.orm.find({
       where: { task_id: taskId },
-      relations: ['user'],
       order: { created_at: 'ASC' },
     });
   }
@@ -21,10 +20,6 @@ export class TaskReactionRepository extends BaseRepository<TaskReaction> {
     return this.orm.findOne({
       where: { task_id: taskId, user_id: userId, emoji },
     });
-  }
-
-  async deleteReaction(reactionId: string): Promise<void> {
-    await this.orm.delete(reactionId);
   }
 
   async deleteReactionByTaskUserEmoji(taskId: string, userId: string, emoji: string): Promise<void> {

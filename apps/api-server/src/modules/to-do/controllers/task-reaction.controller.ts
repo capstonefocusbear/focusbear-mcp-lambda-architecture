@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { TaskReactionService } from '../services/task-reaction.service';
 import { CreateTaskReactionDto } from '../dto/create-task-reaction.dto';
+import { DeleteTaskReactionQueryDto } from '../dto/delete-task-reaction-query.dto';
 import { TaskReactionParamsDto } from '../dto/task-reaction-params.dto';
 import { TaskReactionResponseDto } from '../dto/task-reaction-response.dto';
 
@@ -42,15 +43,16 @@ export class TaskReactionController {
   }
 
   @Delete()
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a reaction from a task' })
-  @ApiResponse({ status: 200, description: 'Reaction deleted successfully' })
+  @ApiResponse({ status: 204, description: 'Reaction deleted successfully' })
   @ApiResponse({ status: 404, description: 'Task or reaction not found' })
-  @ApiResponse({ status: 403, description: 'User can only delete their own reactions' })
+  @ApiResponse({ status: 403, description: 'User does not have access to this task' })
   async deleteReaction(
     @Param() params: TaskReactionParamsDto,
-    @Query('emoji') emoji: string,
+    @Query() query: DeleteTaskReactionQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<void> {
-    return this.taskReactionService.deleteReaction(user.id, params.task_id, emoji);
+    return this.taskReactionService.deleteReaction(user.id, params.task_id, query.emoji);
   }
 }

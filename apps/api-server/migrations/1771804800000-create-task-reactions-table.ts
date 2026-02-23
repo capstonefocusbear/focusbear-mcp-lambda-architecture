@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateTaskReactionsTable1739756367000 implements MigrationInterface {
+export class CreateTaskReactionsTable1771804800000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "task_reactions" (

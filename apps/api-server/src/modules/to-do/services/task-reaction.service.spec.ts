@@ -198,8 +198,7 @@ describe('TaskReactionService', () => {
   describe('deleteReaction', () => {
     it('positive: should delete own reaction', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
-      TaskReactionRepositoryMock.getReactionByTaskUserEmoji.mockResolvedValueOnce(reactionDummy);
-      TaskReactionRepositoryMock.deleteReactionByTaskUserEmoji.mockResolvedValueOnce(undefined);
+      TaskReactionRepositoryMock.deleteReactionByTaskUserEmoji.mockResolvedValueOnce({ affected: 1 });
 
       await taskReactionService.deleteReaction(userDummy.id, taskDummy.id, '👍');
 
@@ -229,7 +228,7 @@ describe('TaskReactionService', () => {
 
     it('negative: should throw NotFoundException when reaction does not exist', async () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
-      TaskReactionRepositoryMock.getReactionByTaskUserEmoji.mockResolvedValueOnce(null);
+      TaskReactionRepositoryMock.deleteReactionByTaskUserEmoji.mockResolvedValueOnce({ affected: 0 });
 
       await expect(taskReactionService.deleteReaction(userDummy.id, taskDummy.id, '👍')).rejects.toThrow(
         NotFoundException,

@@ -39,8 +39,6 @@ export class TaskReactionService {
         task_id: taskId,
         user_id: userId,
         emoji: dto.emoji,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       },
       { generateId: true },
     );
@@ -87,13 +85,10 @@ export class TaskReactionService {
       throw new ForbiddenException('You do not have access to this task');
     }
 
-    const reaction = await this.taskReactionRepository.getReactionByTaskUserEmoji(taskId, userId, emoji);
-
-    if (!reaction) {
+    const deleteResult = await this.taskReactionRepository.deleteReactionByTaskUserEmoji(taskId, userId, emoji);
+    if (!deleteResult.affected) {
       throw new NotFoundException('Reaction not found');
     }
-
-    await this.taskReactionRepository.deleteReactionByTaskUserEmoji(taskId, userId, emoji);
   }
 
   private async userHasAccessToTask(

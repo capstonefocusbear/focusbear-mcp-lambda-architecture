@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, DeleteResult } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { TaskReaction } from '../entities/task-reaction.entity';
 
@@ -22,7 +22,7 @@ export class TaskReactionRepository extends BaseRepository<TaskReaction> {
     });
   }
 
-  async deleteReactionByTaskUserEmoji(taskId: string, userId: string, emoji: string): Promise<void> {
-    await this.orm.delete({ task_id: taskId, user_id: userId, emoji });
+  async deleteReactionByTaskUserEmoji(taskId: string, userId: string, emoji: string): Promise<DeleteResult> {
+    return this.orm.delete({ task_id: taskId, user_id: userId, emoji });
   }
 }

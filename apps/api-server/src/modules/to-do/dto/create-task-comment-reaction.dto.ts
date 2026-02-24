@@ -10,6 +10,6 @@ export class CreateTaskCommentReactionDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(10)
-  @Matches(/^[\p{Extended_Pictographic}\u200d\uFE0F]+$/u, { message: 'Must be a valid emoji' })
+  @Matches(/^(?:\p{Extended_Pictographic}\uFE0F?(?:\u200d\p{Extended_Pictographic}\uFE0F?)*)+$/u, { message: 'Must be a valid emoji' })
   emoji: string;
 }

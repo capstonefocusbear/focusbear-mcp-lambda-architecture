@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags, ApiResponse } from '@nestjs/swagger';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { TaskCommentReactionService } from '../services/task-comment-reaction.service';
 import { CreateTaskCommentReactionDto } from '../dto/create-task-comment-reaction.dto';
+import { DeleteTaskCommentReactionQueryDto } from '../dto/delete-task-comment-reaction-query.dto';
 import { TaskCommentReactionParamsDto } from '../dto/task-comment-reaction-params.dto';
 import { TaskCommentReactionResponseDto } from '../dto/task-comment-reaction-response.dto';
 
@@ -40,14 +41,15 @@ export class TaskCommentReactionController {
   }
 
   @Delete()
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a reaction from a task comment' })
-  @ApiResponse({ status: 200, description: 'Reaction removed successfully' })
+  @ApiResponse({ status: 204, description: 'Reaction removed successfully' })
   @ApiResponse({ status: 404, description: 'Comment or reaction not found' })
   async deleteReaction(
     @Param() params: TaskCommentReactionParamsDto,
-    @Query('emoji') emoji: string,
+    @Query() query: DeleteTaskCommentReactionQueryDto,
     @AuthContext() { user }: Passport,
   ): Promise<void> {
-    return this.reactionService.deleteReaction(user.id, params.task_id, params.comment_id, emoji);
+    return this.reactionService.deleteReaction(user.id, params.task_id, params.comment_id, query.emoji);
   }
 }

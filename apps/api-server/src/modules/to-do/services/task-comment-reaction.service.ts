@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { TaskCommentReactionRepository } from '../repositories/task-comment-reaction.repository';
 import { TaskCommentRepository } from '../repositories/task-comment.repository';
 import { ToDoRepository } from '../repositories/to-do.repository';
@@ -61,13 +62,20 @@ export class TaskCommentReactionService {
       { generateId: true },
     );
 
-    const savedReaction = await this.reactionRepository.orm.save(reaction);
-    const reactionWithUser = await this.reactionRepository.orm.findOne({
-      where: { id: savedReaction.id },
-      relations: ['user'],
-    });
+    try {
+      const savedReaction = await this.reactionRepository.orm.save(reaction);
+      const reactionWithUser = await this.reactionRepository.orm.findOne({
+        where: { id: savedReaction.id },
+        relations: ['user'],
+      });
 
-    return this.mapReactionToResponse(reactionWithUser);
+      return this.mapReactionToResponse(reactionWithUser);
+    } catch (err) {
+      if (err instanceof QueryFailedError && (err as any).code === '23505') {
+        throw new ConflictException('You have already reacted with this emoji');
+      }
+      throw err;
+    }
   }
 
   async getReactionsByCommentId(
@@ -102,14 +110,20 @@ export class TaskCommentReactionService {
       throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
 
+    const task = await this.toDoRepository.orm.findOne({ where: { id: taskId } });
+    if (!task) {
+      throw new NotFoundException(`Task with id ${taskId} not found`);
+    }
+
+    const hasAccess = await this.userHasAccessToTask(userId, task);
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this task');
+    }
+
     const reaction = await this.reactionRepository.getReactionByCommentUserEmoji(commentId, userId, emoji);
 
     if (!reaction) {
       throw new NotFoundException(`Reaction not found`);
-    }
-
-    if (reaction.user_id !== userId) {
-      throw new ForbiddenException('You can only delete your own reactions');
     }
 
     await this.reactionRepository.deleteReaction(reaction.id);

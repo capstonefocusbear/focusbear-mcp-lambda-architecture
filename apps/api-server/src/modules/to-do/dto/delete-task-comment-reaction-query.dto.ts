@@ -1,11 +1,11 @@
 import { IsNotEmpty, IsString, MaxLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CreateTaskCommentReactionDto {
+export class DeleteTaskCommentReactionQueryDto {
   @ApiProperty({
     description: 'Emoji for the reaction (single emoji character)',
     example: '👍',
-    maxLength: 10
+    maxLength: 10,
   })
   @IsString()
   @IsNotEmpty()

@@ -109,7 +109,7 @@ export class NoteService {
       ? createNoteDto.completed_activity_id
       : existingNoteForUpdate?.completed_activity_id;
     const isBrainDump = shouldUpdateIsBrainDump
-      ? createNoteDto.is_brain_dump
+      ? createNoteDto.is_brain_dump ?? false
       : existingNoteForUpdate?.is_brain_dump ?? false;
 
     const note = new Note(

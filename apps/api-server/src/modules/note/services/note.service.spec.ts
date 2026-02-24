@@ -168,6 +168,40 @@ describe('NoteService', () => {
       expect(result.title).toBe('Updated Title');
     });
 
+    it('positive: should update is_brain_dump when explicitly provided on update', async () => {
+      const noteId = randomUUID();
+      const existingNote = new Note({
+        id: noteId,
+        user_id: userId,
+        ...noteDummy,
+        is_brain_dump: true,
+        tags: [],
+        embedded_todos: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      const updatedNote = new Note({
+        ...existingNote,
+        is_brain_dump: false,
+        updated_at: new Date().toISOString(),
+      });
+
+      NoteRepositoryMock.orm.findOne.mockResolvedValueOnce({ id: noteId, user_id: userId });
+      NoteRepositoryMock.getNoteById.mockResolvedValueOnce(existingNote);
+      NoteRepositoryMock.orm.save.mockResolvedValueOnce(updatedNote);
+      NoteRepositoryMock.getNoteById.mockResolvedValueOnce(updatedNote);
+
+      const result = await noteService.upsertNote(userId, { id: noteId, is_brain_dump: false });
+
+      expect(NoteRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          is_brain_dump: false,
+        }),
+      );
+      expect(result.is_brain_dump).toBe(false);
+    });
+
     it('positive: should preserve tags and embedded todos when omitted in update payload', async () => {
       const noteId = randomUUID();
       const existingNote = new Note({

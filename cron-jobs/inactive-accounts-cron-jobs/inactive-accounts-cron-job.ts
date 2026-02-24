@@ -379,9 +379,10 @@ async function runInactiveAccountsCronJob() {
     // Get recently active users for progress emails
     const activeUsers = await getActiveUsers();
     if (activeUsers.length > 0) {
-      console.log(`Sending progress emails to ${activeUsers.length} active users`);
+      const realActiveUsers = activeUsers.filter((userData) => !isTestEmail(userData.email));
+      console.log(`Sending progress emails to ${realActiveUsers.length} active users`);
       progressEmailsQueued = await sendEnhancedProgressEmails(
-        activeUsers,
+        realActiveUsers,
         emailQueue,
         userProgressMetricsService,
         userEmailPreferencesService,

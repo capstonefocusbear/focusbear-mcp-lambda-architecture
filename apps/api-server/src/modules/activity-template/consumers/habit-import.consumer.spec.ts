@@ -45,6 +45,7 @@ describe('HabitImportConsumer', () => {
     extractHabitsFromImage: jest.fn(),
     extractHabitsFromTranscript: jest.fn(),
     matchExtractedHabits: jest.fn(),
+    matchExtractedHabitsWithTelemetry: jest.fn(),
     logUnmatchedHabits: jest.fn(),
   };
 
@@ -146,7 +147,18 @@ describe('HabitImportConsumer', () => {
         data: Buffer.from('fake-image-data'),
       });
       habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce(mockExtractedHabits);
-      habitImportExtractionServiceMock.matchExtractedHabits.mockResolvedValueOnce(mockResults);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValueOnce({
+        results: mockResults,
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 10,
+          ragTemplateFetchMs: 5,
+          ragRerankMs: 8,
+          rerankLlmCalls: 1,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
       habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
 
       const result = await consumer.processHabitImport(job);
@@ -173,9 +185,12 @@ describe('HabitImportConsumer', () => {
       );
 
       // Verify matching was called with routineType option
-      expect(habitImportExtractionServiceMock.matchExtractedHabits).toHaveBeenCalledWith(mockExtractedHabits, {
-        routineType: 'morning',
-      });
+      expect(habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry).toHaveBeenCalledWith(
+        mockExtractedHabits,
+        {
+          routineType: 'morning',
+        },
+      );
 
       // Verify unmatched habits were logged
       expect(habitImportExtractionServiceMock.logUnmatchedHabits).toHaveBeenCalledWith(
@@ -225,6 +240,50 @@ describe('HabitImportConsumer', () => {
       );
     });
 
+    it('uses deterministic IDs for unmatched habits across retries', async () => {
+      const job = buildJob({ mediaType: 'image', requestHash: 'stable-request-hash' });
+      const unmatchedHabit: ExtractedHabit = {
+        name: 'Custom stretch',
+        description: 'Stretch after waking up',
+        estimatedDurationMinutes: 8,
+        category: 'mobility',
+      };
+      const unmatchedResults: HabitSuggestionResult[] = [
+        {
+          extractedHabit: unmatchedHabit,
+          matched: false,
+          suggestedHabit: unmatchedHabit,
+        },
+      ];
+
+      r2ServiceMock.getPresignedUrl.mockResolvedValue('https://r2.example.com/image.png');
+      mockedAxios.get.mockResolvedValue({
+        data: Buffer.from('fake-image-data'),
+      } as any);
+      habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValue([unmatchedHabit]);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValue({
+        results: unmatchedResults,
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 3,
+          ragTemplateFetchMs: 0,
+          ragRerankMs: 0,
+          rerankLlmCalls: 0,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
+      habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValue(undefined);
+
+      const firstRun = await consumer.processHabitImport(job);
+      const secondRun = await consumer.processHabitImport(job);
+
+      expect(firstRun).toHaveLength(1);
+      expect(secondRun).toHaveLength(1);
+      expect(firstRun[0].id).toEqual(secondRun[0].id);
+      expect(firstRun[0].id).toMatch(UUID_REGEX);
+    });
+
     it('overrides matched activity type when routineType is provided', async () => {
       const job = buildJob({ mediaType: 'image', routineType: 'morning' });
 
@@ -249,7 +308,18 @@ describe('HabitImportConsumer', () => {
         data: Buffer.from('fake-image-data'),
       });
       habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce([mockExtractedHabits[0]]);
-      habitImportExtractionServiceMock.matchExtractedHabits.mockResolvedValueOnce(overrideResults);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValueOnce({
+        results: overrideResults,
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 10,
+          ragTemplateFetchMs: 5,
+          ragRerankMs: 8,
+          rerankLlmCalls: 1,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
       habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
 
       const result = await consumer.processHabitImport(job);
@@ -289,7 +359,7 @@ describe('HabitImportConsumer', () => {
         }),
       );
 
-      expect(habitImportExtractionServiceMock.matchExtractedHabits).not.toHaveBeenCalled();
+      expect(habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry).not.toHaveBeenCalled();
       expect(result).toEqual([]);
     });
   });
@@ -327,7 +397,18 @@ describe('HabitImportConsumer', () => {
       });
       openAIServiceMock.transcribeAudioToText.mockResolvedValueOnce('I read for 20 minutes every day');
       habitImportExtractionServiceMock.extractHabitsFromTranscript.mockResolvedValueOnce(mockExtractedHabits);
-      habitImportExtractionServiceMock.matchExtractedHabits.mockResolvedValueOnce(mockResults);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValueOnce({
+        results: mockResults,
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 10,
+          ragTemplateFetchMs: 5,
+          ragRerankMs: 8,
+          rerankLlmCalls: 1,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
       habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
 
       const result = await consumer.processHabitImport(job);
@@ -441,7 +522,9 @@ describe('HabitImportConsumer', () => {
         data: Buffer.from('fake-image-data'),
       });
       habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce(mockExtractedHabits);
-      habitImportExtractionServiceMock.matchExtractedHabits.mockRejectedValueOnce(new Error('RAG service error'));
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockRejectedValueOnce(
+        new Error('RAG service error'),
+      );
 
       await expect(consumer.processHabitImport(job)).rejects.toThrow('RAG service error');
 

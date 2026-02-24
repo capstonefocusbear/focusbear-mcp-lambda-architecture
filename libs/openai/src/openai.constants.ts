@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { GPT_4_1, GPT_4_1_MINI, GPT_5_MINI, GPT_5_2 } from '../../../apps/api-server/src/shared/utils/constants';
+import { GPT_5_MINI, GPT_5_2 } from '../../../apps/api-server/src/shared/utils/constants';
 
 export const OPENAI_MODULE_OPTIONS = Symbol('OPENAI_MODULE_OPTIONS');
 export const TRANSLATION_KEYS = { AI_DECISION_FAIL: 'common.ai_decision_fail' };
@@ -9,6 +9,7 @@ export const TEST_CONSTANTS = {
 };
 export const MAX_WORD_LENGTH = {
   brainDump: 1000,
+  audioTranscript: 20000,
   intention: 500,
   default: 200,
   longTermGoal: 200,
@@ -115,54 +116,51 @@ export const PROMPT_INJECTION_PATTERNS = {
 
 export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletionCreateParams> = {
   default: {
-    model: GPT_4_1_MINI,
+    model: GPT_5_MINI,
     n: 1,
     messages: null,
     response_format: { type: 'json_object' },
   },
   activityEmojiGeneration: {
-    model: GPT_4_1_MINI,
-    temperature: 0,
+    model: GPT_5_MINI,
     n: 1,
     messages: null,
   },
   convertBrainDumpToTasks: {
+    model: GPT_5_2,
+    temperature: 0,
+    n: 1,
+    max_completion_tokens: 512,
+    messages: null,
+  },
+
+  createSubtasks: {
     model: GPT_5_MINI,
     n: 1,
     messages: null,
   },
 
-  createSubtasks: {
-    model: GPT_4_1_MINI,
-    temperature: 0,
-    n: 1,
-    messages: null,
-  },
-
   checkUserName: {
-    model: GPT_4_1_MINI,
-    temperature: 0,
+    model: GPT_5_MINI,
     n: 1,
     messages: null,
   },
   checkURL: {
-    model: GPT_4_1_MINI,
+    model: GPT_5_MINI,
     n: 1,
     messages: null,
     response_format: { type: 'json_object' },
   },
 
   chatReply: {
-    model: GPT_4_1_MINI,
-    temperature: 0.7,
+    model: GPT_5_MINI,
     n: 1,
     stream: true,
     messages: null,
   },
 
   createMotivation: {
-    model: GPT_4_1_MINI,
-    temperature: 1,
+    model: GPT_5_MINI,
     n: 1,
     messages: null,
     stream: true,
@@ -179,15 +177,13 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   habitAdjustment: {
     model: GPT_5_MINI,
     prompt_cache_retention: '24h',
-    temperature: 0,
     n: 1,
-    max_tokens: 1024,
+    max_completion_tokens: 1024,
     messages: null,
   },
 
   todosTranscriptAnalysis: {
-    model: GPT_4_1,
-    temperature: 0,
+    model: GPT_5_MINI,
     n: 1,
     messages: null,
     response_format: { type: 'json_object' },
@@ -200,7 +196,6 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
   },
   habitImportExtraction: {
     model: GPT_5_MINI,
-    temperature: 0,
     n: 1,
     messages: null,
     response_format: { type: 'json_object' },

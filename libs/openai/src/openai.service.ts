@@ -1040,17 +1040,71 @@ export class OpenAIService {
       type = OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING,
     }: { model?: string; type?: OpenAIKeyType } = {},
   ): Promise<number[]> {
-    try {
-      const openai = this.getOpenAIInstance(type);
-      const response = await openai.embeddings.create({
-        input,
-        model,
-      });
-      return response.data?.[0]?.embedding ?? [];
-    } catch (error) {
-      this.sentryService.instance().captureException(error, { level: 'error' });
+    const inputs = Array.isArray(input) ? input : [input];
+    const embeddings = await this.createEmbeddings(inputs, { model, type });
+    return embeddings[0] ?? [];
+  }
+
+  async createEmbeddings(
+    inputs: string[],
+    {
+      model = DEFAULT_EMBEDDING_MODEL,
+      type = OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING,
+    }: { model?: string; type?: OpenAIKeyType } = {},
+  ): Promise<number[][]> {
+    if (!inputs?.length) {
       return [];
     }
+
+    const openai = this.getOpenAIInstance(type);
+    try {
+      const response = await openai.embeddings.create({
+        input: inputs,
+        model,
+      });
+      return this.mapEmbeddingsToInputOrder(response.data, inputs.length);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+
+      return Promise.all(
+        inputs.map(async (singleInput, index) => {
+          try {
+            const response = await openai.embeddings.create({
+              input: [singleInput],
+              model,
+            });
+            return this.mapEmbeddingsToInputOrder(response.data, 1)[0] ?? [];
+          } catch (singleError) {
+            this.sentryService.instance().captureException(singleError, {
+              level: 'warning',
+              extra: { index, inputLength: singleInput?.length ?? 0 },
+            });
+            return [];
+          }
+        }),
+      );
+    }
+  }
+
+  private mapEmbeddingsToInputOrder(
+    responseData: Array<{ index?: number; embedding?: number[] }> | undefined,
+    expectedLength: number,
+  ): number[][] {
+    const orderedEmbeddings = Array.from({ length: expectedLength }, () => [] as number[]);
+
+    (responseData ?? []).forEach((item, fallbackIndex) => {
+      const rawIndex = item?.index;
+      const resolvedIndex =
+        typeof rawIndex === 'number' && Number.isInteger(rawIndex) && rawIndex >= 0 && rawIndex < expectedLength
+          ? rawIndex
+          : fallbackIndex;
+
+      if (resolvedIndex >= 0 && resolvedIndex < expectedLength) {
+        orderedEmbeddings[resolvedIndex] = Array.isArray(item?.embedding) ? item.embedding : [];
+      }
+    });
+
+    return orderedEmbeddings;
   }
 
   async createChatCompletion(

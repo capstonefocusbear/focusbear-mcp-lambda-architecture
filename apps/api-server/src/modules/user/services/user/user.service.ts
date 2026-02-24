@@ -23,7 +23,7 @@ import { StripeService } from '@app/stripe';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { ChatCompletionMessageParam } from 'openai/resources';
-import { SendGridService } from '@app/send-grid';
+import { SendGridService, isTestEmail } from '@app/send-grid';
 import { R2Service } from '@app/r2';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
@@ -1201,7 +1201,7 @@ export class UserService {
 
       await Promise.allSettled(
         [axios.post(cliqUrl, body)].concat(
-          !email.includes('internaltest')
+          !isTestEmail(email)
             ? [
                 this.emailService.sendEmail({
                   to: [FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT],

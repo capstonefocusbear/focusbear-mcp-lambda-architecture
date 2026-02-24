@@ -370,9 +370,10 @@ async function runInactiveAccountsCronJob() {
     // Get users for inactivity warning (5+ months inactive, no warning sent)
     const inactiveUsers = await getInactiveUsers();
     if (inactiveUsers.length > 0) {
-      console.log(`Sending inactivity warnings to ${inactiveUsers.length} users`);
-      inactivityWarningsQueued = await sendEnhancedInactivityWarningEmails(inactiveUsers, emailQueue);
-      await updateUsersInactivityWarningFields(inactiveUsers);
+      const realInactiveUsers = inactiveUsers.filter((userData) => !isTestEmail(userData.email));
+      console.log(`Sending inactivity warnings to ${realInactiveUsers.length} users`);
+      inactivityWarningsQueued = await sendEnhancedInactivityWarningEmails(realInactiveUsers, emailQueue);
+      await updateUsersInactivityWarningFields(realInactiveUsers);
     }
 
     // Get recently active users for progress emails

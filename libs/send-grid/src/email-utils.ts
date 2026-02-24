@@ -1,12 +1,13 @@
 /**
  * Checks if an email belongs to a test account.
- * We intentionally support broad legacy matching (`includes('internaltest')`)
- * in addition to the canonical internaltest+alias@focusbear.io format.
+ * We intentionally keep broad legacy matching (`includes('internaltest')`),
+ * which also covers canonical forms like internaltest@focusbear.io and
+ * internaltest+alias@focusbear.io.
  */
 export function isTestEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
-  return normalized.includes('internaltest') || /^internaltest(\+.*)?@focusbear\.io$/i.test(normalized);
+  return normalized.includes('internaltest');
 }
 
 export type EmailRecipient = string | { name?: string; email: string };

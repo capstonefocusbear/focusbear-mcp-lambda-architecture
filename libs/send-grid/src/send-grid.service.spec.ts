@@ -89,7 +89,7 @@ describe('SendGridService', () => {
       expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it('should not suppress email to internaltest at other domains', async () => {
+    it("should suppress email to addresses containing 'internaltest' at any domain (legacy includes check)", async () => {
       const payload = {
         to: 'internaltest@company.com',
         from: 'support@focusbear.io',

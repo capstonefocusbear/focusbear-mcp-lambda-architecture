@@ -19,6 +19,7 @@ describe('HabitImportExtractionService', () => {
 
   const activityTemplateRetrieverServiceMock = {
     retrieveByText: jest.fn(),
+    retrieveByTexts: jest.fn(),
   };
 
   const routineSuggestionGeneratorServiceMock = {
@@ -68,6 +69,14 @@ describe('HabitImportExtractionService', () => {
 
     service = moduleRef.get<HabitImportExtractionService>(HabitImportExtractionService);
     jest.clearAllMocks();
+    activityTemplateRetrieverServiceMock.retrieveByTexts.mockImplementation(
+      async (searchQueries: string[], limit?: number, options?: { routineType?: string }) =>
+        Promise.all(
+          searchQueries.map((searchQuery) =>
+            activityTemplateRetrieverServiceMock.retrieveByText(searchQuery, limit, options),
+          ),
+        ),
+    );
   });
 
   describe('extractHabitsFromImage', () => {
@@ -255,7 +264,7 @@ describe('HabitImportExtractionService', () => {
       expect(routineSuggestionGeneratorServiceMock.generateSuggestions).toHaveBeenCalledWith(
         'Morning meditation',
         expect.any(Array),
-        { limit: 1, minMatchScore: 0.9 },
+        { limit: 1, minMatchScore: 0.9, includeTelemetry: true },
       );
     });
   });

@@ -96,7 +96,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
   it('returns parsed suggestions with AI-provided name when OpenAI response contains valid JSON', async () => {
     promptCacheServiceMock.getPrompt.mockReturnValue(null);
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.92);
+    const candidate = buildCandidate(template, 0.68);
     const openAIResponse = {
       choices: [
         {
@@ -128,7 +128,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
           name: 'Goal-Aligned Morning Stretch',
           description: template.activity_data?.text_instructions,
           justification: 'Supports muscle growth.',
-          matchScore: 0.91,
+          matchScore: 0.83,
           template,
         },
       ],
@@ -140,7 +140,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
 
   it('builds chat completion messages using the shared prompt template when available', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.95);
+    const candidate = buildCandidate(template, 0.68);
     promptCacheServiceMock.getPrompt.mockReturnValue('Prompt header\nUser goal: {{goal}}\nHabit options:\n{{habits}}');
 
     const openAIResponse = {
@@ -256,7 +256,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
   it('caps LLM-provided match scores to retrieval similarity to avoid unrelated habits', async () => {
     promptCacheServiceMock.getPrompt.mockReturnValue(null);
     const template = buildTemplate({ activity_data: { name: 'Yoga Flow', text_instructions: 'Do yoga.' } });
-    const candidate = buildCandidate(template, 0.22);
+    const candidate = buildCandidate(template, 0.3);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [
         {
@@ -275,13 +275,13 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       ],
     });
 
-    const result = await service.generateSuggestions('Become a guitarist', [candidate], { minMatchScore: 0.5 });
+    const result = await service.generateSuggestions('Become a guitarist', [candidate], { minMatchScore: 0.7 });
 
     expect(result).toEqual({
       accepted: [],
       rejectedCount: 1,
       parsedCount: 1,
-      minScoreApplied: 0.5,
+      minScoreApplied: 0.7,
     });
   });
 
@@ -322,7 +322,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
 
   it('uses the default minimum score when no override is provided', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.78);
+    const candidate = buildCandidate(template, 0.55);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [
         {
@@ -347,7 +347,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     expect(result.accepted[0]).toMatchObject({
       habitId: template.id,
       justification: 'Strong alignment.',
-      matchScore: 0.76,
+      matchScore: 0.69,
     });
     expect(result.minScoreApplied).toBe(0.5);
   });

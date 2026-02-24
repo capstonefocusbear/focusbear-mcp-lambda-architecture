@@ -63,6 +63,7 @@ describe('NoteService', () => {
         id: randomUUID(),
         user_id: userId,
         ...noteDummy,
+        is_brain_dump: false,
         tags: [],
         embedded_todos: [],
         created_at: new Date().toISOString(),
@@ -84,12 +85,63 @@ describe('NoteService', () => {
       expect(result.title).toBe(noteDummy.title);
     });
 
+    it('positive: should default is_brain_dump to false when omitted on create', async () => {
+      const savedNote = new Note({
+        id: randomUUID(),
+        user_id: userId,
+        ...noteDummy,
+        is_brain_dump: false,
+        tags: [],
+        embedded_todos: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      NoteRepositoryMock.orm.save.mockResolvedValueOnce(savedNote);
+      NoteRepositoryMock.getNoteById.mockResolvedValueOnce(savedNote);
+
+      const result = await noteService.upsertNote(userId, noteDummy);
+
+      expect(NoteRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          is_brain_dump: false,
+        }),
+      );
+      expect(result.is_brain_dump).toBe(false);
+    });
+
+    it('positive: should persist is_brain_dump when provided on create', async () => {
+      const savedNote = new Note({
+        id: randomUUID(),
+        user_id: userId,
+        ...noteDummy,
+        is_brain_dump: true,
+        tags: [],
+        embedded_todos: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      NoteRepositoryMock.orm.save.mockResolvedValueOnce(savedNote);
+      NoteRepositoryMock.getNoteById.mockResolvedValueOnce(savedNote);
+
+      const result = await noteService.upsertNote(userId, { ...noteDummy, is_brain_dump: true });
+
+      expect(NoteRepositoryMock.orm.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          is_brain_dump: true,
+        }),
+      );
+      expect(result.is_brain_dump).toBe(true);
+    });
+
     it('positive: should allow user to update their own note', async () => {
       const noteId = randomUUID();
       const existingNote = new Note({
         id: noteId,
         user_id: userId,
         ...noteDummy,
+        is_brain_dump: false,
         tags: [],
         embedded_todos: [],
         created_at: new Date().toISOString(),
@@ -123,6 +175,7 @@ describe('NoteService', () => {
         user_id: userId,
         title: noteDummy.title,
         body: noteDummy.body,
+        is_brain_dump: true,
         tags: [{ id: randomUUID(), text: 'keep-tag', color: '#808080' } as any],
         embedded_todos: [{ id: randomUUID(), title: 'keep-todo' } as any],
         created_at: new Date().toISOString(),
@@ -144,6 +197,7 @@ describe('NoteService', () => {
 
       expect(NoteRepositoryMock.orm.save).toHaveBeenCalledWith(
         expect.objectContaining({
+          is_brain_dump: true,
           tags: existingNote.tags,
           embedded_todos: existingNote.embedded_todos,
         }),
@@ -236,6 +290,7 @@ describe('NoteService', () => {
         id: randomUUID(),
         user_id: userId,
         ...noteDummy,
+        is_brain_dump: false,
         tags: [],
         embedded_todos: [],
         created_at: new Date().toISOString(),
@@ -340,6 +395,7 @@ describe('NoteService', () => {
         id: noteId,
         user_id: userId,
         ...noteDummy,
+        is_brain_dump: true,
         tags: [],
         embedded_todos: [],
         created_at: new Date().toISOString(),
@@ -352,6 +408,7 @@ describe('NoteService', () => {
 
       expect(result.id).toBe(noteId);
       expect(result.title).toBe(noteDummy.title);
+      expect(result.is_brain_dump).toBe(true);
     });
 
     it('negative: should throw NotFoundException when note does not exist', async () => {

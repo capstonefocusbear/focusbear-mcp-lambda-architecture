@@ -34,6 +34,20 @@ describe('isTestEmail', () => {
     expect(isTestEmail('admin@focusbear.io')).toBe(false);
   });
 
+  it('should return true for guest/anonymous emails at focusbear.com', () => {
+    expect(isTestEmail('anonymoususer+123e4567-e89b-12d3-a456-426614174000@focusbear.com')).toBe(true);
+  });
+
+  it('should return true for guest/anonymous emails case-insensitively', () => {
+    expect(isTestEmail('AnonymousUser+123E4567-E89B-12D3-A456-426614174000@FocusBear.com')).toBe(true);
+  });
+
+  it('should return false for malformed guest/anonymous emails', () => {
+    expect(isTestEmail('anonymoususer123e4567-e89b-12d3-a456-426614174000@focusbear.com')).toBe(false);
+    expect(isTestEmail('anonymoususer+not-a-uuid@focusbear.com')).toBe(false);
+    expect(isTestEmail('anonymoususer+123e4567-e89b-12d3-a456-426614174000@focusbear.io')).toBe(false);
+  });
+
   it('should return false for empty string', () => {
     expect(isTestEmail('')).toBe(false);
   });
@@ -74,12 +88,17 @@ describe('filterTestRecipients', () => {
     const result = filterTestRecipients([
       'user@example.com',
       'internaltest+abc@focusbear.io',
+      'anonymoususer+123e4567-e89b-12d3-a456-426614174000@focusbear.com',
       { email: 'another@example.com' },
       { email: 'internaltest@company.com' },
     ]);
 
     expect(result.filtered).toEqual(['user@example.com', { email: 'another@example.com' }]);
-    expect(result.removedEmails).toEqual(['internaltest+abc@focusbear.io', 'internaltest@company.com']);
+    expect(result.removedEmails).toEqual([
+      'internaltest+abc@focusbear.io',
+      'anonymoususer+123e4567-e89b-12d3-a456-426614174000@focusbear.com',
+      'internaltest@company.com',
+    ]);
   });
 
   it('should return undefined when a single recipient is filtered out', () => {

@@ -80,7 +80,6 @@
     "@types/handlebars": "^4.0.40",
     "@types/html-to-text": "^9.0.0",
     "@types/mjml": "^4.7.4",
-    "api": "^6.1.2",
     "auth0": "^4.25.0",
     "axios": "^1.12.2",
     "axios-retry": "^3.6.0",
@@ -189,7 +188,10 @@
     "jsdiff": "^8.03",
     "hono": "^4.11.10",
     "fast-xml-parser": "^5.3.6",
-    "node-emoji": "^2.0.0"
+    "node-emoji": "^2.0.0",
+    "@sentry/node": { "minimatch": "10.2.2" },
+    "mjml-cli": { "minimatch": "10.2.2" },
+    "editorconfig": { "minimatch": "10.2.2" }
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",
@@ -219,7 +221,10 @@
     "jsdiff": "^8.03",
     "hono": "^4.11.10",
     "fast-xml-parser": "^5.3.6",
-    "node-emoji": "^2.0.0"
+    "node-emoji": "^2.0.0",
+    "@sentry/node": { "minimatch": "10.2.2" },
+    "mjml-cli": { "minimatch": "10.2.2" },
+    "editorconfig": { "minimatch": "10.2.2" }
   },
   "husky": {
     "hooks": {

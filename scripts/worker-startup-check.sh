@@ -32,7 +32,7 @@ echo "  WORKER_TIMEOUT_SECONDS=$WORKER_TIMEOUT_SECONDS"
 echo ""
 
 echo "Starting worker process..."
-$WORKER_CMD > "$WORKER_LOG" 2>&1 &
+bash -c "$WORKER_CMD" > "$WORKER_LOG" 2>&1 &
 WORKER_PID=$!
 
 cleanup() {
@@ -45,8 +45,10 @@ STARTED=false
 for i in $(seq 1 "$WORKER_TIMEOUT_SECONDS"); do
   if ! kill -0 $WORKER_PID 2>/dev/null; then
     echo "FATAL: Worker process exited prematurely (after ${i}s)"
-    wait $WORKER_PID 2>/dev/null || true
+    set +e
+    wait $WORKER_PID 2>/dev/null
     EXIT_CODE=$?
+    set -e
     echo "Worker exit code: $EXIT_CODE"
     echo ""
     echo "--- Worker log (last 80 lines) ---"

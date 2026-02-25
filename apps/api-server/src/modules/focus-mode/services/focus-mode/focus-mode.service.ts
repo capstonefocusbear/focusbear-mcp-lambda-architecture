@@ -60,21 +60,25 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         focusModes.map(async (focusMode) => {
           const fetchedFocusMode = await this.focusModeRepository.orm.findOneBy({ id: focusMode.id, user_id });
           if (!fetchedFocusMode) {
-            throw new NotFoundException(`Focus mode with ID: ${focusMode.id} does not exist or does not belong to user`);
+            throw new NotFoundException(
+              `Focus mode with ID: ${focusMode.id} does not exist or does not belong to user`,
+            );
           }
           return fetchedFocusMode;
         }),
       );
 
-      for (const [index, focusMode] of focusModes.entries()) {
-        const fetchedFocusMode = fetchedFocusModes[index];
-        let focusModeTags = [];
-        if (focusMode?.tags && focusMode?.tags?.length) {
-          focusModeTags = await this.saveFocusModeTags(user_id, focusMode?.tags);
-        }
-        const updatedFocusMode = { ...fetchedFocusMode, ...focusMode, tags: focusModeTags };
-        await this.focusModeRepository.orm.save(updatedFocusMode);
-      }
+      await Promise.all(
+        focusModes.map(async (focusMode, index) => {
+          const fetchedFocusMode = fetchedFocusModes[index];
+          let focusModeTags = [];
+          if (focusMode?.tags && focusMode?.tags?.length) {
+            focusModeTags = await this.saveFocusModeTags(user_id, focusMode?.tags);
+          }
+          const updatedFocusMode = { ...fetchedFocusMode, ...focusMode, tags: focusModeTags };
+          await this.focusModeRepository.orm.save(updatedFocusMode);
+        }),
+      );
       await this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_FOCUS_MODE);
       return await this.fetchUserFocusModes(user_id);
     } catch (error) {

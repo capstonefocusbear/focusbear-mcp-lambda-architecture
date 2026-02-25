@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, DeleteResult } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { TaskCommentReaction } from '../entities/task-comment-reaction.entity';
 
@@ -27,7 +27,7 @@ export class TaskCommentReactionRepository extends BaseRepository<TaskCommentRea
     });
   }
 
-  async deleteReaction(reactionId: string): Promise<void> {
-    await this.orm.delete(reactionId);
+  async deleteReaction(reactionId: string): Promise<DeleteResult> {
+    return this.orm.delete(reactionId);
   }
 }

@@ -126,7 +126,10 @@ export class TaskCommentReactionService {
       throw new NotFoundException(`Reaction not found`);
     }
 
-    await this.reactionRepository.deleteReaction(reaction.id);
+    const deleteResult = await this.reactionRepository.deleteReaction(reaction.id);
+    if (!deleteResult.affected) {
+      throw new NotFoundException('Reaction not found');
+    }
   }
 
   private async userHasAccessToTask(

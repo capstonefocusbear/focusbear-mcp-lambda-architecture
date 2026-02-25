@@ -239,11 +239,22 @@ describe('TaskCommentReactionService', () => {
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
       ReactionRepositoryMock.getReactionByCommentUserEmoji.mockResolvedValueOnce(reactionDummy);
-      ReactionRepositoryMock.deleteReaction.mockResolvedValueOnce(undefined);
+      ReactionRepositoryMock.deleteReaction.mockResolvedValueOnce({ affected: 1 });
 
       await service.deleteReaction(userDummy.id, taskDummy.id, commentDummy.id, '👍');
 
       expect(ReactionRepositoryMock.deleteReaction).toHaveBeenCalledWith(reactionDummy.id);
+    });
+
+    it('negative: should throw NotFoundException when reaction is deleted concurrently', async () => {
+      TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentDummy);
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      ReactionRepositoryMock.getReactionByCommentUserEmoji.mockResolvedValueOnce(reactionDummy);
+      ReactionRepositoryMock.deleteReaction.mockResolvedValueOnce({ affected: 0 });
+
+      await expect(service.deleteReaction(userDummy.id, taskDummy.id, commentDummy.id, '👍')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('negative: should throw NotFoundException when comment not found', async () => {

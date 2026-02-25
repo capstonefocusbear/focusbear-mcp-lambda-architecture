@@ -1,5 +1,6 @@
 import { IsNotEmpty, IsString, MaxLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { TASK_REACTION_EMOJI_REGEX, TASK_REACTION_EMOJI_VALIDATION_MESSAGE } from './task-reaction-emoji-validation';
 
 export class DeleteTaskCommentReactionQueryDto {
   @ApiProperty({
@@ -10,6 +11,6 @@ export class DeleteTaskCommentReactionQueryDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(10)
-  @Matches(/^(?:\p{Extended_Pictographic}\uFE0F?(?:\u200d\p{Extended_Pictographic}\uFE0F?)*)+$/u, { message: 'Must be a valid emoji' })
+  @Matches(TASK_REACTION_EMOJI_REGEX, { message: TASK_REACTION_EMOJI_VALIDATION_MESSAGE })
   emoji: string;
 }

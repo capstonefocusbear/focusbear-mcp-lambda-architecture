@@ -426,17 +426,6 @@ export class RoutineSuggestionGeneratorService {
     };
   }
 
-  private combineCandidateAndLlmScore(candidateSimilarity: number, llmScoreNormalized?: number): number {
-    if (typeof llmScoreNormalized !== 'number') {
-      return candidateSimilarity;
-    }
-
-    const blendedScore =
-      candidateSimilarity * (1 - LLM_SCORE_WEIGHT) + this.normalizeScore(llmScoreNormalized) * LLM_SCORE_WEIGHT;
-    const upliftCappedScore = Math.min(blendedScore, candidateSimilarity + MAX_LLM_UPLIFT_OVER_SIMILARITY);
-    return this.normalizeScore(upliftCappedScore);
-  }
-
   private buildContext(candidates: RoutineSuggestionCandidate[]): string {
     return candidates
       .map(({ template, similarity }, index) => {
@@ -502,6 +491,17 @@ Guidance:
       return 0;
     }
     return Math.min(1, Math.max(0, Number(value)));
+  }
+
+  private combineCandidateAndLlmScore(candidateSimilarity: number, llmScoreNormalized?: number): number {
+    if (typeof llmScoreNormalized !== 'number') {
+      return candidateSimilarity;
+    }
+
+    const blendedScore =
+      candidateSimilarity * (1 - LLM_SCORE_WEIGHT) + this.normalizeScore(llmScoreNormalized) * LLM_SCORE_WEIGHT;
+    const upliftCappedScore = Math.min(blendedScore, candidateSimilarity + MAX_LLM_UPLIFT_OVER_SIMILARITY);
+    return this.normalizeScore(upliftCappedScore);
   }
 
   private parseResponse(

@@ -23,6 +23,7 @@ export const FOCUS_BEAR_EMAILS = {
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
+  PROJECT_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
   VERIFY_EMAIL: 'd-d6cff2b375e54523b86061abebb8dbdf',
   REQUEST_PASSWORD_RESET: 'd-67cec7f121f04901814f6f41ec6e0122',
   ACCOUNTABILITY_BUDDY_INVITATION: 'd-ffddae2b9fb040a79244c8a871cce582',
@@ -350,6 +351,7 @@ export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
 export const S3_BUCKET_TODO_IMAGES = 'todo-images';
 export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
 export const S3_BUCKET_HABIT_IMPORTS = 'habit-imports';
+export const S3_BUCKET_PROFILE_IMAGES = 'profile-images';
 export const S3_BUCKET_TASK_ATTACHMENTS = 'task-attachments';
 export const S3_BUCKET_COMMENT_ATTACHMENTS = 'comment-attachments';
 export const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB

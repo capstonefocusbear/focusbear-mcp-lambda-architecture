@@ -12,9 +12,12 @@ describe('HabitCreationAsyncService', () => {
   let service: HabitCreationAsyncService;
   const asyncTaskServiceMock = {
     createAsyncTask: jest.fn(),
+    findActiveTaskByRequestHash: jest.fn(),
+    updateStatusWithMetadata: jest.fn(),
   } as unknown as jest.Mocked<AsyncTaskService>;
   const queueMock = {
     add: jest.fn(),
+    getJob: jest.fn(),
   } as unknown as jest.Mocked<Queue>;
 
   beforeEach(async () => {
@@ -47,6 +50,7 @@ describe('HabitCreationAsyncService', () => {
       routine: 'morning',
       user_goals: ['mobility'],
     };
+    asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
     asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-1', metadata: {} } as any);
 
     const result = await service.enqueueHabitCreation(dto, 'user-7', 'api');
@@ -60,12 +64,62 @@ describe('HabitCreationAsyncService', () => {
         request: dto,
       }),
       expect.objectContaining({
-        jobId: 'task-1',
+        jobId: expect.stringMatching(/^habit-creation:/),
         removeOnComplete: true,
         removeOnFail: false,
         timeout: 120000,
       }),
     );
     expect(result).toEqual({ asyncTaskId: 'task-1' });
+  });
+
+  it('returns existing active task for duplicate habit creation requests', async () => {
+    const dto: CreateHabitWithAiDto = {
+      prompt: 'Create a mobility habit',
+      routine_duration: 10,
+      routine: 'morning',
+      user_goals: ['mobility'],
+    };
+
+    asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce({ id: 'existing-task-22' } as any);
+
+    const result = await service.enqueueHabitCreation(dto, 'user-7', 'api');
+
+    expect(asyncTaskServiceMock.createAsyncTask).not.toHaveBeenCalled();
+    expect(queueMock.add).not.toHaveBeenCalled();
+    expect(result).toEqual({ asyncTaskId: 'existing-task-22' });
+  });
+
+  it('fails new async task and returns canonical in-flight asyncTaskId when dedup wins after enqueue', async () => {
+    const dto: CreateHabitWithAiDto = {
+      prompt: 'Create a mobility habit',
+      routine_duration: 10,
+      routine: 'morning',
+      user_goals: ['mobility'],
+    };
+
+    asyncTaskServiceMock.findActiveTaskByRequestHash.mockResolvedValueOnce(null);
+    asyncTaskServiceMock.createAsyncTask.mockResolvedValueOnce({ id: 'task-new-9', metadata: {} } as any);
+    queueMock.getJob.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      data: { asyncTaskId: 'task-existing-9' },
+      getState: jest.fn().mockResolvedValue('active'),
+    } as any);
+    queueMock.add.mockResolvedValueOnce({ id: 'habit-creation:dedup-hash' } as any);
+
+    const result = await service.enqueueHabitCreation(dto, 'user-7', 'api');
+
+    expect(asyncTaskServiceMock.updateStatusWithMetadata).toHaveBeenCalledWith(
+      'task-new-9',
+      'failed',
+      expect.objectContaining({
+        taskType: 'habit-creation',
+        userId: 'user-7',
+      }),
+      expect.objectContaining({
+        duplicateOfAsyncTaskId: 'task-existing-9',
+        error: 'Duplicate queue job detected after enqueue',
+      }),
+    );
+    expect(result).toEqual({ asyncTaskId: 'task-existing-9' });
   });
 });

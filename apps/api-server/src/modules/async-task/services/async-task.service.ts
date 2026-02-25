@@ -114,4 +114,17 @@ export class AsyncTaskService extends BaseCRUDService<AsyncTaskRepository, Async
       throw error;
     }
   }
+
+  async findActiveTaskByRequestHash(taskType: string, userId: string, requestHash: string): Promise<AsyncTask | null> {
+    try {
+      return await this.asyncTaskRepository.findLatestActiveByRequestHash(taskType, userId, requestHash);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, {
+        level: 'warning',
+        tags: { context: 'async-task-find-active-by-request-hash' },
+        extra: { taskType, userId },
+      });
+      return null;
+    }
+  }
 }

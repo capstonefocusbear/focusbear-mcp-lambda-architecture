@@ -91,4 +91,9 @@ export class ActivityChoiceData {
   @IsOptional()
   @IsString()
   habit_icon?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  @ApiProperty({ required: false, nullable: true })
+  geofence_id?: string | null;
 }

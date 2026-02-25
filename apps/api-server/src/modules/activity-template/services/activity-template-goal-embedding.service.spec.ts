@@ -58,13 +58,19 @@ describe(ActivityTemplateGoalEmbeddingService.name, () => {
     expect(result).toEqual([]);
   });
 
-  it('returns batch embeddings for multiple goals using createEmbeddings', async () => {
-    openAIServiceMock.createEmbeddings.mockResolvedValue([[0.1, 0.2], [0.3, 0.4]]);
+  it('returns ordered embeddings for batched goals', async () => {
+    openAIServiceMock.createEmbeddings.mockResolvedValueOnce([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
 
-    const result = await service.generateEmbeddings(['Get buffed', 'Sleep better']);
+    const result = await service.generateEmbeddings(['First', 'Second']);
 
-    expect(openAIServiceMock.createEmbeddings).toHaveBeenCalledWith(['Get buffed', 'Sleep better']);
-    expect(result).toEqual([[0.1, 0.2], [0.3, 0.4]]);
+    expect(openAIServiceMock.createEmbeddings).toHaveBeenCalledWith(['First', 'Second']);
+    expect(result).toEqual([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
   });
 
   it('returns empty arrays for blank goals in batch without calling createEmbeddings', async () => {

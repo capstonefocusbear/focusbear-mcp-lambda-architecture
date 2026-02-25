@@ -1192,7 +1192,6 @@ Return format: {"Habit Name 1": "instructions", "Habit Name 2": "instructions", 
       }
     });
   }
-
   private buildGeneratedActivities(
     generatedByGoal: Record<string, GeneratedHabitSuggestion[]>,
     routineDurationSeconds: number,

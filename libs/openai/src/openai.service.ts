@@ -12,7 +12,7 @@ import { promises as fs } from 'fs';
 import axios from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import OpenAI from 'openai';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
 import { sanitizeUrl } from '@braintree/sanitize-url';
@@ -68,6 +68,8 @@ export class OpenAIService {
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
+
+  private readonly metadataCacheTtlMs = 24 * 60 * 60 * 1000;
 
   private getUntrustedUserInputPrompt(): ChatCompletionMessageParam {
     const promptContent = this.promptCacheService.getPrompt('untrusted-user-input');
@@ -321,14 +323,10 @@ export class OpenAIService {
 
     // 1. Always fetch metadata from the server to detect redirects and auth errors.
     const fetchedMetadata = await this.getMetadata(sanitizedUrl);
-    console.log('[DEBUG] Raw URL: ', url);
-    console.log('[DEBUG] Sanitized URL: ', sanitizedUrl);
-    console.log('[DEBUG] 1. Metadata from getMetadata:', fetchedMetadata);
 
     // 2. Establish a priority-based fallback for the title and description.
     let finalTitle = fetchedMetadata.title || tab_title || '';
     let finalDescription = fetchedMetadata.description || meta_description || '';
-    console.log(`[DEBUG] 2. Description after fallback: "${finalDescription.substring(0, 100)}..."`);
 
     // 3. Specifically handle the "Login Required" signal from our smart scraper.
     if (fetchedMetadata.title === 'Login Required') {
@@ -343,11 +341,9 @@ export class OpenAIService {
         message: 'Junk JS pattern detected in final description, replacing matches.',
         data: { url, originalDescription: finalDescription },
       });
-      console.log('[DEBUG] 3. Junk JS pattern WAS DETECTED.');
       // Instead of clearing, we now replace only the bad parts.
       finalDescription = finalDescription.replace(junkJsPattern, ' [filtered script content] ').trim();
     }
-    console.log(`[DEBUG] FINAL Description after Junk filter: ${finalDescription.substring(0, 100)}`);
 
     try {
       // The rest of the function proceeds as before, but now with much cleaner data.
@@ -472,6 +468,7 @@ export class OpenAIService {
       currentTaskInToDoPlayer,
       task_must_align_to_focus_intention,
       current_tasks,
+      lastFiveJustificationsInThisFocusSession,
     } = isAppSafeDto;
 
     const isFocusModeValid = this.isValidInput(focusMode, MAX_WORD_LENGTH.default);
@@ -483,7 +480,17 @@ export class OpenAIService {
     const isCurrentTaskValid = currentTaskInToDoPlayer
       ? this.isValidInput(currentTaskInToDoPlayer, MAX_WORD_LENGTH.default)
       : true;
-    if (!isFocusModeValid || !isIntentionValid || !isAppNameValid || !isJustificationValid || !isCurrentTaskValid) {
+    const areRecentJustificationsValid = (lastFiveJustificationsInThisFocusSession || []).every((j) =>
+      this.isValidInput(j, MAX_WORD_LENGTH.justification),
+    );
+    if (
+      !isFocusModeValid ||
+      !isIntentionValid ||
+      !isAppNameValid ||
+      !isJustificationValid ||
+      !isCurrentTaskValid ||
+      !areRecentJustificationsValid
+    ) {
       throw new Error('Invalid input');
     }
 
@@ -510,6 +517,7 @@ export class OpenAIService {
       intention: intention || '',
       justificationForThisSpecificApp: justificationForThisSpecificApp || '',
       currentTaskInToDoPlayer: currentTaskInToDoPlayer || '',
+      lastFiveJustificationsInThisFocusSession: JSON.stringify(lastFiveJustificationsInThisFocusSession || []),
       task_must_align_to_focus_intention: task_must_align_to_focus_intention ? 'true' : 'false',
       current_tasks: currentTasksJson,
     });
@@ -737,14 +745,10 @@ export class OpenAIService {
    */
   async getMetadata(url: string): Promise<{ title: string | null; description: string | null }> {
     try {
-      const cacheFile = join(this.cacheDir, `${encodeURIComponent(url)}.json`);
-      try {
-        const cachedMetadata = await fs.readFile(cacheFile, 'utf-8');
-        return JSON.parse(cachedMetadata);
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          this.sentryService.instance().captureException(err);
-        }
+      const cacheFile = this.getMetadataCacheFilePath(url);
+      const cachedMetadata = await this.getCachedMetadataIfFresh(cacheFile);
+      if (cachedMetadata) {
+        return cachedMetadata;
       }
 
       let response;
@@ -842,6 +846,33 @@ export class OpenAIService {
     } catch (error) {
       this.sentryService.instance().captureException(error, { extra: { url } });
       return { title: null, description: null };
+    }
+  }
+
+  private getMetadataCacheFilePath(url: string): string {
+    const cacheKey = createHash('sha256').update(url).digest('hex');
+    return join(this.cacheDir, `${cacheKey}.json`);
+  }
+
+  private async getCachedMetadataIfFresh(
+    cacheFile: string,
+  ): Promise<{ title: string | null; description: string | null } | null> {
+    try {
+      const cacheStats = await fs.stat(cacheFile);
+      const cacheAgeMs = Date.now() - cacheStats.mtimeMs;
+
+      if (cacheAgeMs > this.metadataCacheTtlMs) {
+        await fs.unlink(cacheFile).catch(() => undefined);
+        return null;
+      }
+
+      const cachedMetadata = await fs.readFile(cacheFile, 'utf-8');
+      return JSON.parse(cachedMetadata);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        this.sentryService.instance().captureException(err);
+      }
+      return null;
     }
   }
 
@@ -1067,17 +1098,17 @@ export class OpenAIService {
       this.sentryService.instance().captureException(error, { level: 'error' });
 
       return Promise.all(
-        inputs.map(async (singleInput, index) => {
+        inputs.map(async (input, index) => {
           try {
             const response = await openai.embeddings.create({
-              input: [singleInput],
+              input: [input],
               model,
             });
             return this.mapEmbeddingsToInputOrder(response.data, 1)[0] ?? [];
           } catch (singleError) {
             this.sentryService.instance().captureException(singleError, {
               level: 'warning',
-              extra: { index, inputLength: singleInput?.length ?? 0 },
+              extra: { index, inputLength: input?.length ?? 0 },
             });
             return [];
           }
@@ -1488,7 +1519,7 @@ export class OpenAIService {
 
   async createDraftTodosFromTranscript(transcript: string): Promise<BraindumpTaskDto[]> {
     try {
-      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.brainDump, 'audio_transcript')) {
+      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.audioTranscript, 'audio_transcript')) {
         throw new Error('Invalid input');
       }
 
@@ -1631,7 +1662,7 @@ export class OpenAIService {
     transcript: string,
   ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
     try {
-      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.brainDump, 'habit_import_transcript')) {
+      if (!this.isValidInput(transcript, MAX_WORD_LENGTH.audioTranscript, 'habit_import_transcript')) {
         throw new Error('Invalid input');
       }
 
@@ -1657,8 +1688,18 @@ export class OpenAIService {
       const habits = content ? JSON.parse(content).habits : [];
       return Array.isArray(habits) ? habits : [];
     } catch (error) {
+      this.logger.error(
+        `OpenAI:extractHabitsFromTranscript error ${JSON.stringify({
+          transcriptLength: transcript?.length ?? 0,
+          errorMessage: error?.message ?? null,
+          errorName: error?.name ?? null,
+          errorCode: (error as any)?.code ?? null,
+          errorStatus: (error as any)?.status ?? null,
+          errorType: (error as any)?.type ?? null,
+        })}`,
+      );
       this.sentryService.instance().captureException(error, { level: 'error' });
-      throw new Error('Failed to extract habits from transcript');
+      throw new Error(`Failed to extract habits from transcript: ${error.message}`);
     }
   }
 

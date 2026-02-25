@@ -3,7 +3,7 @@
  *
  * These test cases define the expected behavior for the habit import pipeline.
  * Each test case includes:
- * - A hosted image or audio URL
+ * - A hosted image/audio URL or an R2 media key
  * - Expected habits to be extracted (fuzzy matched)
  * - Minimum number of habits that should be matched against the library (RAG)
  *
@@ -12,7 +12,8 @@
 
 export interface HabitImportTestCase {
   description: string;
-  url: string;
+  url?: string;
+  mediaKey?: string;
   mediaType: 'image' | 'audio';
   routineType?: 'morning' | 'evening' | 'break';
   routineDurationMinutes?: number;
@@ -44,11 +45,10 @@ export interface TestResult {
     imageFetchMs: number;
     extractionMs: number;
     ragMatchingMs: number;
-    // Detailed RAG breakdown:
-    embeddingMs: number;
-    vectorSearchMs: number;
-    templateFetchMs: number;
-    llmRerankMs: number;
+    // Detailed RAG breakdown (from service telemetry):
+    ragRetrieveMs: number; // embedding + vector search
+    ragTemplateFetchMs: number;
+    ragRerankMs: number;
     totalMs: number;
   };
   errors: string[];
@@ -211,6 +211,15 @@ export const imageTestCases: HabitImportTestCase[] = [
 ];
 
 /**
- * Audio test cases (empty for now)
+ * Audio test cases
  */
-export const audioTestCases: HabitImportTestCase[] = [];
+export const audioTestCases: HabitImportTestCase[] = [
+  {
+    description: 'Uploaded audio import (.m4a)',
+    mediaType: 'audio',
+    mediaKey: 'a0a8ce95-7237-46d1-abaf-9160e33511a6-1770364551537-habit-import.m4a',
+    expectedHabits: [],
+    minExtracted: 0,
+    minMatched: 0,
+  },
+];

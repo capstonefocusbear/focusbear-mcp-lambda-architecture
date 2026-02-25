@@ -2,11 +2,12 @@
 import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { Auth0ManagementService } from '@app/auth0';
+import { isTestEmail } from '@app/send-grid';
 import { AppModule } from '../../apps/api-server/src/app.module';
 import { UserRepository } from '../../apps/api-server/src/modules/user/repositories/user.repository';
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
-import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS, ONE_MINUTE } from '../../apps/api-server/src/shared/utils/constants';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
@@ -32,6 +33,7 @@ async function runWeeklyProgressEmailsCronJob() {
   let emailsQueued = 0;
   let usersConsidered = 0;
   let failedEmails = 0;
+  let skippedTestAccounts = 0;
   try {
     console.log('Starting weekly progress emails cron job...');
     const startedAt = Date.now();
@@ -50,6 +52,14 @@ async function runWeeklyProgressEmailsCronJob() {
         try {
           // Fetch email from Auth0
           const { email } = await auth0ManagementService.getAuth0User(user.auth0_id);
+
+          // Skip internal test accounts to avoid SendGrid bounces
+          if (isTestEmail(email)) {
+            console.log(`Skipped internal test account ${user.id}`);
+            skippedTestAccounts++;
+            return { success: true, skipped: true, userId: user.id };
+          }
+
           const userWithEmail = { ...user, email };
 
           // Calculate weekly progress metrics for the user
@@ -98,12 +108,16 @@ async function runWeeklyProgressEmailsCronJob() {
 
       // Wait for all emails in this batch to be queued
       const results = await Promise.all(emailPromises);
-      const successful = results.filter((result) => result.success).length;
-      const failed = results.length - successful;
+      const successful = results.filter((result) => result.success && !result.skipped).length;
+      const failed = results.filter((result) => !result.success).length;
       emailsQueued += successful;
       failedEmails += failed;
       console.log(
-        `Batch ${batchNum} completed: ${successful} queued, ${failed} failed (${Date.now() - batchStartedAt}ms). Totals: ${emailsQueued} queued, ${failedEmails} failed, ${usersConsidered} users considered (${Date.now() - startedAt}ms)`,
+        `Batch ${batchNum} completed: ${successful} queued, ${failed} failed (${
+          Date.now() - batchStartedAt
+        }ms). Totals: ${emailsQueued} queued, ${failedEmails} failed, ${usersConsidered} users considered (${
+          Date.now() - startedAt
+        }ms)`,
       );
 
       // Small delay between batches to avoid overwhelming the system
@@ -115,11 +129,14 @@ async function runWeeklyProgressEmailsCronJob() {
       batchNum++;
     }
 
-    console.log('Weekly progress emails cron job completed successfully.');
+    console.log(
+      `Weekly progress emails cron job completed successfully. Skipped ${skippedTestAccounts} test account(s).`,
+    );
     return {
       emailsQueued,
       usersConsidered,
       failedEmails,
+      skippedTestAccounts,
     };
   } catch (error) {
     captureErrorWithContext(

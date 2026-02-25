@@ -5,6 +5,7 @@ import { SENTRY_TOKEN, SentryModule, SentryService } from '@app/observability';
 import { I18nService } from 'nestjs-i18n';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { promises as fs } from 'fs';
+import { basename } from 'path';
 import axios from 'axios';
 import { Stream } from 'stream';
 import OpenAI from 'openai';
@@ -179,7 +180,7 @@ describe('OpenAIService', () => {
       const result = await service.createEmbedding(goal);
 
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-        input: goal,
+        input: [goal],
         model: DEFAULT_EMBEDDING_MODEL,
       });
       expect(result).toEqual(expectedEmbedding);
@@ -191,6 +192,68 @@ describe('OpenAIService', () => {
       const result = await service.createEmbedding('No result');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('createEmbeddings', () => {
+    it('returns all embedding vectors in order', async () => {
+      const first = [0.1, 0.2];
+      const second = [0.3, 0.4];
+      mockEmbeddingsCreate.mockResolvedValueOnce({
+        data: [
+          { embedding: first, index: 0 },
+          { embedding: second, index: 1 },
+        ],
+      });
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+        input: ['first', 'second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(result).toEqual([first, second]);
+    });
+
+    it('orders embeddings by response index when response order differs', async () => {
+      const first = [0.1, 0.2];
+      const second = [0.3, 0.4];
+      mockEmbeddingsCreate.mockResolvedValueOnce({
+        data: [
+          { embedding: second, index: 1 },
+          { embedding: first, index: 0 },
+        ],
+      });
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(result).toEqual([first, second]);
+    });
+
+    it('falls back to per-input embedding calls when batch call fails', async () => {
+      const first = [0.1, 0.2];
+      mockEmbeddingsCreate
+        .mockRejectedValueOnce(new Error('batch failed'))
+        .mockResolvedValueOnce({
+          data: [{ embedding: first, index: 0 }],
+        })
+        .mockRejectedValueOnce(new Error('second failed'));
+
+      const result = await service.createEmbeddings(['first', 'second']);
+
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(1, {
+        input: ['first', 'second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(2, {
+        input: ['first'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(mockEmbeddingsCreate).toHaveBeenNthCalledWith(3, {
+        input: ['second'],
+        model: DEFAULT_EMBEDDING_MODEL,
+      });
+      expect(result).toEqual([first, []]);
     });
   });
 
@@ -684,14 +747,18 @@ describe('OpenAIService', () => {
   describe('getMetadata', () => {
     // Use let to allow re-assignment in beforeEach
     let mockAxiosGet: jest.SpyInstance;
+    let mockStat: jest.SpyInstance;
     let mockReadFile: jest.SpyInstance;
+    let mockUnlink: jest.SpyInstance;
     let mockWriteFile: jest.SpyInstance;
     let mockSanitizeMetadata: jest.SpyInstance;
 
     beforeEach(() => {
       // Mock all external dependencies used by getMetadata
       mockAxiosGet = jest.spyOn(axios, 'get');
+      mockStat = jest.spyOn(fs, 'stat').mockRejectedValue({ code: 'ENOENT' }); // Default to cache miss
       mockReadFile = jest.spyOn(fs, 'readFile').mockRejectedValue({ code: 'ENOENT' }); // Default to cache miss
+      mockUnlink = jest.spyOn(fs, 'unlink').mockResolvedValue(undefined);
       mockWriteFile = jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
       // Keep your sanitize mock as it isolates the test to getMetadata's logic
       mockSanitizeMetadata = jest
@@ -706,6 +773,7 @@ describe('OpenAIService', () => {
 
     it('should return cached metadata if available', async () => {
       const cachedData = { title: 'Cached Title', description: 'Cached Description' };
+      mockStat.mockResolvedValue({ mtimeMs: Date.now() });
       mockReadFile.mockResolvedValue(JSON.stringify(cachedData)); // Override default mock for this test
 
       const result = await service.getMetadata('https://example.com');
@@ -713,6 +781,42 @@ describe('OpenAIService', () => {
       expect(result).toEqual(cachedData);
       expect(mockReadFile).toHaveBeenCalled();
       expect(mockAxiosGet).not.toHaveBeenCalled(); // Should not fetch if cache is hit
+    });
+
+    it('should bypass stale cache, remove it, and fetch fresh metadata', async () => {
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      mockStat.mockResolvedValue({ mtimeMs: Date.now() - oneDayMs - 1 });
+      const mockHtml = '<html><head><title>Fresh Title</title></head><body>Fresh Description</body></html>';
+      mockAxiosGet.mockResolvedValue({
+        status: 200,
+        data: mockHtml,
+        request: { res: { responseUrl: 'https://example.com' } },
+      });
+
+      const result = await service.getMetadata('https://example.com');
+
+      expect(result.title).toBe('Fresh Title');
+      expect(result.description).toContain('Fresh Description');
+      expect(mockUnlink).toHaveBeenCalled();
+      expect(mockReadFile).not.toHaveBeenCalled();
+      expect(mockAxiosGet).toHaveBeenCalled();
+    });
+
+    it('should use a fixed-length cache filename for very long URLs', async () => {
+      const veryLongUrl = `https://video-downloads.googleusercontent.com/${'a'.repeat(8000)}`;
+      const mockHtml = '<html><head><title>Test Title</title></head><body>Test Description</body></html>';
+
+      mockAxiosGet.mockResolvedValue({
+        status: 200,
+        data: mockHtml,
+        request: { res: { responseUrl: veryLongUrl } },
+      });
+
+      await service.getMetadata(veryLongUrl);
+
+      const [cachePath] = mockWriteFile.mock.calls[0];
+      expect(typeof cachePath).toBe('string');
+      expect(basename(cachePath)).toMatch(/^[a-f0-9]{64}\.json$/);
     });
 
     it('should apply sanitizeMetadata to fetched title and description', async () => {
@@ -1127,6 +1231,33 @@ describe('OpenAIService', () => {
       const [messages] = completionsSpy.mock.calls[0];
       const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
       expect(promptContent).toContain(JSON.stringify(dto.current_tasks));
+      completionsSpy.mockRestore();
+    });
+
+    it('should pass lastFiveJustificationsInThisFocusSession to the app safety prompt', async () => {
+      promptCacheServiceMock.getPrompt.mockImplementationOnce(
+        () => 'App prompt {{appName}} {{lastFiveJustificationsInThisFocusSession}}',
+      );
+      const completionsSpy = jest
+        .spyOn<any, any>(service as any, 'getOpenAIChatCompletionsNonStreaming')
+        .mockResolvedValueOnce({
+          choices: [{ message: { content: '{"allowed_probability":0.6,"reason":"ok"}' } }],
+        });
+
+      const recentJustifications = ['Checked deployment notes', 'Reviewed onboarding SOP'];
+      const dto = {
+        focusMode: 'work',
+        intention: 'deployment',
+        appName: 'Microsoft Word',
+        lastFiveJustificationsInThisFocusSession: recentJustifications,
+        language: 'en',
+      };
+
+      await service.checkIfAppIsSafeToUse(dto, 'en');
+
+      const [messages] = completionsSpy.mock.calls[0];
+      const promptContent = (messages[0] as ChatCompletionMessageParam).content as string;
+      expect(promptContent).toContain(JSON.stringify(recentJustifications));
       completionsSpy.mockRestore();
     });
   }); // Properly closing checkIfAppIsSafeToUse describe block

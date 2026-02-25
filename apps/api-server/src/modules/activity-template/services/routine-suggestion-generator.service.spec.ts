@@ -96,7 +96,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
   it('returns parsed suggestions with AI-provided name when OpenAI response contains valid JSON', async () => {
     promptCacheServiceMock.getPrompt.mockReturnValue(null);
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.68);
+    const candidate = buildCandidate(template, 0.69);
     const openAIResponse = {
       choices: [
         {
@@ -138,9 +138,46 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     });
   });
 
+  it('short-circuits to acceptance when top similarity is very high', async () => {
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.92);
+
+    const result = await service.generateSuggestions('Improve mobility', [candidate], { includeTelemetry: true });
+
+    expect(OpenAIServiceMock.createChatCompletion).not.toHaveBeenCalled();
+    expect(result.accepted).toHaveLength(1);
+    expect(result.telemetry).toEqual(
+      expect.objectContaining({
+        evaluationPath: 'shortcut_accept',
+        llmInvoked: false,
+        shortcutAccepted: true,
+      }),
+    );
+  });
+
+  it('short-circuits to rejection when top similarity is very low', async () => {
+    const template = buildTemplate();
+    const candidate = buildCandidate(template, 0.2);
+
+    const result = await service.generateSuggestions('Become a guitarist', [candidate], { includeTelemetry: true });
+
+    expect(OpenAIServiceMock.createChatCompletion).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      accepted: [],
+      rejectedCount: 1,
+      parsedCount: 0,
+      minScoreApplied: 0.5,
+      telemetry: expect.objectContaining({
+        evaluationPath: 'shortcut_reject',
+        llmInvoked: false,
+        shortcutRejected: true,
+      }),
+    });
+  });
+
   it('builds chat completion messages using the shared prompt template when available', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.68);
+    const candidate = buildCandidate(template, 0.69);
     promptCacheServiceMock.getPrompt.mockReturnValue('Prompt header\nUser goal: {{goal}}\nHabit options:\n{{habits}}');
 
     const openAIResponse = {
@@ -283,6 +320,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       parsedCount: 1,
       minScoreApplied: 0.7,
     });
+    expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalled();
   });
 
   it('returns metadata when suggestions were parsed but rejected due to low score', async () => {
@@ -322,7 +360,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
 
   it('uses the default minimum score when no override is provided', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.55);
+    const candidate = buildCandidate(template, 0.68);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [
         {
@@ -347,14 +385,14 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     expect(result.accepted[0]).toMatchObject({
       habitId: template.id,
       justification: 'Strong alignment.',
-      matchScore: 0.69,
+      matchScore: 0.73,
     });
     expect(result.minScoreApplied).toBe(0.5);
   });
 
   it('falls back to similarity ranking when OpenAI response is invalid JSON', async () => {
     const template = buildTemplate();
-    const candidate = buildCandidate(template, 0.88);
+    const candidate = buildCandidate(template, 0.68);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [{ message: { content: 'Not JSON' } }],
     });
@@ -368,7 +406,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
           name: template.activity_data?.name,
           description: template.activity_data?.text_instructions,
           justification: expect.stringContaining('High semantic match'),
-          matchScore: 0.88,
+          matchScore: 0.68,
           template,
         },
       ],

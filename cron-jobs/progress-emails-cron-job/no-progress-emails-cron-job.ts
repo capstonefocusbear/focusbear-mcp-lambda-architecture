@@ -2,10 +2,11 @@
 import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { Auth0ManagementService } from '@app/auth0';
+import { isTestEmail } from '@app/send-grid';
 import { AppModule } from '../../apps/api-server/src/app.module';
 import { UserRepository } from '../../apps/api-server/src/modules/user/repositories/user.repository';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
-import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
@@ -22,6 +23,7 @@ async function runNoProgressEmailsCronJob() {
   let emailsQueued = 0;
   let usersConsidered = 0;
   let failedEmails = 0;
+  let skippedTestAccounts = 0;
   try {
     console.log('Starting no-progress emails cron job...');
     // Paginated batch processing to avoid OOM
@@ -37,6 +39,14 @@ async function runNoProgressEmailsCronJob() {
         try {
           // Fetch email from Auth0
           const { email } = await auth0ManagementService.getAuth0User(user.auth0_id);
+
+          // Skip internal test accounts to avoid SendGrid bounces
+          if (isTestEmail(email)) {
+            console.log(`Skipped internal test account ${user.id}`);
+            skippedTestAccounts++;
+            return { success: true };
+          }
+
           const userWithEmail = { ...user, email };
 
           // Generate unsubscribe token
@@ -93,11 +103,12 @@ async function runNoProgressEmailsCronJob() {
       batchNum += 1;
     }
 
-    console.log('No-progress emails cron job completed successfully.');
+    console.log(`No-progress emails cron job completed successfully. Skipped ${skippedTestAccounts} test account(s).`);
     return {
       emailsQueued,
       usersConsidered,
       failedEmails,
+      skippedTestAccounts,
     };
   } catch (error) {
     captureErrorWithContext(

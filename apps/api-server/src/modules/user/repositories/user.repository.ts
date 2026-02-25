@@ -60,6 +60,14 @@ export class UserRepository extends BaseRepository<User> {
     tutorials: Tutorial[],
     customRoutines: CustomRoutine[],
   ) {
+    const timings: Record<string, number> = {};
+    const timeOp = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+      const start = Date.now();
+      const result = await fn();
+      timings[name] = Date.now() - start;
+      return result;
+    };
+
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -68,7 +76,7 @@ export class UserRepository extends BaseRepository<User> {
       const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
       const sequenceIdsToKeep = sequencesToUpsert.map((seq) => seq.id).filter((seqId) => !!seqId);
 
-      await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
+      await timeOp('upsert_custom_routines', () => queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']));
       const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id).filter((routineId) => !!routineId);
 
       // Delete activity sequences that belong to custom routines being deleted
@@ -83,47 +91,61 @@ export class UserRepository extends BaseRepository<User> {
         // Delete sequences for custom routines that are being removed
         // Only delete if the sequence is not being kept AND the custom_routine_id is not in the kept list
         if (keptCustomRoutineIds.size > 0) {
-          await queryRunner.manager.delete(ActivitySequence, {
-            user_id: id,
-            custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
-            id: Not(In(sequenceIdsToKeep)),
-          });
+          await timeOp('delete_activity_sequences_kept', () =>
+            queryRunner.manager.delete(ActivitySequence, {
+              user_id: id,
+              custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
+              id: Not(In(sequenceIdsToKeep)),
+            }),
+          );
         } else {
           // If no custom routine sequences are being kept, delete all sequences with custom_routine_id
-          await queryRunner.manager.delete(ActivitySequence, {
-            user_id: id,
-            custom_routine_id: Not(IsNull()),
-            id: Not(In(sequenceIdsToKeep)),
-          });
+          await timeOp('delete_activity_sequences_all', () =>
+            queryRunner.manager.delete(ActivitySequence, {
+              user_id: id,
+              custom_routine_id: Not(IsNull()),
+              id: Not(In(sequenceIdsToKeep)),
+            }),
+          );
         }
 
-        await queryRunner.manager.delete(CustomRoutine, {
-          user_id: id,
-          id: Not(In(customRoutinesIdsToKeep)),
-        });
+        await timeOp('delete_custom_routines_filtered', () =>
+          queryRunner.manager.delete(CustomRoutine, {
+            user_id: id,
+            id: Not(In(customRoutinesIdsToKeep)),
+          }),
+        );
       } else {
-        await queryRunner.manager.delete(ActivitySequence, {
-          user_id: id,
-          custom_routine_id: Not(IsNull()),
-        });
+        await timeOp('delete_activity_sequences_all', () =>
+          queryRunner.manager.delete(ActivitySequence, {
+            user_id: id,
+            custom_routine_id: Not(IsNull()),
+          }),
+        );
 
-        await queryRunner.manager.delete(CustomRoutine, {
-          user_id: id,
-        });
+        await timeOp('delete_custom_routines_all', () =>
+          queryRunner.manager.delete(CustomRoutine, {
+            user_id: id,
+          }),
+        );
       }
 
-      await queryRunner.manager.update(User, { id }, { ...updateData });
+      await timeOp('update_user', () => queryRunner.manager.update(User, { id }, { ...updateData }));
 
       // Collect all activity IDs to keep
       const allActivityIds = activitiesData.flatMap(({ activities }) => activities.map((activity) => activity.id));
       const allActivityIdsToKeep = new Set<string>(allActivityIds);
 
-      await queryRunner.manager.upsert(ActivitySequence, sequencesToUpsert, ['id']);
+      await timeOp('upsert_activity_sequences', () =>
+        queryRunner.manager.upsert(ActivitySequence, sequencesToUpsert, ['id']),
+      );
 
-      await queryRunner.manager.delete(Activity, {
-        user_id: id,
-        id: Not(In(Array.from(allActivityIdsToKeep))),
-      });
+      await timeOp('delete_activities', () =>
+        queryRunner.manager.delete(Activity, {
+          user_id: id,
+          id: Not(In(Array.from(allActivityIdsToKeep))),
+        }),
+      );
 
       const activitiesArray = activitiesData.flatMap((sequence) => sequence.activities);
       const parentsWithoutLinks = activitiesArray.filter(
@@ -145,35 +167,51 @@ export class UserRepository extends BaseRepository<User> {
       const allChildActivities = [...choicesWithoutLinks, ...choicesWithLinks];
 
       // Insert in order: parents first, then choices (to maintain foreign key integrity)
-      await queryRunner.manager.upsert(Activity, allParentActivities, ['id']);
-      await queryRunner.manager.upsert(Activity, allChildActivities, ['id']);
+      await timeOp('upsert_activities_parents', () =>
+        queryRunner.manager.upsert(Activity, allParentActivities, ['id']),
+      );
+      await timeOp('upsert_activities_children', () =>
+        queryRunner.manager.upsert(Activity, allChildActivities, ['id']),
+      );
 
       // delete existing log quantity questions that aren't in the update data
       // and are linked to normal activities not activity templates
       const incomingQuestionIds = logQuantityQuestions
         .map((question) => question.id)
         .filter((questionId) => !!questionId);
-      await queryRunner.manager.delete(LogQuantityQuestion, {
-        user_id: id,
-        id: Not(In(incomingQuestionIds)),
-        activity_id: Not(IsNull()),
-      });
+      await timeOp('delete_log_questions', () =>
+        queryRunner.manager.delete(LogQuantityQuestion, {
+          user_id: id,
+          id: Not(In(incomingQuestionIds)),
+          activity_id: Not(IsNull()),
+        }),
+      );
       const tutorialActivityIdsToKeep = tutorials.map((tutorial) => tutorial.activity_id);
 
-      await queryRunner.manager.update(
-        Tutorial,
-        {
-          user_id: id,
-          activity_id: Not(In(tutorialActivityIdsToKeep)),
-        },
-        { activity_id: null },
+      await timeOp('update_tutorials', () =>
+        queryRunner.manager.update(
+          Tutorial,
+          {
+            user_id: id,
+            activity_id: Not(In(tutorialActivityIdsToKeep)),
+          },
+          { activity_id: null },
+        ),
       );
 
       // Batch upsert all log quantity questions in a single operation
-      await queryRunner.manager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
-      await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
+      await timeOp('upsert_log_questions', () =>
+        queryRunner.manager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']),
+      );
+      await timeOp('upsert_tutorials', () => queryRunner.manager.upsert(Tutorial, tutorials, ['id']));
 
       await queryRunner.commitTransaction();
+
+      // eslint-disable-next-line no-console
+      console.log('[consistentlyUpdateUserSettings] timings', {
+        ...timings,
+        total: Object.values(timings).reduce((a, b) => a + b, 0),
+      });
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;

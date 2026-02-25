@@ -551,9 +551,12 @@ export class HabitImportConsumer {
     return undefined;
   }
 
-  private async ensureHabitsHaveInstructions(habits: UpdateActivityDto[]): Promise<void> {
+  private async ensureHabitsHaveInstructions(
+    habits: Array<UpdateActivityDto & { description?: string }>,
+  ): Promise<void> {
     await this.activityLibraryService.ensureHabitsHaveInstructions(habits);
   }
+
   private createEmptyStageDurations(): HabitImportStageDurations {
     return {
       presignUrlMs: 0,

@@ -1213,10 +1213,43 @@ describe('ActivityLibraryService', () => {
       expect(habits[2].text_instructions).toBe('Read for 20 minutes to expand your knowledge.');
     });
 
-    it('should preserve existing description when it differs from habit name', async () => {
+    it('should map batched instructions by response order for names with special characters', async () => {
       const habits = [
-        { name: 'Morning meditation', text_instructions: '', description: 'A calming morning practice' },
+        { name: 'Read "Deep Work"', text_instructions: '', description: '' },
+        { name: 'Stretch \\ mobility', text_instructions: '', description: '' },
       ];
+
+      OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                instructions: [
+                  'Read for 20 focused minutes without distractions.',
+                  'Do a short mobility stretch routine.',
+                ],
+              }),
+            },
+          },
+        ],
+      });
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            response_format: { type: 'json_object' },
+          }),
+        }),
+      );
+      expect(habits[0].text_instructions).toBe('Read for 20 focused minutes without distractions.');
+      expect(habits[1].text_instructions).toBe('Do a short mobility stretch routine.');
+    });
+
+    it('should preserve existing description when it differs from habit name', async () => {
+      const habits = [{ name: 'Morning meditation', text_instructions: '', description: 'A calming morning practice' }];
 
       OpenAIServiceMock.createChatCompletion.mockResolvedValue({
         choices: [{ message: { content: 'Sit quietly for 10 minutes and focus on your breath.' } }],

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SENTRY_TOKEN } from '@app/observability';
 import { promises as fs } from 'fs';
+import { join } from 'path';
 import { GeminiService } from './gemini.service';
 import { GEMINI_MODULE_OPTIONS, GEMINI_PROMPT_CONFIG_PATH } from './gemini.constants';
 
@@ -120,6 +121,23 @@ describe('GeminiService', () => {
         'Failed to process usage image with Gemini',
       );
       expect(sentryInstanceMock.captureException).toHaveBeenCalled();
+    });
+
+    it('should fall back to dist prompt path when source prompt path is missing', async () => {
+      const notFoundError = new Error('File not found') as NodeJS.ErrnoException;
+      notFoundError.code = 'ENOENT';
+
+      jest
+        .spyOn(fs, 'readFile')
+        .mockRejectedValueOnce(notFoundError)
+        .mockResolvedValueOnce(JSON.stringify([{ content: [{ text: mockPrompt }] }]));
+      googleGenAIServiceMock.models.generateContent.mockResolvedValue(mockApiResponse);
+
+      const result = await service.processUsageImage(mockImageBuffer);
+
+      expect(result).toEqual(expectedParsedJson);
+      expect(fs.readFile).toHaveBeenNthCalledWith(1, GEMINI_PROMPT_CONFIG_PATH, 'utf8');
+      expect(fs.readFile).toHaveBeenNthCalledWith(2, join('dist', GEMINI_PROMPT_CONFIG_PATH), 'utf8');
     });
   });
 

@@ -12,10 +12,10 @@ describe('HasTeamSubscription', () => {
   let teamManagementService: TeamManagementService;
   let stripeService: StripeService;
 
-  const mockExecutionContext = (body: any) =>
+  const mockExecutionContext = (body: any, query: any = {}) =>
     ({
       switchToHttp: () => ({
-        getRequest: () => ({ body }),
+        getRequest: () => ({ body, query }),
       }),
     } as ExecutionContext);
 
@@ -122,6 +122,17 @@ describe('HasTeamSubscription', () => {
 
       const result = await guard.canActivate(mockExecutionContext({ team_id }));
       expect(result).toBe(true);
+    });
+
+    it('positive: should read team_id from query params when body is undefined (GET requests)', async () => {
+      const team_id = '123';
+      jest.spyOn(teamManagementService, 'getTeamById').mockResolvedValue({
+        payment_type: PaymentType.OFFLINE,
+      });
+
+      const result = await guard.canActivate(mockExecutionContext(undefined, { team_id }));
+      expect(result).toBe(true);
+      expect(teamManagementService.getTeamById).toHaveBeenCalledWith(team_id);
     });
   });
 });

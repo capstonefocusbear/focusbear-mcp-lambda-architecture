@@ -7,7 +7,7 @@ import { RevenueCatService } from '@app/revenue-cat';
 import { Auth0ManagementService } from '@app/auth0';
 import { StripeService } from '@app/stripe';
 import { BrevoService } from '@app/brevo/brevo.service';
-import { SendGridService } from '@app/send-grid';
+import { SendGridService, isTestEmail } from '@app/send-grid';
 import { UserRepository } from '../../repositories/user.repository';
 import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
@@ -83,7 +83,7 @@ export class UserDataService {
 
       // Check if this is an internal test account
       const email = auth0user?.email || '';
-      const isInternalTestAccount = email.startsWith('internaltest') && email.endsWith('@focusbear.io');
+      const isInternalTestAccount = isTestEmail(email);
       const shouldSendNotification = isInternalTestAccount ? message?.toLowerCase().startsWith('dolog') : true;
 
       if (can_contact && shouldSendNotification) {

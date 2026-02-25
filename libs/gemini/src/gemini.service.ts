@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { GoogleGenAI } from '@google/genai';
 import { promises as fs } from 'fs';
+import { join } from 'path';
 import { IGeminiOptions } from './interfaces';
 import { GEMINI_MODULE_OPTIONS, GEMINI_PARAMS, GEMINI_PROMPT_CONFIG_PATH } from './gemini.constants';
 
@@ -22,6 +23,37 @@ export class GeminiService {
       this.ai = new GoogleGenAI({ apiKey: this.options.apiKey });
     }
     return this.ai;
+  }
+
+  private async readFileWithPathFallback(filePath: string): Promise<{ content: string; resolvedPath: string }> {
+    const candidatePaths = [filePath];
+    if (!filePath.startsWith('dist/') && !filePath.startsWith('/')) {
+      candidatePaths.push(join('dist', filePath));
+    }
+
+    return this.tryReadCandidatePaths(candidatePaths, filePath, null);
+  }
+
+  private async tryReadCandidatePaths(
+    candidatePaths: string[],
+    requestedPath: string,
+    lastError: NodeJS.ErrnoException | null,
+  ): Promise<{ content: string; resolvedPath: string }> {
+    if (candidatePaths.length === 0) {
+      throw lastError ?? new Error(`Prompt file not found: ${requestedPath}`);
+    }
+
+    const [candidatePath, ...remainingPaths] = candidatePaths;
+    try {
+      const content = await fs.readFile(candidatePath, 'utf8');
+      return { content, resolvedPath: candidatePath };
+    } catch (error) {
+      const typedError = error as NodeJS.ErrnoException;
+      if (typedError.code !== 'ENOENT') {
+        throw error;
+      }
+      return this.tryReadCandidatePaths(remainingPaths, requestedPath, typedError);
+    }
   }
 
   async processUsageImage(imageBuffer: string): Promise<
@@ -80,7 +112,7 @@ export class GeminiService {
 
   private async getPrompt(): Promise<string> {
     try {
-      const promptContent = await fs.readFile(GEMINI_PROMPT_CONFIG_PATH, 'utf8');
+      const { content: promptContent } = await this.readFileWithPathFallback(GEMINI_PROMPT_CONFIG_PATH);
       const prompts = JSON.parse(promptContent);
       return prompts[0].content[0].text;
     } catch (error) {

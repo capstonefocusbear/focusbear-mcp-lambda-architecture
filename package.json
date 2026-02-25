@@ -48,7 +48,8 @@
     "data:migration:run": "ts-node apps/api-server/data_migrations/1710000000000-DataTransferWithEncryption.ts",
     "render:deploy": "node ./.github/workflows/deploy.js",
     "seed": "ts-node apps/api-server/src/seeding/seed.ts",
-    "smoke-test": "bash scripts/smoke-test.sh"
+    "smoke-test": "bash scripts/smoke-test.sh",
+    "verify:website-without-worker": "bash scripts/verify-website-without-worker.sh"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.931.0",

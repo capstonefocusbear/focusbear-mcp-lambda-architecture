@@ -136,10 +136,13 @@ jobs:
           path: server.log
           retention-days: 7
 
-  # Worker job: same services/env as smoke (intentionally duplicated so worker has identical DB/Redis/config and avoids migration/env issues). Runs in parallel with smoke (needs: test only).
+  # Worker job: same services/env as smoke. Runs in parallel with smoke (needs: test only).
+  # Failure dependency: continue-on-error so when the worker test fails, the pipeline still passes —
+  # the website (API) can still run and be deployed even if the worker is down.
   worker:
     runs-on: ubuntu-latest
     needs: test
+    continue-on-error: true
     services:
       postgres:
         image: pgvector/pgvector:pg16

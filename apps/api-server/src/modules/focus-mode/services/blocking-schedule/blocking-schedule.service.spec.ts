@@ -102,6 +102,9 @@ describe('BlockingScheduleService', () => {
     };
 
     beforeEach(() => {
+      FocusModeRepositoryMock.orm.findOne.mockReset();
+      BlockingScheduleRepositoryMock.orm.findOne.mockReset();
+      BlockingScheduleRepositoryMock.orm.save.mockReset();
       FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(focusMode);
     });
 
@@ -116,7 +119,9 @@ describe('BlockingScheduleService', () => {
       const result = await blockingScheduleService.createBlockingSchedule(userId, createDto);
 
       expect(FocusModeRepositoryMock.orm.findOne).toHaveBeenCalledWith({
-        where: { id: focusModeId, user_id: userId },
+        where: { id: focusModeId },
+        withDeleted: true,
+        select: ['id', 'user_id', 'deleted_at'],
       });
       expect(BlockingScheduleRepositoryMock.orm.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -162,6 +167,35 @@ describe('BlockingScheduleService', () => {
       await expect(
         blockingScheduleService.updateBlockingSchedule(userId, scheduleId, updateDto),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw a clear error when focus mode belongs to a different user', async () => {
+      FocusModeRepositoryMock.orm.findOne.mockReset();
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new FocusMode({
+          id: focusModeId,
+          user_id: randomUUID(),
+        }),
+      );
+
+      await expect(blockingScheduleService.createBlockingSchedule(userId, createDto)).rejects.toThrow(
+        'Focus mode belongs to a different user',
+      );
+    });
+
+    it('should throw a clear error when focus mode was deleted', async () => {
+      FocusModeRepositoryMock.orm.findOne.mockReset();
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new FocusMode({
+          id: focusModeId,
+          user_id: userId,
+          deleted_at: new Date(),
+        }),
+      );
+
+      await expect(blockingScheduleService.createBlockingSchedule(userId, createDto)).rejects.toThrow(
+        'Focus mode has been deleted',
+      );
     });
 
     it('should ignore client-supplied id in DTO and use URL parameter id for security', async () => {

@@ -56,7 +56,10 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
       });
       await Promise.all(
         focusModes.map(async (focusMode) => {
-          const fetchedFocusMode = await this.focusModeRepository.orm.findOneBy({ id: focusMode.id });
+          const fetchedFocusMode = await this.focusModeRepository.orm.findOneBy({ id: focusMode.id, user_id });
+          if (!fetchedFocusMode) {
+            throw new NotFoundException(`Focus mode with ID: ${focusMode.id} does not exist or does not belong to user`);
+          }
           let focusModeTags = [];
           if (focusMode?.tags && focusMode?.tags?.length) {
             focusModeTags = await this.saveFocusModeTags(user_id, focusMode?.tags);

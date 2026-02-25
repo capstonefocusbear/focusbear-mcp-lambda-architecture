@@ -201,15 +201,18 @@ describe('FocusModeService', () => {
       jest.clearAllMocks();
     });
     it('positive: should call update on supplied user focus modes', async () => {
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce(FocusModeDummy);
       FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([FocusModeDummy]);
 
       await focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]);
 
+      expect(FocusModeRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: FocusModeDummy.id, user_id: userDummy.id });
       expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith({ ...FocusModeDummy });
     });
 
     it('positive: if a focus mode contains tags the tags should be saved', async () => {
       const tagId = randomUUID();
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...FocusModeDummy });
       FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([{ ...FocusModeDummy }]);
       const savedTag = new FocusModeTag({ text: 'Some tag', id: tagId, user_id: userDummy.id });
 
@@ -218,6 +221,16 @@ describe('FocusModeService', () => {
       ]);
 
       expect(FocusModeTagRepositoryMock.upsert).toHaveBeenCalledWith(savedTag, ['id']);
+    });
+
+    it('negative: should throw if focus mode does not belong to the user in bulk update', async () => {
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await expect(
+        focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(FocusModeRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
   });
 

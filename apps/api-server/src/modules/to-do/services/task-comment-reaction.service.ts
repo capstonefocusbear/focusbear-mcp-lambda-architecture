@@ -56,8 +56,6 @@ export class TaskCommentReactionService {
         comment_id: commentId,
         user_id: userId,
         emoji: dto.emoji,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       },
       { generateId: true },
     );

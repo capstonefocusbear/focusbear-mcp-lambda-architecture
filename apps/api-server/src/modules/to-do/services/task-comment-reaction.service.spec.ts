@@ -147,7 +147,8 @@ describe('TaskCommentReactionService', () => {
       ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
       ReactionRepositoryMock.getReactionByCommentUserEmoji.mockResolvedValueOnce(null);
 
-      const dbError = Object.assign(new QueryFailedError('INSERT', [], new Error('unique_violation')), { code: '23505' });
+      const driverError = { code: '23505', constraint: 'UQ_task_comment_reactions_comment_user_emoji' };
+      const dbError = new QueryFailedError('INSERT', [], driverError as any);
       ReactionRepositoryMock.orm.save.mockRejectedValueOnce(dbError);
 
       await expect(service.addReaction(userDummy.id, taskDummy.id, commentDummy.id, { emoji: '👍' })).rejects.toThrow(

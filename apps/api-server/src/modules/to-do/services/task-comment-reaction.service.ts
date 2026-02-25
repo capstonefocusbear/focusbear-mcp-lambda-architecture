@@ -8,6 +8,9 @@ import { ProjectMemberInvitationStatus } from '../../project/domain/project-memb
 import { TaskCommentReaction } from '../entities/task-comment-reaction.entity';
 import { CreateTaskCommentReactionDto } from '../dto/create-task-comment-reaction.dto';
 import { TaskCommentReactionResponseDto } from '../dto/task-comment-reaction-response.dto';
+import { PostgresErrorCode } from '@api-server/shared/utils/constants';
+
+const UNIQUE_COMMENT_USER_EMOJI_CONSTRAINT = 'UQ_task_comment_reactions_comment_user_emoji';
 
 @Injectable()
 export class TaskCommentReactionService {
@@ -73,7 +76,7 @@ export class TaskCommentReactionService {
 
       return this.mapReactionToResponse(reactionWithUser);
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as any).code === '23505') {
+      if (this.isDuplicateReactionError(err)) {
         throw new ConflictException('You have already reacted with this emoji');
       }
       throw err;
@@ -148,6 +151,18 @@ export class TaskCommentReactionService {
     }
 
     return false;
+  }
+
+  private isDuplicateReactionError(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+
+    const driverError = error.driverError as { code?: string; constraint?: string } | undefined;
+    return (
+      driverError?.code === PostgresErrorCode.UNIQUE_VIOLATION &&
+      driverError.constraint === UNIQUE_COMMENT_USER_EMOJI_CONSTRAINT
+    );
   }
 
   private mapReactionToResponse(reaction: TaskCommentReaction): TaskCommentReactionResponseDto {

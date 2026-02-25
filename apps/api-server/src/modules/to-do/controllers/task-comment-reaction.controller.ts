@@ -20,6 +20,7 @@ export class TaskCommentReactionController {
   @ApiOperation({ summary: 'Add a reaction to a task comment' })
   @ApiResponse({ status: 201, description: 'Reaction added successfully', type: TaskCommentReactionResponseDto })
   @ApiResponse({ status: 404, description: 'Comment not found' })
+  @ApiResponse({ status: 403, description: 'User does not have access to this task' })
   @ApiResponse({ status: 409, description: 'User already reacted with this emoji' })
   async addReaction(
     @Param() params: TaskCommentReactionParamsDto,

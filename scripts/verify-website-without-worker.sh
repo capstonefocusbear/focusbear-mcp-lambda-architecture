@@ -14,8 +14,8 @@
 #   WORKER_CMD="exit 1" bash scripts/worker-startup-check.sh  # expect failure
 #   npm run smoke-test   # expect pass (API still up)
 #
-# In CI: the worker job has continue-on-error: true, so when the worker test fails,
-# the pipeline still passes (failure dependency: website/deploy does not depend on worker).
+# In CI: the app-startup job has continue-on-error: true, so when it fails,
+# the pipeline still passes (failure dependency: website/deploy does not depend on it).
 
 set -euo pipefail
 
@@ -41,8 +41,10 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Waiting for server to be ready, then running smoke test..."
+set +e
 npm run smoke-test
 EXIT=$?
+set -e
 
 if [ "$EXIT" -eq 0 ]; then
   echo ""

@@ -136,10 +136,10 @@ jobs:
           path: server.log
           retention-days: 7
 
-  # Worker job: same services/env as smoke. Runs in parallel with smoke (needs: test only).
-  # Failure dependency: continue-on-error so when the worker test fails, the pipeline still passes —
-  # the website (API) can still run and be deployed even if the worker is down.
-  worker:
+  # App startup check: verifies API server entrypoint starts and stays up. Same services/env as smoke.
+  # Failure dependency: continue-on-error so when this check fails, the pipeline still passes —
+  # the website (API) can still run and be deployed.
+  app-startup:
     runs-on: ubuntu-latest
     needs: test
     continue-on-error: true
@@ -212,14 +212,12 @@ jobs:
           WORKER_CMD: "node dist/apps/api-server/main.js"
           WORKER_STABILITY_SECONDS: "15"
           WORKER_DEBUG: "1"
-        run: |
-          chmod +x scripts/worker-startup-check.sh
-          bash scripts/worker-startup-check.sh
+        run: bash scripts/worker-startup-check.sh
 
-      - name: Upload worker log on failure
+      - name: Upload startup log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: worker-startup-log
+          name: app-startup-log
           path: worker.log
           retention-days: 7

@@ -108,9 +108,11 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
         const installedRecord = await this.installedFocusModeTemplatesRepository.orm.findOne({
           where: { user_id: ownerId, focus_mode_template_id, installation_status: true },
         });
-        this.installedFocusModeTemplatesRepository.orm.update(installedRecord.id, { installation_status: false });
+        if (installedRecord) {
+          await this.installedFocusModeTemplatesRepository.orm.update(installedRecord.id, { installation_status: false });
+        }
       }
-      this.focusModeRepository.orm.softDelete(id);
+      await this.focusModeRepository.orm.softDelete(id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;

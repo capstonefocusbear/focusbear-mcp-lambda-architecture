@@ -307,6 +307,20 @@ describe('FocusModeService', () => {
       expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toHaveBeenCalledWith(installedRecord.id, {
         installation_status: false,
       });
+      expect(FocusModeRepositoryMock.orm.softDelete).toHaveBeenCalledWith(FocusModeDummy.id);
+    });
+
+    it('positive: should still soft delete when installed template record is not found', async () => {
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...FocusModeDummy,
+        focus_mode_template_id: focusModeTemplateDBResponseDummy.id,
+      });
+      InstalledFocusModeTemplatesRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      await focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id);
+
+      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).not.toHaveBeenCalled();
+      expect(FocusModeRepositoryMock.orm.softDelete).toHaveBeenCalledWith(FocusModeDummy.id);
     });
 
     it('negative: should throw when focus mode does not exist or does not belong to user', async () => {

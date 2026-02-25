@@ -42,6 +42,7 @@ export class IntegrationController {
   }
 
   @Post(':platform/sync-project')
+  @UseGuards(IsAuth)
   async syncProject(
     @Param('platform') platform: IntegrationPlatforms,
     @Query() { portal_id, project_id }: { portal_id: string; project_id: string },

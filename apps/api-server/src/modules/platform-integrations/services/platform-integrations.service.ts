@@ -19,17 +19,13 @@ export class PlatformIntegrationsService {
     userId: string,
     userExternalId?: string,
   ): Promise<PlatformIntegration> {
-    if (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT) {
-      const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
-        where: { user_id: userId, platform, external_user_id: userExternalId },
-      });
-      return platformRecord;
+    const criteria: any = { user_id: userId, platform };
+    if (userExternalId) {
+      criteria.external_user_id = userExternalId;
     }
-    const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
-      where: { user_id: userId, platform },
+    return this.platformIntegrationsRepository.orm.findOne({
+      where: criteria,
     });
-
-    return platformRecord;
   }
 
   async updatePlatformIntegration(
@@ -57,10 +53,24 @@ export class PlatformIntegrationsService {
       ...(authData.expiry_date && { expiry_date: authData.expiry_date }),
     };
 
-    return this.platformIntegrationsRepository.orm.update(
-      { user_id: userId, platform, external_user_id: userExternalId },
-      { data: updatedData },
-    );
+    const criteria: any = {
+      user_id: userId,
+      platform,
+    };
+
+    if (userExternalId) {
+      criteria.external_user_id = userExternalId;
+    }
+
+    const result = await this.platformIntegrationsRepository.orm.update(criteria, {
+      data: updatedData,
+    });
+
+    if (!result?.affected || result.affected === 0) {
+      throw new Error('PlatformIntegration update failed');
+    }
+
+    return result;
   }
 
   async getUserSyncedPlatforms(userId: string) {

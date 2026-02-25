@@ -133,8 +133,10 @@ describe('ZohoService', () => {
         zohoClientSecret: 'zoho-client-secret',
       };
       const newAccessToken = 'new-access-token';
+      const externalUserId = 'dummy_external_user_id';
 
       PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+        external_user_id: externalUserId,
         data: authorizationResponseDummy,
       });
       mockedAxios.post.mockResolvedValueOnce({ data: { access_token: newAccessToken } });
@@ -150,7 +152,28 @@ describe('ZohoService', () => {
         userDummy.id,
         IntegrationPlatforms.ZOHO,
         { access_token: newAccessToken },
+        externalUserId,
       );
+    });
+
+    it('negative: should not silently succeed if updatePlatformIntegration throws', async () => {
+      const authorizationResponseDummy = {
+        account_server: 'https://accounts.zoho.com',
+        refresh_token: 'refresh-token-123',
+        zohoClientId: 'zoho-client-id',
+        zohoClientSecret: 'zoho-client-secret',
+      };
+      const newAccessToken = 'new-access-token';
+      const externalUserId = 'dummy_external_user_id';
+
+      PlatformIntegrationsServiceMock.getPlatformIntegrationData.mockResolvedValueOnce({
+        external_user_id: externalUserId,
+        data: authorizationResponseDummy,
+      });
+      mockedAxios.post.mockResolvedValueOnce({ data: { access_token: newAccessToken } });
+      PlatformIntegrationsServiceMock.updatePlatformIntegration.mockRejectedValueOnce(new Error('Update failed'));
+
+      await expect(zohoAuthService.refreshToken(userDummy.id)).rejects.toThrow('Update failed');
     });
   });
 });

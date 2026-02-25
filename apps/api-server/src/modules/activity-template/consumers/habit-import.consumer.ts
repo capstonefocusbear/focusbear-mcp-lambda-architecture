@@ -22,6 +22,7 @@ import { BullQueues, BullWorkers, S3_BUCKET_HABIT_IMPORTS } from '../../../share
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { MetricsConfig } from '../../../config/metrics.config';
+import { ActivityLibraryService } from '../services/activity-library.service';
 
 const MIN_IMAGE_DIMENSION = 768;
 const ONE_MINUTE_SECONDS = 60;
@@ -57,6 +58,7 @@ export class HabitImportConsumer {
     private readonly openAIService: OpenAIService,
     private readonly asyncTaskService: AsyncTaskService,
     private readonly habitImportExtractionService: HabitImportExtractionService,
+    private readonly activityLibraryService: ActivityLibraryService,
     @Optional() private readonly configService?: ConfigService,
   ) {}
 
@@ -153,7 +155,10 @@ export class HabitImportConsumer {
       matchingTelemetry = matchingResult.telemetry;
       const usableHabits = this.formatHabitImportResult(results, routineType, requestHash);
 
-      // 4. Log unmatched habits to habit_library_requests
+      // 4. Ensure all habits have text_instructions (generate via AI if missing)
+      await this.ensureHabitsHaveInstructions(usableHabits);
+
+      // 5. Log unmatched habits to habit_library_requests
       const logStartedAt = Date.now();
       await this.habitImportExtractionService.logUnmatchedHabits(results, userId, {
         asyncTaskId,
@@ -167,7 +172,7 @@ export class HabitImportConsumer {
       counters.matchedCount = matchedCount;
       counters.unmatchedCount = unmatchedCount;
 
-      // 5. Update AsyncTask with results
+      // 6. Update AsyncTask with results
       const updateStartedAt = Date.now();
       await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
         processingCompleted: new Date(),
@@ -446,7 +451,8 @@ export class HabitImportConsumer {
           return null;
         }
 
-        const description = template?.description ? template.description : sourceHabit.description;
+        const rawDescription = template?.description ? template.description : sourceHabit.description;
+        const description = rawDescription || name;
         let activityType: string;
         if (requestedActivityType !== undefined) {
           activityType = String(requestedActivityType);
@@ -543,6 +549,12 @@ export class HabitImportConsumer {
       return habit.estimatedDurationMinutes * ONE_MINUTE_SECONDS;
     }
     return undefined;
+  }
+
+  private async ensureHabitsHaveInstructions(
+    habits: Array<UpdateActivityDto & { description?: string }>,
+  ): Promise<void> {
+    await this.activityLibraryService.ensureHabitsHaveInstructions(habits);
   }
 
   private createEmptyStageDurations(): HabitImportStageDurations {

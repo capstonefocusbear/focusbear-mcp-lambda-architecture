@@ -293,7 +293,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
   it('caps LLM-provided match scores to retrieval similarity to avoid unrelated habits', async () => {
     promptCacheServiceMock.getPrompt.mockReturnValue(null);
     const template = buildTemplate({ activity_data: { name: 'Yoga Flow', text_instructions: 'Do yoga.' } });
-    const candidate = buildCandidate(template, 0.22);
+    const candidate = buildCandidate(template, 0.3);
     OpenAIServiceMock.createChatCompletion.mockResolvedValue({
       choices: [
         {
@@ -312,15 +312,15 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       ],
     });
 
-    const result = await service.generateSuggestions('Become a guitarist', [candidate], { minMatchScore: 0.5 });
+    const result = await service.generateSuggestions('Become a guitarist', [candidate], { minMatchScore: 0.7 });
 
     expect(result).toEqual({
       accepted: [],
       rejectedCount: 1,
-      parsedCount: 0,
-      minScoreApplied: 0.5,
+      parsedCount: 1,
+      minScoreApplied: 0.7,
     });
-    expect(OpenAIServiceMock.createChatCompletion).not.toHaveBeenCalled();
+    expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalled();
   });
 
   it('returns metadata when suggestions were parsed but rejected due to low score', async () => {

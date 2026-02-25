@@ -23,6 +23,7 @@ import {
   SUBTASKS_GENERATION_PROMPT_CONFIG_PATH,
   BRAIN_DUMP_CONVERSION_PROMPT_CONFIG_PATH,
   EMOJI_GENERATION_PROMPT_CONFIG_PATH,
+  HABIT_INSTRUCTION_GENERATION_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -245,6 +246,9 @@ export class PromptCacheService implements OnModuleInit {
       );
       allPrompts = allPrompts.concat(
         await loadPromptsFromYaml(EMOJI_GENERATION_PROMPT_CONFIG_PATH, 'emoji generation'),
+      );
+      allPrompts = allPrompts.concat(
+        await loadPromptsFromYaml(HABIT_INSTRUCTION_GENERATION_PROMPT_CONFIG_PATH, 'habit instruction generation'),
       );
 
       // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)

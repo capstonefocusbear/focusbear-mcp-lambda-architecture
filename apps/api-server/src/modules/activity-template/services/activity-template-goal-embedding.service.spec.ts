@@ -72,4 +72,11 @@ describe(ActivityTemplateGoalEmbeddingService.name, () => {
       [0.3, 0.4],
     ]);
   });
+
+  it('returns empty arrays for blank goals in batch without calling createEmbeddings', async () => {
+    const result = await service.generateEmbeddings(['   ', '']);
+
+    expect(openAIServiceMock.createEmbeddings).not.toHaveBeenCalled();
+    expect(result).toEqual([[], []]);
+  });
 });

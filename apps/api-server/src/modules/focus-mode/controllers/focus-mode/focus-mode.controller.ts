@@ -72,8 +72,8 @@ export class FocusModeController {
 
   @Delete()
   @HttpCode(204)
-  async bulkDeleteFocusModes(@Query() { id }: BulkDeleteQueryDto) {
-    return this.focusModeService.deleteFocusMode(id);
+  async bulkDeleteFocusModes(@Query() { id }: BulkDeleteQueryDto, @AuthContext() { user }: Passport) {
+    return this.focusModeService.deleteFocusMode(user.id, id);
   }
 
   @Post(':focus_mode_id/start')

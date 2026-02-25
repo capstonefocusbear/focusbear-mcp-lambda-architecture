@@ -198,6 +198,55 @@ describe('BlockingScheduleService', () => {
       );
     });
 
+    it('should throw a clear error when updating and focus mode belongs to a different user', async () => {
+      const scheduleId = randomUUID();
+      const existingSchedule = new BlockingSchedule({
+        id: scheduleId,
+        user_id: userId,
+        name: 'Existing Schedule',
+      });
+
+      BlockingScheduleRepositoryMock.orm.findOne.mockResolvedValueOnce(existingSchedule);
+      FocusModeRepositoryMock.orm.findOne.mockReset();
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new FocusMode({
+          id: focusModeId,
+          user_id: randomUUID(),
+        }),
+      );
+
+      await expect(
+        blockingScheduleService.updateBlockingSchedule(userId, scheduleId, { ...createDto, id: scheduleId }),
+      ).rejects.toThrow('Focus mode belongs to a different user');
+
+      expect(BlockingScheduleRepositoryMock.orm.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw a clear error when updating and focus mode was deleted', async () => {
+      const scheduleId = randomUUID();
+      const existingSchedule = new BlockingSchedule({
+        id: scheduleId,
+        user_id: userId,
+        name: 'Existing Schedule',
+      });
+
+      BlockingScheduleRepositoryMock.orm.findOne.mockResolvedValueOnce(existingSchedule);
+      FocusModeRepositoryMock.orm.findOne.mockReset();
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new FocusMode({
+          id: focusModeId,
+          user_id: userId,
+          deleted_at: new Date(),
+        }),
+      );
+
+      await expect(
+        blockingScheduleService.updateBlockingSchedule(userId, scheduleId, { ...createDto, id: scheduleId }),
+      ).rejects.toThrow('Focus mode has been deleted');
+
+      expect(BlockingScheduleRepositoryMock.orm.save).not.toHaveBeenCalled();
+    });
+
     it('should ignore client-supplied id in DTO and use URL parameter id for security', async () => {
       const urlScheduleId = randomUUID();
       const maliciousDto = {

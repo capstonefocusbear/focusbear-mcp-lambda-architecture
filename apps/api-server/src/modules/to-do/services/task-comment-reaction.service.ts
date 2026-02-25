@@ -67,6 +67,10 @@ export class TaskCommentReactionService {
         relations: ['user'],
       });
 
+      if (!reactionWithUser) {
+        return this.mapReactionToResponse(savedReaction);
+      }
+
       return this.mapReactionToResponse(reactionWithUser);
     } catch (err) {
       if (err instanceof QueryFailedError && (err as any).code === '23505') {

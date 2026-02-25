@@ -44,14 +44,7 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
         data: { userId, blockingScheduleDto },
       });
 
-      // Validate that the focus mode belongs to the user
-      const focusMode = await this.focusModeRepository.orm.findOne({
-        where: { id: blockingScheduleDto.focus_mode_id, user_id: userId },
-      });
-
-      if (!focusMode) {
-        throw new BadRequestException('Focus mode not found or does not belong to user');
-      }
+      await this.validateAccessibleFocusMode(userId, blockingScheduleDto.focus_mode_id);
 
       // Validate time format and logic
       this.validateTimeFormat(blockingScheduleDto.start_time);
@@ -93,19 +86,6 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
         data: { userId, id, blockingScheduleDto },
       });
 
-      // Validate that the focus mode belongs to the user
-      const focusMode = await this.focusModeRepository.orm.findOne({
-        where: { id: blockingScheduleDto.focus_mode_id, user_id: userId },
-      });
-
-      if (!focusMode) {
-        throw new BadRequestException('Focus mode not found or does not belong to user');
-      }
-
-      // Validate time format and logic
-      this.validateTimeFormat(blockingScheduleDto.start_time);
-      this.validateTimeFormat(blockingScheduleDto.end_time);
-
       const existingSchedule = await this.blockingScheduleRepository.orm.findOne({
         where: { id, user_id: userId },
       });
@@ -113,6 +93,12 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
       if (!existingSchedule) {
         throw new NotFoundException('Blocking schedule not found');
       }
+
+      await this.validateAccessibleFocusMode(userId, blockingScheduleDto.focus_mode_id);
+
+      // Validate time format and logic
+      this.validateTimeFormat(blockingScheduleDto.start_time);
+      this.validateTimeFormat(blockingScheduleDto.end_time);
 
       // Exclude id to prevent IDOR vulnerability - use the id from URL parameter
       const { id: dtoId, ...dtoWithoutId } = blockingScheduleDto;
@@ -170,5 +156,25 @@ export class BlockingScheduleService extends BaseCRUDService<BlockingScheduleRep
   private normalizeTimeFormat(time: string): string {
     // Convert HH:MM:SS to HH:MM for consistency
     return time.substring(0, 5);
+  }
+
+  private async validateAccessibleFocusMode(userId: string, focusModeId: string): Promise<void> {
+    const focusMode = await this.focusModeRepository.orm.findOne({
+      where: { id: focusModeId },
+      withDeleted: true,
+      select: ['id', 'user_id', 'deleted_at'],
+    });
+
+    if (!focusMode) {
+      throw new BadRequestException('Focus mode not found');
+    }
+
+    if (focusMode.user_id !== userId) {
+      throw new BadRequestException('Focus mode belongs to a different user');
+    }
+
+    if (focusMode.deleted_at) {
+      throw new BadRequestException('Focus mode has been deleted');
+    }
   }
 }

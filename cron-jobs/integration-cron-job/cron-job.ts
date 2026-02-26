@@ -15,9 +15,13 @@ import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/cons
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config();
 
-async function getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string) {
+async function getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string, userExternalId?: string) {
+  const where: any = { user_id: userId, platform };
+  if (userExternalId) {
+    where.external_user_id = userExternalId;
+  }
   const platformRecord = await CronJobDataSource.manager.findOne(PlatformIntegration, {
-    where: { user_id: userId, platform },
+    where,
   });
   if (!platformRecord) return null;
   return platformRecord;
@@ -42,7 +46,7 @@ async function updatePlatformIntegration(
   data: any,
   userExternalId?: string,
 ) {
-  const existingRecord = await getPlatformIntegrationData(platform, userId);
+  const existingRecord = await getPlatformIntegrationData(platform, userId, userExternalId);
   if (existingRecord) {
     const platformIntegration = new PlatformIntegration({
       ...existingRecord,
@@ -61,11 +65,17 @@ async function updatePlatformIntegration(
 }
 
 async function refreshToken(userId: string) {
-  const zohoData = await getZohoData(userId);
-  if (!zohoData) return;
+  const platformIntegrationRecord = await getPlatformIntegrationData(IntegrationPlatforms.ZOHO, userId);
+  if (!platformIntegrationRecord) return;
+  const zohoData = platformIntegrationRecord.data;
   const url = `${zohoData.account_server}/oauth/v2/token?client_id=${process.env.ZOHO_CLIENT_ID}&grant_type=refresh_token&client_secret=${process.env.ZOHO_CLIENT_SECRET}&refresh_token=${zohoData.refresh_token}`;
   const { data } = await axios.post(url);
-  await updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, { access_token: data?.access_token || '' });
+  await updatePlatformIntegration(
+    userId,
+    IntegrationPlatforms.ZOHO,
+    { access_token: data?.access_token || '' },
+    platformIntegrationRecord.external_user_id,
+  );
   return data;
 }
 

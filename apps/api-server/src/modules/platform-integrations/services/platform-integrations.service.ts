@@ -1,5 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
+import { FindOptionsWhere } from 'typeorm';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
@@ -14,13 +15,20 @@ export class PlatformIntegrationsService {
     private readonly googleAuthService: GoogleAuthService,
   ) {}
 
+  private shouldScopeByExternalUserId(platform: IntegrationPlatforms, userExternalId?: string): boolean {
+    return (
+      !!userExternalId &&
+      (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT)
+    );
+  }
+
   async getPlatformIntegrationData(
     platform: IntegrationPlatforms,
     userId: string,
     userExternalId?: string,
   ): Promise<PlatformIntegration> {
-    const criteria: any = { user_id: userId, platform };
-    if (userExternalId) {
+    const criteria: FindOptionsWhere<PlatformIntegration> = { user_id: userId, platform };
+    if (this.shouldScopeByExternalUserId(platform, userExternalId)) {
       criteria.external_user_id = userExternalId;
     }
     return this.platformIntegrationsRepository.orm.findOne({
@@ -53,12 +61,12 @@ export class PlatformIntegrationsService {
       ...(authData.expiry_date && { expiry_date: authData.expiry_date }),
     };
 
-    const criteria: any = {
+    const criteria: FindOptionsWhere<PlatformIntegration> = {
       user_id: userId,
       platform,
     };
 
-    if (userExternalId) {
+    if (this.shouldScopeByExternalUserId(platform, userExternalId)) {
       criteria.external_user_id = userExternalId;
     }
 
@@ -67,7 +75,11 @@ export class PlatformIntegrationsService {
     });
 
     if (!result?.affected || result.affected === 0) {
-      throw new Error('PlatformIntegration update failed');
+      throw new Error(
+        `PlatformIntegration update failed for user=${userId}, platform=${platform}, externalId=${
+          userExternalId ?? ''
+        }`,
+      );
     }
 
     return result;

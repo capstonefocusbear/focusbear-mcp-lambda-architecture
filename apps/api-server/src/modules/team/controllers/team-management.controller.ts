@@ -114,7 +114,6 @@ export class TeamManagementController {
   }
 
   @Get('/join-codes')
-  @UseGuards(HasTeamSubscription)
   @RequireEntitlements([Entitlement.team_admin])
   @ApiOperation({ summary: 'List all join codes for a team' })
   async getJoinCodes(

@@ -152,8 +152,23 @@ export class UserSettingsService {
     { is_onboarding, device_id }: UpdateSettingsQueryDto,
   ) {
     const methodStartTime = Date.now();
+    const timings: Record<string, number> = {};
     try {
+      const verboseLoggingStart = Date.now();
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
+      timings.isVerboseLoggingAllowed = Date.now() - verboseLoggingStart;
+
+      // Fetch settings data upfront for reuse (parallel fetch)
+      const dataFetchStart = Date.now();
+      const [userSettings, userCustomRoutines] = await Promise.all([
+        this.userRepository.getUserSettings(user_id),
+        this.customRoutineRepository.getUserCustomRoutines(user_id),
+      ]);
+      timings.data_fetch_upfront = Date.now() - dataFetchStart;
+
+      // Pre-serialize for reuse
+      const currentSettings = userSettings ? this.serializeSettings(userSettings, userCustomRoutines) : null;
+
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -195,13 +210,7 @@ export class UserSettingsService {
         isFirstLogin = (auth0User?.logins_count ?? 0) <= 4; // We support 4 platforms; simultaneous first sign-ins can increment count rapidly
       }
       if (is_onboarding && !isFirstLogin) {
-        let currentSettings: UpdateUserSettingsDto | null = null;
-        try {
-          currentSettings = await this.getSettings({ user_id });
-        } catch {
-          currentSettings = null;
-        }
-
+        // Use pre-fetched currentSettings (already available from upfront fetch)
         const hasExistingRoutines =
           !!currentSettings?.morning_activities?.length || !!currentSettings?.evening_activities?.length;
 
@@ -231,8 +240,10 @@ export class UserSettingsService {
         verbose_logging,
       } = mergedSettingsData;
 
+      const updateActivityDeletedStart = Date.now();
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(mergedSettingsData, user);
+      timings.updateUserIfCurrentActivityDeleted = Date.now() - updateActivityDeletedStart;
 
       const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
@@ -241,11 +252,14 @@ export class UserSettingsService {
         user.id,
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
-      const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
+      const optimizeEveningStart = Date.now();
+      const { eveningActivities, is_relax_activity_generated } = this.optimizeEveningActivities(
         mergedSettingsData,
         user,
         is_onboarding,
+        currentSettings,
       );
+      timings.optimizeEveningActivities = Date.now() - optimizeEveningStart;
 
       const updatedUser = new User({
         startup_time,
@@ -346,7 +360,17 @@ export class UserSettingsService {
         );
       }
 
-      return await this.getSettings({ user_id });
+      const returnGetSettingsStart = Date.now();
+      const result = await this.getSettings({ user_id });
+      timings.getSettings_return = Date.now() - returnGetSettingsStart;
+
+      // eslint-disable-next-line no-console
+      console.log('[updateSettings] timings', {
+        ...timings,
+        total: Date.now() - methodStartTime,
+      });
+
+      return result;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -812,10 +836,11 @@ export class UserSettingsService {
     return false;
   };
 
-  private async optimizeEveningActivities(
+  private optimizeEveningActivities(
     updateSettingsData: UpdateUserSettingsDto,
     user: User,
     is_onboarding?: boolean,
+    currentSettings?: UpdateUserSettingsDto,
   ) {
     let eveningActivities = [...updateSettingsData.evening_activities];
     let { is_relax_activity_generated } = user;
@@ -831,9 +856,8 @@ export class UserSettingsService {
       return { eveningActivities, is_relax_activity_generated };
     }
 
-    // Backward compatibility: Handle existing relax activities
-    const prev_user_settings = await this.userRepository.getUserSettings(user.id);
-    const hasRelaxActivityInPrevious = this.serializeSettings(prev_user_settings).evening_activities?.some(
+    // Backward compatibility: Handle existing relax activities (use pre-fetched data)
+    const hasRelaxActivityInPrevious = currentSettings?.evening_activities?.some(
       (activity) => activity.show_saved_distracting_websites,
     );
 

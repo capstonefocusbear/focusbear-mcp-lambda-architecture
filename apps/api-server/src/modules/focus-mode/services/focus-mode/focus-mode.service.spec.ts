@@ -185,9 +185,9 @@ describe('FocusModeService', () => {
     it('negative: should not update another user focus mode', async () => {
       FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
-      await expect(focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto),
+      ).rejects.toBeInstanceOf(NotFoundException);
 
       expect(FocusModeRepositoryMock.orm.findOne).toHaveBeenCalledWith({
         where: { id: updateFocusModeDto.id, user_id },
@@ -227,7 +227,10 @@ describe('FocusModeService', () => {
 
       await focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]);
 
-      expect(FocusModeRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: FocusModeDummy.id, user_id: userDummy.id });
+      expect(FocusModeRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({
+        id: FocusModeDummy.id,
+        user_id: userDummy.id,
+      });
       expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith({ ...FocusModeDummy });
     });
 
@@ -256,9 +259,7 @@ describe('FocusModeService', () => {
 
     it('negative: should not partially save when one focus mode in batch fails ownership validation', async () => {
       const secondId = randomUUID();
-      FocusModeRepositoryMock.orm.findOneBy
-        .mockResolvedValueOnce({ ...FocusModeDummy })
-        .mockResolvedValueOnce(null);
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...FocusModeDummy }).mockResolvedValueOnce(null);
 
       await expect(
         focusModeService.updateFocusModes(userDummy.id, [
@@ -286,7 +287,10 @@ describe('FocusModeService', () => {
       await focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id);
 
       expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
-      expect(FocusModeRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({ id: FocusModeDummy.id, user_id: userDummy.id });
+      expect(FocusModeRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({
+        id: FocusModeDummy.id,
+        user_id: userDummy.id,
+      });
       expect(FocusModeRepositoryMock.orm.softDelete).toHaveBeenCalledWith(FocusModeDummy.id);
     });
 
@@ -326,7 +330,9 @@ describe('FocusModeService', () => {
     it('negative: should throw when focus mode does not exist or does not belong to user', async () => {
       FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
 
-      await expect(focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
 
       expect(FocusModeRepositoryMock.orm.softDelete).not.toHaveBeenCalled();
     });

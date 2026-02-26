@@ -17,8 +17,12 @@ export class CreateTaskCommentReactionsTable1771290030166 implements MigrationIn
       );
     `);
 
-    await queryRunner.query('CREATE INDEX "IDX_task_comment_reactions_comment_id" ON "task_comment_reactions" ("comment_id")');
-    await queryRunner.query('CREATE INDEX "IDX_task_comment_reactions_user_id" ON "task_comment_reactions" ("user_id")');
+    await queryRunner.query(
+      'CREATE INDEX "IDX_task_comment_reactions_comment_id" ON "task_comment_reactions" ("comment_id")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX "IDX_task_comment_reactions_user_id" ON "task_comment_reactions" ("user_id")',
+    );
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {

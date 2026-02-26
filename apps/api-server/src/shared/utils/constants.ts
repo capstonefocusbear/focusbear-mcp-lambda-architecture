@@ -6,6 +6,10 @@ import { RoutineType } from '../../modules/user/domain/routine-type.enum';
 import { BearsonaProfile } from '../../modules/user/domain/onboarding/bearsona-profile.enum';
 import { OnboardFlowTimeUI } from '../../modules/user/domain/onboarding/onboarding-flow-time-ui.enum';
 
+export enum PostgresErrorCode {
+  UNIQUE_VIOLATION = '23505',
+}
+
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;

@@ -17,6 +17,8 @@ require('dotenv').config();
 
 async function getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string, userExternalId?: string) {
   const where: any = { user_id: userId, platform };
+  // This cron currently only handles Zoho, so we keep simple "if provided, include it" scoping here.
+  // API service logic is stricter because it serves multi-platform flows (e.g. Google/Microsoft multi-account).
   if (userExternalId) {
     where.external_user_id = userExternalId;
   }

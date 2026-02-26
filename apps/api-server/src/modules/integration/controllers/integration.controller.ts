@@ -108,6 +108,6 @@ export class IntegrationController {
     @Body() { only_assigned }: { only_assigned: boolean },
     @AuthContext() { user }: Passport,
   ) {
-    this.platformIntegrationsService.updateAssigneeStatus(user.id, platform, only_assigned);
+    await this.platformIntegrationsService.updateAssigneeStatus(user.id, platform, only_assigned);
   }
 }

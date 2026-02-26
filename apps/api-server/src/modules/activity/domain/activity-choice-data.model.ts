@@ -67,6 +67,13 @@ export class ActivityChoiceData {
 
   @IsArray()
   @IsOptional()
+  @ValidateIf((o) => o.allowed_mobile_apps?.length > 0)
+  @IsString({ each: true })
+  @ApiProperty()
+  allowed_mobile_apps?: string[];
+
+  @IsArray()
+  @IsOptional()
   @ValidateIf((o) => o.allowed_urls?.length > 0)
   @IsString({ each: true })
   @ApiProperty()

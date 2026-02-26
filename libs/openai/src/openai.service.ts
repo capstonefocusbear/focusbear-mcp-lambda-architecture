@@ -1051,7 +1051,7 @@ export class OpenAIService {
 
   private getOpenAIChatCompletionsStreaming(
     prompts: ChatCompletionMessageParam[],
-    type: OpenAIKeyType = OpenAIKeyType.GENERAL,
+    type: OpenAIKeyType,
     params: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
   ) {
     const instance = this.getOpenAIInstance(type);

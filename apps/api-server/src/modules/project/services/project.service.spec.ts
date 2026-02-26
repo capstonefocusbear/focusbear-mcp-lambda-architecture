@@ -305,9 +305,9 @@ describe('ProjectService', () => {
     it('negative: should throw NotFoundException when project does not exist', async () => {
       ProjectRepositoryMock.getProjectById.mockResolvedValueOnce(null);
 
-      await expect(projectService.inviteMember(userDummy.id, randomUUID(), { email: 'newmember@example.com' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        projectService.inviteMember(userDummy.id, randomUUID(), { email: 'newmember@example.com' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('positive: should invite a new member and send invitation email', async () => {
@@ -648,7 +648,10 @@ describe('ProjectService', () => {
 
       const result = await projectService.acceptInvitation(userDummy.id, projectDummy.id, userDummy.email);
 
-      expect(ProjectMemberRepositoryMock.getMemberByProjectAndEmail).toHaveBeenCalledWith(projectDummy.id, userDummy.email);
+      expect(ProjectMemberRepositoryMock.getMemberByProjectAndEmail).toHaveBeenCalledWith(
+        projectDummy.id,
+        userDummy.email,
+      );
       expect(ProjectMemberRepositoryMock.linkUserToInvitation).toHaveBeenCalledWith(pendingMember.id, userDummy.id);
       expect(result.invitation_status).toBe(ProjectMemberInvitationStatus.ACCEPTED);
     });

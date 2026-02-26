@@ -109,7 +109,9 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
           where: { user_id: ownerId, focus_mode_template_id, installation_status: true },
         });
         if (installedRecord) {
-          await this.installedFocusModeTemplatesRepository.orm.update(installedRecord.id, { installation_status: false });
+          await this.installedFocusModeTemplatesRepository.orm.update(installedRecord.id, {
+            installation_status: false,
+          });
         }
       }
       await this.focusModeRepository.orm.softDelete(id);

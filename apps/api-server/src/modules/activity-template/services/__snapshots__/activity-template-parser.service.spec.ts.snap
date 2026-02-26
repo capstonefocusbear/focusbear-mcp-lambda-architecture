@@ -6,6 +6,7 @@ exports[`ActivityTemplateParserService deserializeLibraryActivities Positive: Sh
     "activity_data": ActivityData {
       "allowed_apps": undefined,
       "allowed_focus_mode_id": undefined,
+      "allowed_mobile_apps": undefined,
       "allowed_urls": undefined,
       "break_type": undefined,
       "category": undefined,
@@ -45,6 +46,7 @@ exports[`ActivityTemplateParserService deserializeLibraryActivities Positive: Sh
     "activity_data": ActivityData {
       "allowed_apps": undefined,
       "allowed_focus_mode_id": undefined,
+      "allowed_mobile_apps": undefined,
       "allowed_urls": undefined,
       "break_type": undefined,
       "category": undefined,
@@ -81,6 +83,7 @@ exports[`ActivityTemplateParserService deserializeLibraryActivities Positive: Sh
     "activity_data": ActivityData {
       "allowed_apps": undefined,
       "allowed_focus_mode_id": undefined,
+      "allowed_mobile_apps": undefined,
       "allowed_urls": undefined,
       "break_type": undefined,
       "category": undefined,
@@ -126,6 +129,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -165,6 +169,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -205,6 +210,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -244,6 +250,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -284,6 +291,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -323,6 +331,7 @@ exports[`ActivityTemplateParserService deserializeRoutineActivities Positive: Sh
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -373,6 +382,7 @@ exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive:
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -412,6 +422,7 @@ exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive:
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,
@@ -448,6 +459,7 @@ exports[`ActivityTemplateParserService deserializeStandaloneActivities Positive:
         "activity_data": ActivityData {
           "allowed_apps": undefined,
           "allowed_focus_mode_id": undefined,
+          "allowed_mobile_apps": undefined,
           "allowed_urls": undefined,
           "break_type": undefined,
           "category": undefined,

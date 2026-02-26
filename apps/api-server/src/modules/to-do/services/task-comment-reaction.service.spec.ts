@@ -108,9 +108,9 @@ describe('TaskCommentReactionService', () => {
       const commentOnOtherTask = { ...commentDummy, task_id: randomUUID() };
       TaskCommentRepositoryMock.getCommentById.mockResolvedValueOnce(commentOnOtherTask);
 
-      await expect(service.addReaction(userDummy.id, taskDummy.id, commentOnOtherTask.id, { emoji: '👍' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.addReaction(userDummy.id, taskDummy.id, commentOnOtherTask.id, { emoji: '👍' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('negative: should throw NotFoundException when task not found', async () => {

@@ -44,11 +44,7 @@ export class TaskCommentReactionService {
     }
 
     // Check if user already reacted with this emoji
-    const existingReaction = await this.reactionRepository.getReactionByCommentUserEmoji(
-      commentId,
-      userId,
-      dto.emoji,
-    );
+    const existingReaction = await this.reactionRepository.getReactionByCommentUserEmoji(commentId, userId, dto.emoji);
 
     if (existingReaction) {
       throw new ConflictException('You have already reacted with this emoji');
@@ -128,7 +124,7 @@ export class TaskCommentReactionService {
     const reaction = await this.reactionRepository.getReactionByCommentUserEmoji(commentId, userId, emoji);
 
     if (!reaction) {
-      throw new NotFoundException(`Reaction not found`);
+      throw new NotFoundException('Reaction not found');
     }
 
     const deleteResult = await this.reactionRepository.deleteReaction(reaction.id);

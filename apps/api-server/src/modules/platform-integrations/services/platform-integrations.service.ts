@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import { FindOptionsWhere } from 'typeorm';
+import { FindOptionsWhere, UpdateResult } from 'typeorm';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
@@ -17,8 +17,7 @@ export class PlatformIntegrationsService {
 
   private shouldScopeByExternalUserId(platform: IntegrationPlatforms, userExternalId?: string): boolean {
     return (
-      !!userExternalId &&
-      (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT)
+      !!userExternalId && (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT)
     );
   }
 
@@ -164,8 +163,12 @@ export class PlatformIntegrationsService {
       });
   }
 
-  async updateAssigneeStatus(userId: string, platform: IntegrationPlatforms, only_assigned: boolean) {
-    await this.platformIntegrationsRepository.orm.update(
+  async updateAssigneeStatus(
+    userId: string,
+    platform: IntegrationPlatforms,
+    only_assigned: boolean,
+  ): Promise<UpdateResult> {
+    return this.platformIntegrationsRepository.orm.update(
       {
         user_id: userId,
         platform,

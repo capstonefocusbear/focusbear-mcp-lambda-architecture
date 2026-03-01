@@ -143,6 +143,20 @@ export class TaskCommentService {
             username: comment.user.username,
           }
         : undefined,
+      reactions: comment.reactions?.map((reaction) => ({
+        id: reaction.id,
+        comment_id: reaction.comment_id,
+        user_id: reaction.user_id,
+        emoji: reaction.emoji,
+        user: reaction.user
+          ? {
+              id: reaction.user.id,
+              username: reaction.user.username,
+            }
+          : undefined,
+        created_at: reaction.created_at,
+        updated_at: reaction.updated_at,
+      })),
       created_at: comment.created_at,
       updated_at: comment.updated_at,
     };

@@ -1,6 +1,7 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
+import { TaskCommentReaction } from './task-comment-reaction.entity';
 import { ToDo } from './to-do.entity';
 
 @Entity('task_comments')
@@ -38,4 +39,7 @@ export class TaskComment extends BaseEntity {
   @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
+
+  @OneToMany(() => TaskCommentReaction, (reaction) => reaction.comment)
+  reactions?: TaskCommentReaction[];
 }

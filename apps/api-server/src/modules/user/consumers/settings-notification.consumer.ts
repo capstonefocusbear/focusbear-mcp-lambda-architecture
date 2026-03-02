@@ -1,4 +1,5 @@
 import { Process, Processor } from '@nestjs/bull';
+import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { InjectSentry, SentryService } from '@app/observability';
 import { PusherService } from '@app/pusher';
@@ -6,11 +7,14 @@ import { BullQueues, BullWorkers } from '../../../shared/utils/constants';
 
 export interface SettingsNotificationJobData {
   userId: string;
-  deviceId: string;
+  deviceId?: string;
+  language?: string;
 }
 
 @Processor(BullQueues.SETTINGS_NOTIFICATION)
 export class SettingsNotificationConsumer {
+  private readonly logger = new Logger(SettingsNotificationConsumer.name);
+
   constructor(private readonly pusher: PusherService, @InjectSentry() private readonly sentryService: SentryService) {}
 
   @Process(BullWorkers.SEND_SETTINGS_NOTIFICATION)
@@ -18,10 +22,7 @@ export class SettingsNotificationConsumer {
     const startTime = Date.now();
     const { userId, deviceId } = job.data;
 
-    // Entry log to confirm handler is being called (before any async operations)
-    // eslint-disable-next-line no-console
-    console.log('[SettingsNotificationConsumer] Processing job', {
-      jobId: job.id,
+    this.logger.debug(`Processing settings notification job ${job.id ?? 'unknown'}`, {
       userId,
       deviceId,
       attempt: job.attemptsMade + 1,
@@ -41,26 +42,20 @@ export class SettingsNotificationConsumer {
 
     try {
       await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
-
-      // eslint-disable-next-line no-console
-      console.log('[SettingsNotificationConsumer] Settings notification sent successfully', {
-        userId,
-        deviceId,
-        durationMs: Date.now() - startTime,
-      });
     } catch (error) {
       const isLastAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 3);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-      // eslint-disable-next-line no-console
-      console.error('[SettingsNotificationConsumer] Failed to send notification', {
-        jobId: job.id,
-        userId,
-        deviceId,
-        attempt: job.attemptsMade + 1,
-        isLastAttempt,
-        error: error.message,
-        durationMs: Date.now() - startTime,
-      });
+      this.logger.warn(
+        `Failed to send settings notification for job ${job.id ?? 'unknown'} (attempt ${job.attemptsMade + 1})`,
+        {
+          userId,
+          deviceId,
+          isLastAttempt,
+          error: errorMessage,
+          durationMs: Date.now() - startTime,
+        },
+      );
 
       this.sentryService.instance().captureException(error, {
         level: isLastAttempt ? 'error' : 'warning',
@@ -75,7 +70,7 @@ export class SettingsNotificationConsumer {
           userId,
           deviceId,
           durationMs: Date.now() - startTime,
-          errorMessage: error.message,
+          errorMessage,
         },
       });
 

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {
   BadRequestException,
   Inject,
@@ -13,13 +12,10 @@ import { InjectSentry, SentryService } from '@app/observability';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { randomUUID } from 'crypto';
-import { PusherBeamsService } from '@app/pusher-beams';
 import { PusherService } from '@app/pusher';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { I18nService } from 'nestjs-i18n';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { NotificationEvents } from '@app/pusher-beams/domains/notification-events.enum';
 import { Auth0ManagementService } from '@app/auth0';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
@@ -51,7 +47,6 @@ import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
 const PERFORMANCE_BUDGETS = {
   AUTH0_API_CALL: 500,
   DB_TRANSACTION: 1000,
-  PUSHER_BROADCAST: 200,
   TOTAL_UPDATE_SETTINGS: 2000,
 } as const;
 
@@ -71,7 +66,6 @@ export class UserSettingsService {
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     private readonly pusher: PusherService,
-    private readonly pusherBeams: PusherBeamsService,
     private readonly i18nService: I18nService,
     private readonly customRoutineRepository: CustomRoutineRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
@@ -159,23 +153,8 @@ export class UserSettingsService {
     { is_onboarding, device_id }: UpdateSettingsQueryDto,
   ) {
     const methodStartTime = Date.now();
-    const timings: Record<string, number> = {};
     try {
-      const verboseLoggingStart = Date.now();
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
-      timings.isVerboseLoggingAllowed = Date.now() - verboseLoggingStart;
-
-      // Fetch settings data upfront for reuse (parallel fetch)
-      const dataFetchStart = Date.now();
-      const [userSettings, userCustomRoutines] = await Promise.all([
-        this.userRepository.getUserSettings(user_id),
-        this.customRoutineRepository.getUserCustomRoutines(user_id),
-      ]);
-      timings.data_fetch_upfront = Date.now() - dataFetchStart;
-
-      // Pre-serialize for reuse
-      const currentSettings = userSettings ? this.serializeSettings(userSettings, userCustomRoutines) : null;
-
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
@@ -205,6 +184,17 @@ export class UserSettingsService {
         this.validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData);
       }
 
+      let currentSettings: UpdateUserSettingsDto | null = null;
+      let hasLoadedCurrentSettings = false;
+      const loadCurrentSettings = async (): Promise<UpdateUserSettingsDto | null> => {
+        if (hasLoadedCurrentSettings) {
+          return currentSettings;
+        }
+        currentSettings = await this.getSettings({ user_id });
+        hasLoadedCurrentSettings = true;
+        return currentSettings;
+      };
+
       let mergedSettingsData = updateSettingsData;
       let isFirstLogin = false;
       if (user?.auth0_id) {
@@ -217,7 +207,13 @@ export class UserSettingsService {
         isFirstLogin = (auth0User?.logins_count ?? 0) <= 4; // We support 4 platforms; simultaneous first sign-ins can increment count rapidly
       }
       if (is_onboarding && !isFirstLogin) {
-        // Use pre-fetched currentSettings (already available from upfront fetch)
+        try {
+          currentSettings = await loadCurrentSettings();
+        } catch {
+          currentSettings = null;
+          hasLoadedCurrentSettings = true;
+        }
+
         const hasExistingRoutines =
           !!currentSettings?.morning_activities?.length || !!currentSettings?.evening_activities?.length;
 
@@ -247,10 +243,8 @@ export class UserSettingsService {
         verbose_logging,
       } = mergedSettingsData;
 
-      const updateActivityDeletedStart = Date.now();
       const { current_activity_id, current_activity_sequence_id, current_completing_sequence_log_id } =
         await this.updateUserIfCurrentActivityDeleted(mergedSettingsData, user);
-      timings.updateUserIfCurrentActivityDeleted = Date.now() - updateActivityDeletedStart;
 
       const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
         startup_time,
@@ -259,14 +253,24 @@ export class UserSettingsService {
         user.id,
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
-      const optimizeEveningStart = Date.now();
+
+      const hasRelaxActivityInCurrent =
+        mergedSettingsData.evening_activities?.some((activity) => activity.show_saved_distracting_websites) ?? false;
+      const shouldLoadCurrentSettingsForRelaxCheck =
+        !is_onboarding &&
+        !!mergedSettingsData.cutoff_time_for_non_high_priority_activities &&
+        !hasRelaxActivityInCurrent;
+
+      if (shouldLoadCurrentSettingsForRelaxCheck && !hasLoadedCurrentSettings) {
+        currentSettings = await loadCurrentSettings();
+      }
+
       const { eveningActivities, is_relax_activity_generated } = this.optimizeEveningActivities(
         mergedSettingsData,
         user,
         is_onboarding,
         currentSettings,
       );
-      timings.optimizeEveningActivities = Date.now() - optimizeEveningStart;
 
       const updatedUser = new User({
         startup_time,
@@ -350,7 +354,7 @@ export class UserSettingsService {
       if (should_update_has_edited_settings) {
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
-          this.queueSettingsNotification(user_id, device_id),
+          this.queueSettingsNotification(user_id, device_id, user.language),
         ]);
       }
 
@@ -366,18 +370,7 @@ export class UserSettingsService {
           `Performance budget exceeded for updateSettings total: ${totalDurationMs}ms (budget: ${PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS}ms)`,
         );
       }
-
-      const returnGetSettingsStart = Date.now();
-      const result = await this.getSettings({ user_id });
-      timings.getSettings_return = Date.now() - returnGetSettingsStart;
-
-      // eslint-disable-next-line no-console
-      console.log('[updateSettings] timings', {
-        ...timings,
-        total: Date.now() - methodStartTime,
-      });
-
-      return result;
+      return await this.getSettings({ user_id });
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -435,38 +428,12 @@ export class UserSettingsService {
     return merged;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async sendSettingsUpdatedBroadcast(userId: string, language: string, deviceId: string) {
-    try {
-      await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
-    } catch (error) {
-      this.sentryService.instance().captureException(error, {
-        level: 'warning',
-        tags: { service: 'pusher-channels', operation: 'trigger', event: 'settings-updated' },
-        extra: { userId, deviceId },
-      });
-    }
-    // NOTE: comment out until implemented in mobile app
-    // const title = this.i18nService.t('common.settings_updated', { lang: language });
-    // const body = this.i18nService.t('common.settings_updated_message', {
-    //   lang: language,
-    // });
-    // const pushData = { event: NotificationEvents.UPDATED_SETTINGS };
-    // const publishRequest = this.pusherBeams.createBeamsPublishRequest({
-    //   title,
-    //   body,
-    //   should_send_only_data_for_android: true,
-    //   pushData,
-    // });
-    // await this.pusherBeams.publishToUsers([userId], publishRequest);
-  }
-
-  private async queueSettingsNotification(userId: string, deviceId: string): Promise<void> {
+  private async queueSettingsNotification(userId: string, deviceId?: string, language?: string): Promise<void> {
     const startTime = Date.now();
     try {
       await this.settingsNotificationQueue.add(
         BullWorkers.SEND_SETTINGS_NOTIFICATION,
-        { userId, deviceId },
+        { userId, deviceId, language },
         {
           attempts: 3,
           backoff: {
@@ -491,12 +458,31 @@ export class UserSettingsService {
         );
       }
     } catch (error) {
-      // Queue failure shouldn't fail the API - log and continue
       this.sentryService.instance().captureException(error, {
         level: 'warning',
         tags: { service: 'bull-queue', operation: 'add', queue: 'settings-notification' },
-        extra: { userId, deviceId },
+        extra: { userId, deviceId, language },
       });
+
+      this.logger.warn(
+        { operationName: 'queue_settings_notification_fallback', userId },
+        'Queue add failed, sending settings notification directly',
+      );
+
+      try {
+        await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
+      } catch (fallbackError) {
+        this.sentryService.instance().captureException(fallbackError, {
+          level: 'warning',
+          tags: {
+            service: 'pusher-channels',
+            operation: 'trigger',
+            event: 'settings-updated',
+            source: 'queue-fallback',
+          },
+          extra: { userId, deviceId, language },
+        });
+      }
     }
   }
 
@@ -863,7 +849,7 @@ export class UserSettingsService {
     updateSettingsData: UpdateUserSettingsDto,
     user: User,
     is_onboarding?: boolean,
-    currentSettings?: UpdateUserSettingsDto,
+    currentSettings?: UpdateUserSettingsDto | null,
   ) {
     let eveningActivities = [...updateSettingsData.evening_activities];
     let { is_relax_activity_generated } = user;

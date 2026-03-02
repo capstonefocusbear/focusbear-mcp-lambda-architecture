@@ -37,6 +37,7 @@ export class NoteService {
       completed_activity_id: note.completed_activity_id,
       tags: note.tags,
       embedded_todo_ids: note.embedded_todos?.map((todo) => todo.id) || [],
+      is_brain_dump: note.is_brain_dump,
       activity_name: activityData?.name,
       activity_emoji: activityData?.habit_icon,
       logged_at: note.completed_activity?.start_time?.toISOString(),
@@ -101,11 +102,15 @@ export class NoteService {
     }
 
     const shouldUpdateBody = NoteService.hasDtoProperty(createNoteDto, 'body');
+    const shouldUpdateIsBrainDump = NoteService.hasDtoProperty(createNoteDto, 'is_brain_dump');
     const title = createNoteDto.title ?? existingNoteForUpdate?.title;
     const body = shouldUpdateBody ? createNoteDto.body : existingNoteForUpdate?.body;
     const completedActivityId = shouldUpdateCompletedActivity
       ? createNoteDto.completed_activity_id
       : existingNoteForUpdate?.completed_activity_id;
+    const isBrainDump = shouldUpdateIsBrainDump
+      ? createNoteDto.is_brain_dump ?? false
+      : existingNoteForUpdate?.is_brain_dump ?? false;
 
     const note = new Note(
       {
@@ -114,6 +119,7 @@ export class NoteService {
         title,
         body,
         completed_activity_id: completedActivityId,
+        is_brain_dump: isBrainDump,
         updated_at: new Date().toISOString(),
         tags,
         embedded_todos: embeddedTodos,

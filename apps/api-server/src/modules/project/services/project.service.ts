@@ -1,6 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SendGridService } from '@app/send-grid';
+import { JwtService } from '@app/jwt';
+import { Auth0ManagementService } from '@app/auth0';
 import { ProjectRepository } from '../repositories/project.repository';
 import { ProjectMemberRepository } from '../repositories/project-member.repository';
+import { UserRepository } from '../../user/repositories/user.repository';
 import { Project } from '../entities/project.entity';
 import { ProjectMember } from '../entities/project-member.entity';
 import { CreateProjectDto } from '../dto/create-project.dto';
@@ -9,16 +14,27 @@ import { InviteProjectMemberDto } from '../dto/invite-project-member.dto';
 import { UpdateProjectMemberDto } from '../dto/update-project-member.dto';
 import { ProjectMemberRole } from '../domain/project-member-role.enum';
 import { ProjectMemberInvitationStatus } from '../domain/project-member-invitation-status.enum';
+import { ProjectMemberInvitationPayload } from '../domain/project-member-invitation-payload.model';
 import { DEFAULT_PROJECT_STATUSES } from '../domain/project-status.model';
 import { ProjectResponseDto } from '../dto/project-response.dto';
-import { ProjectListResponseDto } from '../dto/project-list-response.dto';
 import { ProjectMemberResponseDto } from '../dto/project-member-response.dto';
+import { EMAIL_TEMPLATE_IDS, FOCUS_BEAR_EMAILS } from '../../../shared/utils/constants';
+import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
+import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dto';
+import { GetProjectsResponseDto } from '../dto/get-projects-response.dto';
 
 @Injectable()
 export class ProjectService {
+  private readonly logger = new Logger(ProjectService.name);
+
   constructor(
     private readonly projectRepository: ProjectRepository,
     private readonly projectMemberRepository: ProjectMemberRepository,
+    private readonly userRepository: UserRepository,
+    private readonly emailService: SendGridService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+    private readonly auth0ManagementService: Auth0ManagementService,
   ) {}
 
   async createProject(userId: string, dto: CreateProjectDto): Promise<ProjectResponseDto> {
@@ -51,12 +67,15 @@ export class ProjectService {
     return this.mapProjectToResponse(savedProject);
   }
 
-  async getUserProjects(userId: string): Promise<ProjectListResponseDto> {
-    const projects = await this.projectRepository.getAllUserProjects(userId);
-    return {
-      projects: projects.map((p) => this.mapProjectToResponse(p)),
-      total_count: projects.length,
-    };
+  async getUserProjects(userId: string, queryDto: GetProjectsQueryDto): Promise<GetProjectsResponseDto> {
+    const [projects, total] = await this.projectRepository.getUserProjectsPaginated(userId, queryDto);
+    const mappedProjects = projects.map((p) => this.mapProjectToResponse(p));
+    const meta = new PaginationMetaDto({
+      paginationOptionsDto: queryDto,
+      itemCount: total,
+    });
+
+    return new GetProjectsResponseDto(mappedProjects, meta);
   }
 
   async getProjectById(userId: string, projectId: string): Promise<ProjectResponseDto> {
@@ -113,6 +132,7 @@ export class ProjectService {
     userId: string,
     projectId: string,
     dto: InviteProjectMemberDto,
+    origin?: string,
   ): Promise<ProjectMemberResponseDto> {
     const project = await this.projectRepository.getProjectById(projectId);
 
@@ -132,26 +152,55 @@ export class ProjectService {
 
     // Check if member already exists
     const existingMember = await this.projectMemberRepository.getMemberByProjectAndEmail(projectId, dto.email);
-    if (existingMember) {
-      throw new BadRequestException('This email has already been invited to the project');
+    if (existingMember?.invitation_status === ProjectMemberInvitationStatus.ACCEPTED) {
+      throw new BadRequestException('This email is already a member of the project');
     }
 
-    const member = new ProjectMember(
-      {
-        project_id: projectId,
-        email: dto.email,
-        role: dto.role || ProjectMemberRole.MEMBER,
+    const invitedRole = dto.role || ProjectMemberRole.MEMBER;
+    const inviteUrl = await this.generateInviteUrl(dto.email, projectId, project.name, userId, invitedRole, origin);
+    const invitationSentAt = new Date();
+    let savedMember: ProjectMember;
+
+    if (existingMember) {
+      const updatedMember = await this.projectMemberRepository.update(existingMember.id, {
+        role: invitedRole,
         invitation_status: ProjectMemberInvitationStatus.PENDING,
-        invitation_sent_at: new Date(),
-      },
-      { generateId: true },
-    );
+        invitation_sent_at: invitationSentAt,
+      });
+      savedMember = updatedMember || {
+        ...existingMember,
+        role: invitedRole,
+        invitation_status: ProjectMemberInvitationStatus.PENDING,
+        invitation_sent_at: invitationSentAt,
+      };
+    } else {
+      const member = new ProjectMember(
+        {
+          project_id: projectId,
+          email: dto.email,
+          role: invitedRole,
+          invitation_status: ProjectMemberInvitationStatus.PENDING,
+          invitation_sent_at: invitationSentAt,
+        },
+        { generateId: true },
+      );
 
-    const savedMember = await this.projectMemberRepository.orm.save(member);
+      savedMember = await this.projectMemberRepository.orm.save(member);
+    }
 
-    // TODO: Send invitation email using SendGrid integration
+    let responseMember = savedMember;
 
-    return this.mapMemberToResponse(savedMember);
+    try {
+      await this.sendInvitationEmail(dto.email, inviteUrl, project.name, userId);
+    } catch (error) {
+      const updatedMember = await this.projectMemberRepository.update(savedMember.id, {
+        invitation_status: ProjectMemberInvitationStatus.FAILED,
+      });
+      responseMember = updatedMember || { ...savedMember, invitation_status: ProjectMemberInvitationStatus.FAILED };
+      this.logger.error(`Failed to send project invitation email to ${dto.email}`, error?.stack);
+    }
+
+    return this.mapMemberToResponse(responseMember);
   }
 
   async removeMember(userId: string, projectId: string, memberId: string): Promise<void> {
@@ -285,6 +334,53 @@ export class ProjectService {
     return pendingInvitations
       .filter((invitation) => invitation.project)
       .map((invitation) => this.mapProjectToResponse(invitation.project));
+  }
+
+  private async generateInviteUrl(
+    email: string,
+    projectId: string,
+    projectName: string,
+    adminId: string,
+    role: ProjectMemberRole,
+    origin?: string,
+  ): Promise<string> {
+    const payload = new ProjectMemberInvitationPayload({
+      admin_id: adminId,
+      email,
+      project_id: projectId,
+      project_name: projectName,
+      role,
+    });
+    const secret = this.configService.get('tokens.invitation.secret');
+    const token = await this.jwtService.asyncSign({ ...payload }, secret);
+
+    const devFrontendUrl = this.configService.get('server.devFrontendUrl');
+    return `${
+      devFrontendUrl === origin ? devFrontendUrl : this.configService.get('server.frontEndUrl')
+    }/accept-project-invite?token=${token}`;
+  }
+
+  private async sendInvitationEmail(
+    memberEmail: string,
+    inviteUrl: string,
+    projectName: string,
+    adminId: string,
+  ): Promise<void> {
+    let bcc = FOCUS_BEAR_EMAILS.ZOHO_DESK_SUPPORT;
+
+    const adminUser = await this.userRepository.orm.findOneBy({ id: adminId });
+    if (adminUser) {
+      const auth0Admin = await this.auth0ManagementService.getAuth0User(adminUser.auth0_id);
+      bcc = auth0Admin?.email || bcc;
+    }
+
+    await this.emailService.sendEmail({
+      to: memberEmail,
+      from: FOCUS_BEAR_EMAILS.SUPPORT,
+      templateId: EMAIL_TEMPLATE_IDS.PROJECT_INVITE,
+      dynamicTemplateData: { invite_url: inviteUrl, team_name: projectName, project_name: projectName },
+      bcc,
+    });
   }
 
   private async userHasAccessToProject(userId: string, project: Project): Promise<boolean> {

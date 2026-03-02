@@ -10,6 +10,7 @@ import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum'
 import { HabitImportExtractionService } from '../services/habit-import-extraction.service';
 import { HabitImportJobData, ExtractedHabit, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
 import { SentryServiceMock } from '../../../../test/mocks';
+import { ActivityLibraryService } from '../services/activity-library.service';
 
 // Mock axios
 jest.mock('axios');
@@ -56,6 +57,10 @@ describe('HabitImportConsumer', () => {
     transcribeAudioToText: jest.fn(),
   };
 
+  const activityLibraryServiceMock = {
+    ensureHabitsHaveInstructions: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -75,6 +80,10 @@ describe('HabitImportConsumer', () => {
         {
           provide: OpenAIService,
           useValue: openAIServiceMock,
+        },
+        {
+          provide: ActivityLibraryService,
+          useValue: activityLibraryServiceMock,
         },
         {
           provide: SENTRY_TOKEN,

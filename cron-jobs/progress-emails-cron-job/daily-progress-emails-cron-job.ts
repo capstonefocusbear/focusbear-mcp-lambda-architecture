@@ -2,11 +2,12 @@
 import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { Auth0ManagementService } from '@app/auth0';
+import { isTestEmail } from '@app/send-grid';
 import { AppModule } from '../../apps/api-server/src/app.module';
 import { UserRepository } from '../../apps/api-server/src/modules/user/repositories/user.repository';
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
-import { Auth0ManagementService } from '@app/auth0';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
@@ -24,12 +25,17 @@ async function runDailyProgressEmailsCronJob() {
   let emailsQueued = 0;
   let usersConsidered = 0;
   let failedEmails = 0;
+  let skippedTestAccounts = 0;
   try {
     console.log('Starting daily progress emails cron job...');
 
     // Log initial memory usage
     const initialMemory = process.memoryUsage();
-    console.log(`Initial memory usage: ${Math.round(initialMemory.heapUsed / 1024 / 1024)}MB heap, ${Math.round(initialMemory.rss / 1024 / 1024)}MB RSS`);
+    console.log(
+      `Initial memory usage: ${Math.round(initialMemory.heapUsed / 1024 / 1024)}MB heap, ${Math.round(
+        initialMemory.rss / 1024 / 1024,
+      )}MB RSS`,
+    );
 
     // Process users in batches
     let skip = 0;
@@ -40,13 +46,23 @@ async function runDailyProgressEmailsCronJob() {
       usersConsidered += batch.length;
       const batchMemory = process.memoryUsage();
       console.log(
-         `Processing batch ${batchNum} (${batch.length} users) - Memory: ${Math.round(batchMemory.heapUsed / 1024 / 1024)}MB heap`
+        `Processing batch ${batchNum} (${batch.length} users) - Memory: ${Math.round(
+          batchMemory.heapUsed / 1024 / 1024,
+        )}MB heap`,
       );
 
       const emailPromises = batch.map(async (user) => {
         try {
           // Fetch email from Auth0
           const { email } = await auth0ManagementService.getAuth0User(user.auth0_id);
+
+          // Skip internal test accounts to avoid SendGrid bounces
+          if (isTestEmail(email)) {
+            console.log(`Skipped internal test account ${user.id}`);
+            skippedTestAccounts++;
+            return { success: true };
+          }
+
           const userWithEmail = { ...user, email };
 
           const metrics = await userProgressMetricsService.calculateDailyProgress(user);
@@ -108,11 +124,14 @@ async function runDailyProgressEmailsCronJob() {
       batchNum++;
     }
 
-    console.log('Daily progress emails cron job completed successfully.');
+    console.log(
+      `Daily progress emails cron job completed successfully. Skipped ${skippedTestAccounts} test account(s).`,
+    );
     return {
       emailsQueued,
       usersConsidered,
       failedEmails,
+      skippedTestAccounts,
     };
   } catch (error) {
     captureErrorWithContext(
@@ -131,5 +150,7 @@ async function runDailyProgressEmailsCronJob() {
 }
 
 if (require.main === module) {
-  runCronWithTelemetry('daily-progress-emails-cron', () => withTimeout(runDailyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS));
+  runCronWithTelemetry('daily-progress-emails-cron', () =>
+    withTimeout(runDailyProgressEmailsCronJob(), CRON_JOB_TIMEOUT_MS),
+  );
 }

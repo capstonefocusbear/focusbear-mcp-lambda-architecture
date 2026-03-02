@@ -102,7 +102,14 @@ export class UserSettingsService {
       }
 
       if (timezone || language) {
-        await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
+        await this.updateUserTimezoneAndLanguage(
+          user_id,
+          { timezone, language },
+          {
+            startupTime: userSettings.startup_time,
+            shutdownTime: userSettings.shutdown_time,
+          },
+        );
       }
       const settings = this.serializeSettings(userSettings, userCustomRoutines);
       this.sentryService.instance().addBreadcrumb({
@@ -524,6 +531,7 @@ export class UserSettingsService {
   async updateUserTimezoneAndLanguage(
     user_id: string,
     { timezone, language }: { timezone?: string; language?: LanguageOptions },
+    routineTimes?: { startupTime?: string; shutdownTime?: string },
   ) {
     const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
     this.sentryService.instance().addBreadcrumb({
@@ -535,34 +543,49 @@ export class UserSettingsService {
         ...(isVerboseLoggingAllowed && { timezone }),
       },
     });
-    const currentTime = DateTime.local({ zone: timezone });
-    if (currentTime.invalidReason) {
-      throw new BadRequestException(currentTime.invalidExplanation);
-    }
-    const currentTimeISO = currentTime.toISO();
-    const positiveTime = currentTimeISO.split('+')[1];
-    const negativeTime = currentTimeISO.split('-')[3];
+    const updateData: Partial<User> = {};
+
     if (timezone) {
-      if (positiveTime) {
-        const userZone = `UTC+${positiveTime}`;
-        await this.userRepository.update(user_id, {
-          timezone: userZone,
-          ...(language && { language }),
-        });
-        return;
+      // Normalize timezone input to a stable UTC offset string (for example "UTC-05:00")
+      // so routine matching can compare persisted "HH:mm" UTC fields directly in cron.
+      // For IANA zones, this captures the current offset only; DST shifts are picked up
+      // the next time client settings sync sends timezone again.
+      const currentTime = DateTime.local({ zone: timezone });
+      if (currentTime.invalidReason) {
+        throw new BadRequestException(currentTime.invalidExplanation);
       }
-      if (negativeTime) {
-        const userZone = `UTC-${negativeTime}`;
-        await this.userRepository.update(user_id, {
-          timezone: userZone,
-          ...(language && { language }),
-        });
-        return;
+
+      const offsetMinutes = currentTime.offset;
+      const absoluteOffsetMinutes = Math.abs(offsetMinutes);
+      const hours = this.formatTimeToDoubleDigits(Math.floor(absoluteOffsetMinutes / 60));
+      const minutes = this.formatTimeToDoubleDigits(absoluteOffsetMinutes % 60);
+      const offsetPrefix = offsetMinutes >= 0 ? '+' : '-';
+      const userZone = `UTC${offsetPrefix}${hours}:${minutes}`;
+
+      updateData.timezone = userZone;
+
+      const { startupTime, shutdownTime } = routineTimes ?? {};
+      if (startupTime && shutdownTime) {
+        // Keep cached UTC routine times aligned with timezone changes.
+        const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
+          startupTime,
+          shutdownTime,
+          userZone,
+          user_id,
+        );
+        updateData.utc_startup_time = utc_startup_time;
+        updateData.utc_shutdown_time = utc_shutdown_time;
       }
     }
+
     if (language) {
+      updateData.language = language;
+    }
+
+    if (Object.keys(updateData).length > 0) {
       await this.userRepository.update(user_id, {
-        language,
+        ...updateData,
+        updated_at: new Date().toISOString(),
       });
     }
   }

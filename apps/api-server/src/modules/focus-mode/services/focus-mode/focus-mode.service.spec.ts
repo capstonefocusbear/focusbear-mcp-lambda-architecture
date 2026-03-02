@@ -125,11 +125,16 @@ describe('FocusModeService', () => {
       tags: [{ id: randomUUID(), text: 'Test Tag' }],
     };
     const user_id = randomUUID();
-    FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(FocusModeDummy);
+
+    beforeEach(() => {
+      FocusModeRepositoryMock.orm.findOne.mockReset();
+      FocusModeRepositoryMock.orm.find.mockReset();
+      FocusModeRepositoryMock.orm.save.mockReset();
+    });
 
     it('negative: if focus mode does not exist not found error should be thrown', async () => {
       FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
-      const errorMessage = `Focus mode with ID: ${updateFocusModeDto.id} does not exist`;
+      const errorMessage = `Focus mode with ID: ${updateFocusModeDto.id} does not exist or does not belong to user`;
       let exception: any;
 
       try {
@@ -152,6 +157,9 @@ describe('FocusModeService', () => {
       expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith(
         new FocusMode({ ...FocusModeDummy, ...updateFocusModeDto, user_id, tags: expect.toBeArray() }),
       );
+      expect(FocusModeRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { id: updateFocusModeDto.id, user_id },
+      });
     });
 
     it('positive: should persist is_ai_enabled as false when explicitly provided on update', async () => {
@@ -172,6 +180,19 @@ describe('FocusModeService', () => {
           is_ai_enabled: false,
         }),
       );
+    });
+
+    it('negative: should not update another user focus mode', async () => {
+      FocusModeRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        focusModeService.updateFocusMode(user_id, updateFocusModeDto.id, updateFocusModeDto),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(FocusModeRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { id: updateFocusModeDto.id, user_id },
+      });
+      expect(FocusModeRepositoryMock.orm.save).not.toHaveBeenCalled();
     });
   });
 
@@ -201,15 +222,21 @@ describe('FocusModeService', () => {
       jest.clearAllMocks();
     });
     it('positive: should call update on supplied user focus modes', async () => {
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce(FocusModeDummy);
       FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([FocusModeDummy]);
 
       await focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]);
 
+      expect(FocusModeRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({
+        id: FocusModeDummy.id,
+        user_id: userDummy.id,
+      });
       expect(FocusModeRepositoryMock.orm.save).toHaveBeenCalledWith({ ...FocusModeDummy });
     });
 
     it('positive: if a focus mode contains tags the tags should be saved', async () => {
       const tagId = randomUUID();
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...FocusModeDummy });
       FocusModeRepositoryMock.orm.find.mockResolvedValueOnce([{ ...FocusModeDummy }]);
       const savedTag = new FocusModeTag({ text: 'Some tag', id: tagId, user_id: userDummy.id });
 
@@ -219,15 +246,51 @@ describe('FocusModeService', () => {
 
       expect(FocusModeTagRepositoryMock.upsert).toHaveBeenCalledWith(savedTag, ['id']);
     });
+
+    it('negative: should throw if focus mode does not belong to the user in bulk update', async () => {
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await expect(
+        focusModeService.updateFocusModes(userDummy.id, [{ ...UpsertFocusModeDummy, id: FocusModeDummy.id }]),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(FocusModeRepositoryMock.orm.save).not.toHaveBeenCalled();
+    });
+
+    it('negative: should not partially save when one focus mode in batch fails ownership validation', async () => {
+      const secondId = randomUUID();
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce({ ...FocusModeDummy }).mockResolvedValueOnce(null);
+
+      await expect(
+        focusModeService.updateFocusModes(userDummy.id, [
+          { ...UpsertFocusModeDummy, id: FocusModeDummy.id },
+          { ...UpsertFocusModeDummy, id: secondId, name: 'Second mode' },
+        ]),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(FocusModeRepositoryMock.orm.save).not.toHaveBeenCalled();
+      expect(FocusModeTagRepositoryMock.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleteFocusMode', () => {
+    beforeEach(() => {
+      FocusModeRepositoryMock.orm.findOneBy.mockReset();
+      FocusModeRepositoryMock.orm.softDelete.mockReset();
+      InstalledFocusModeTemplatesRepositoryMock.orm.findOne.mockReset();
+      InstalledFocusModeTemplatesRepositoryMock.orm.update.mockReset();
+    });
+
     it('positive: if focus mode does not have a template id, only softDelete should be called', async () => {
       FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce(FocusModeDummy);
 
-      await focusModeService.deleteFocusMode(FocusModeDummy.id);
+      await focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id);
 
       expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toHaveBeenCalledTimes(0);
+      expect(FocusModeRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({
+        id: FocusModeDummy.id,
+        user_id: userDummy.id,
+      });
       expect(FocusModeRepositoryMock.orm.softDelete).toHaveBeenCalledWith(FocusModeDummy.id);
     });
 
@@ -243,11 +306,35 @@ describe('FocusModeService', () => {
       });
       InstalledFocusModeTemplatesRepositoryMock.orm.findOne.mockResolvedValueOnce(installedRecord);
 
-      await focusModeService.deleteFocusMode(FocusModeDummy.id);
+      await focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id);
 
       expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).toHaveBeenCalledWith(installedRecord.id, {
         installation_status: false,
       });
+      expect(FocusModeRepositoryMock.orm.softDelete).toHaveBeenCalledWith(FocusModeDummy.id);
+    });
+
+    it('positive: should still soft delete when installed template record is not found', async () => {
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce({
+        ...FocusModeDummy,
+        focus_mode_template_id: focusModeTemplateDBResponseDummy.id,
+      });
+      InstalledFocusModeTemplatesRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      await focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id);
+
+      expect(InstalledFocusModeTemplatesRepositoryMock.orm.update).not.toHaveBeenCalled();
+      expect(FocusModeRepositoryMock.orm.softDelete).toHaveBeenCalledWith(FocusModeDummy.id);
+    });
+
+    it('negative: should throw when focus mode does not exist or does not belong to user', async () => {
+      FocusModeRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await expect(focusModeService.deleteFocusMode(userDummy.id, FocusModeDummy.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+
+      expect(FocusModeRepositoryMock.orm.softDelete).not.toHaveBeenCalled();
     });
   });
 

@@ -30,6 +30,7 @@ describe('PlatformIntegrationsService', () => {
 
   describe('getPlatformIntegrationData', () => {
     it('positive: should query the DB for a matching record', async () => {
+      jest.clearAllMocks();
       PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
         new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
       );
@@ -43,6 +44,42 @@ describe('PlatformIntegrationsService', () => {
       });
 
       expect(platformData).toBeInstanceOf(PlatformIntegration);
+    });
+
+    it('positive: should scope by external_user_id for multi-account platforms', async () => {
+      jest.clearAllMocks();
+      const accountId = 'user@example.com';
+      PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new PlatformIntegration({
+          user_id: userDummy.id,
+          platform: IntegrationPlatforms.GOOGLE,
+          external_user_id: accountId,
+          data: {},
+        }),
+      );
+
+      await platformIntegrationsService.getPlatformIntegrationData(IntegrationPlatforms.GOOGLE, userDummy.id, accountId);
+
+      expect(PlatformIntegrationsRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { platform: IntegrationPlatforms.GOOGLE, user_id: userDummy.id, external_user_id: accountId },
+      });
+    });
+
+    it('positive: should ignore external_user_id for single-account platforms', async () => {
+      jest.clearAllMocks();
+      PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new PlatformIntegration({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, data: {} }),
+      );
+
+      await platformIntegrationsService.getPlatformIntegrationData(
+        IntegrationPlatforms.ZOHO,
+        userDummy.id,
+        'dummy_external_user_id',
+      );
+
+      expect(PlatformIntegrationsRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { platform: IntegrationPlatforms.ZOHO, user_id: userDummy.id },
+      });
     });
   });
 
@@ -74,6 +111,7 @@ describe('PlatformIntegrationsService', () => {
     });
 
     it('positive: if existing integration is found for same user and platform, it should be updated', async () => {
+      jest.clearAllMocks();
       const updatedZohoDataDummy = { ...dummyZohoData, access_token: 'updated-token' };
       PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
         new PlatformIntegration({
@@ -83,6 +121,7 @@ describe('PlatformIntegrationsService', () => {
           data: dummyZohoData,
         }),
       );
+      PlatformIntegrationsRepositoryMock.orm.update.mockResolvedValueOnce({ affected: 1 } as any);
 
       await platformIntegrationsService.updatePlatformIntegration(
         userDummy.id,
@@ -91,10 +130,87 @@ describe('PlatformIntegrationsService', () => {
         dummyZohoData.accountId,
       );
 
+      expect(PlatformIntegrationsRepositoryMock.orm.findOne).toHaveBeenCalledWith({
+        where: { user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO },
+      });
       expect(PlatformIntegrationsRepositoryMock.orm.update).toHaveBeenCalledWith(
-        { user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO, external_user_id: dummyZohoData.accountId },
+        { user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO },
         { data: updatedZohoDataDummy },
       );
+    });
+
+    it('positive: should update without external_user_id when userExternalId is omitted', async () => {
+      jest.clearAllMocks();
+      const updatedZohoDataDummy = { access_token: 'updated-token' };
+      PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new PlatformIntegration({
+          user_id: userDummy.id,
+          platform: IntegrationPlatforms.ZOHO,
+          external_user_id: 'dummy_external_user_id',
+          data: dummyZohoData,
+        }),
+      );
+      PlatformIntegrationsRepositoryMock.orm.update.mockResolvedValueOnce({ affected: 1 } as any);
+
+      await platformIntegrationsService.updatePlatformIntegration(
+        userDummy.id,
+        IntegrationPlatforms.ZOHO,
+        updatedZohoDataDummy,
+      );
+
+      expect(PlatformIntegrationsRepositoryMock.orm.update).toHaveBeenCalledTimes(1);
+      const [criteria, payload] = PlatformIntegrationsRepositoryMock.orm.update.mock.calls[0];
+      expect(criteria).toEqual({ user_id: userDummy.id, platform: IntegrationPlatforms.ZOHO });
+      expect(payload).toEqual({ data: { ...dummyZohoData, access_token: updatedZohoDataDummy.access_token } });
+    });
+
+    it('positive: should include external_user_id in where clause for multi-account platforms', async () => {
+      jest.clearAllMocks();
+      const updatedZohoDataDummy = { access_token: 'updated-token' };
+      PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new PlatformIntegration({
+          user_id: userDummy.id,
+          platform: IntegrationPlatforms.GOOGLE,
+          external_user_id: dummyZohoData.accountId,
+          data: dummyZohoData,
+        }),
+      );
+      PlatformIntegrationsRepositoryMock.orm.update.mockResolvedValueOnce({ affected: 1 } as any);
+
+      await platformIntegrationsService.updatePlatformIntegration(
+        userDummy.id,
+        IntegrationPlatforms.GOOGLE,
+        updatedZohoDataDummy,
+        dummyZohoData.accountId,
+      );
+
+      expect(PlatformIntegrationsRepositoryMock.orm.update).toHaveBeenCalledTimes(1);
+      const [criteria] = PlatformIntegrationsRepositoryMock.orm.update.mock.calls[0];
+      expect(criteria).toEqual({
+        user_id: userDummy.id,
+        platform: IntegrationPlatforms.GOOGLE,
+        external_user_id: dummyZohoData.accountId,
+      });
+    });
+
+    it('negative: should throw if ORM update affects 0 rows', async () => {
+      PlatformIntegrationsRepositoryMock.orm.findOne.mockResolvedValueOnce(
+        new PlatformIntegration({
+          user_id: userDummy.id,
+          platform: IntegrationPlatforms.ZOHO,
+          data: dummyZohoData,
+        }),
+      );
+
+      PlatformIntegrationsRepositoryMock.orm.update.mockResolvedValueOnce({ affected: 0 } as any);
+
+      await expect(
+        platformIntegrationsService.updatePlatformIntegration(
+          userDummy.id,
+          IntegrationPlatforms.ZOHO,
+          { access_token: 'updated-token' },
+        ),
+      ).rejects.toThrow();
     });
   });
 

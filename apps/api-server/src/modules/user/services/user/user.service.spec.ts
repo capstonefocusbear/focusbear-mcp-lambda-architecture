@@ -1753,7 +1753,7 @@ describe('UserService', () => {
       UserRepositoryMock.orm.findOne.mockResolvedValue(userDummy);
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValue({
         ...auth0UserDummy,
-        email: 'internaltest@company.com',
+        email: 'internaltest+test@focusbear.io',
       });
       (axios.post as jest.Mock).mockResolvedValue({ status: 200 });
 

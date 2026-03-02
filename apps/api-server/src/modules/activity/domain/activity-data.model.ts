@@ -25,6 +25,7 @@ export class ActivityData {
     this.allowed_focus_mode_id = data?.allowed_focus_mode_id;
     this.video_urls = data?.video_urls;
     this.allowed_apps = data?.allowed_apps;
+    this.allowed_mobile_apps = data?.allowed_mobile_apps;
     this.include_in_every_break = data?.include_in_every_break;
     this.log_quantity_question = data?.log_quantity_question;
     this.choice_type = data?.choice_type;
@@ -104,6 +105,12 @@ export class ActivityData {
   @IsString({ each: true })
   @ApiProperty()
   allowed_apps?: string[];
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  @ApiProperty()
+  allowed_mobile_apps?: string[];
 
   @IsArray()
   @IsOptional()

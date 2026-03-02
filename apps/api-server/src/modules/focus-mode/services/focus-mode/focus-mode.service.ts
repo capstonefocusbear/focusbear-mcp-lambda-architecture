@@ -54,9 +54,23 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
           user_id,
         },
       });
-      await Promise.all(
+      // Pre-validate all focus mode ownership before performing writes to avoid partial updates
+      // when one item in the batch does not belong to the authenticated user.
+      const fetchedFocusModes = await Promise.all(
         focusModes.map(async (focusMode) => {
-          const fetchedFocusMode = await this.focusModeRepository.orm.findOneBy({ id: focusMode.id });
+          const fetchedFocusMode = await this.focusModeRepository.orm.findOneBy({ id: focusMode.id, user_id });
+          if (!fetchedFocusMode) {
+            throw new NotFoundException(
+              `Focus mode with ID: ${focusMode.id} does not exist or does not belong to user`,
+            );
+          }
+          return fetchedFocusMode;
+        }),
+      );
+
+      await Promise.all(
+        focusModes.map(async (focusMode, index) => {
+          const fetchedFocusMode = fetchedFocusModes[index];
           let focusModeTags = [];
           if (focusMode?.tags && focusMode?.tags?.length) {
             focusModeTags = await this.saveFocusModeTags(user_id, focusMode?.tags);
@@ -73,26 +87,34 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
     }
   }
 
-  async deleteFocusMode(id: string) {
+  async deleteFocusMode(user_id: string, id: string) {
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Deleting focus mode',
         data: {
+          user_id,
           id,
         },
       });
-      const focusMode = await this.focusModeRepository.orm.findOneBy({ id });
+      const focusMode = await this.focusModeRepository.orm.findOneBy({ id, user_id });
+      if (!focusMode) {
+        throw new NotFoundException(`Focus mode with ID: ${id} does not exist or does not belong to user`);
+      }
       // if focus mode is from an installed focus mode template, mark as uninstalled
       if (focusMode?.focus_mode_template_id) {
-        const { user_id, focus_mode_template_id } = focusMode;
+        const { user_id: ownerId, focus_mode_template_id } = focusMode;
         const installedRecord = await this.installedFocusModeTemplatesRepository.orm.findOne({
-          where: { user_id, focus_mode_template_id, installation_status: true },
+          where: { user_id: ownerId, focus_mode_template_id, installation_status: true },
         });
-        this.installedFocusModeTemplatesRepository.orm.update(installedRecord.id, { installation_status: false });
+        if (installedRecord) {
+          await this.installedFocusModeTemplatesRepository.orm.update(installedRecord.id, {
+            installation_status: false,
+          });
+        }
       }
-      this.focusModeRepository.orm.softDelete(id);
+      await this.focusModeRepository.orm.softDelete(id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
@@ -165,9 +187,9 @@ export class FocusModeService extends BaseCRUDService<FocusModeRepository, Focus
           user_id,
         },
       });
-      const focusMode = await this.focusModeRepository.orm.findOne({ where: { id: focus_mode_id } });
+      const focusMode = await this.focusModeRepository.orm.findOne({ where: { id: focus_mode_id, user_id } });
       if (!focusMode) {
-        throw new NotFoundException(`Focus mode with ID: ${focus_mode_id} does not exist`);
+        throw new NotFoundException(`Focus mode with ID: ${focus_mode_id} does not exist or does not belong to user`);
       }
       const { tags } = updateFocusModeDto;
       const existingFocusModes = await this.focusModeRepository.orm.find({ where: { user_id } });

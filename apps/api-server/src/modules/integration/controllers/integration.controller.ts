@@ -18,7 +18,14 @@ export class IntegrationController {
     private readonly platformIntegrationsService: PlatformIntegrationsService,
   ) {}
 
+  @Get('assignee')
+  @UseGuards(IsAuth)
+  async getAssigneeStatus(@AuthContext() { user }: Passport) {
+    return this.platformIntegrationsService.getAssigneeStatus(user.id);
+  }
+
   @Get(':platform')
+  @UseGuards(IsAuth)
   async getPortals(@Param('platform') platform: IntegrationPlatforms, @AuthContext() { user }: Passport) {
     const service = this.integrationFactory.get(platform);
     return service.getPortals(user.id);
@@ -42,6 +49,7 @@ export class IntegrationController {
   }
 
   @Post(':platform/sync-project')
+  @UseGuards(IsAuth)
   async syncProject(
     @Param('platform') platform: IntegrationPlatforms,
     @Query() { portal_id, project_id }: { portal_id: string; project_id: string },
@@ -100,12 +108,7 @@ export class IntegrationController {
     @Body() { only_assigned }: { only_assigned: boolean },
     @AuthContext() { user }: Passport,
   ) {
-    this.platformIntegrationsService.updateAssigneeStatus(user.id, platform, only_assigned);
-  }
-
-  @Get('assignee')
-  @UseGuards(IsAuth)
-  async getAssigneeStatus(@AuthContext() { user }: Passport) {
-    return this.platformIntegrationsService.getAssigneeStatus(user.id);
+    const result = await this.platformIntegrationsService.updateAssigneeStatus(user.id, platform, only_assigned);
+    return { affected: result.affected ?? 0 };
   }
 }

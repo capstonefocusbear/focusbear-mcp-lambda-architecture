@@ -28,6 +28,7 @@ WORKER_LOG="${WORKER_LOG:-worker.log}"
 WORKER_HEALTHCHECK_URL="${WORKER_HEALTHCHECK_URL:-}"
 WORKER_HEALTHCHECK_RETRIES="${WORKER_HEALTHCHECK_RETRIES:-10}"
 WORKER_HEALTHCHECK_INTERVAL="${WORKER_HEALTHCHECK_INTERVAL:-2}"
+HEALTHCHECK_ERR_FILE=""
 
 require_positive_int() {
   local value="$1"
@@ -49,6 +50,20 @@ require_positive_int "$WORKER_STABILITY_SECONDS" "WORKER_STABILITY_SECONDS"
 require_positive_int "$WORKER_HEALTHCHECK_RETRIES" "WORKER_HEALTHCHECK_RETRIES"
 require_positive_int "$WORKER_HEALTHCHECK_INTERVAL" "WORKER_HEALTHCHECK_INTERVAL"
 
+print_process_log_tail() {
+  echo ""
+  echo "--- Process log (last 80 lines) ---"
+  tail -80 "$WORKER_LOG" || true
+}
+
+report_process_exit() {
+  set +e
+  wait $WORKER_PID 2>/dev/null
+  EXIT_CODE=$?
+  set -e
+  echo "Process exit code: $EXIT_CODE"
+}
+
 echo "=== Process startup check ==="
 echo "  WORKER_CMD=$WORKER_CMD"
 echo "  WORKER_STABILITY_SECONDS=$WORKER_STABILITY_SECONDS"
@@ -65,20 +80,17 @@ WORKER_PID=$!
 cleanup() {
   kill $WORKER_PID 2>/dev/null || true
   wait $WORKER_PID 2>/dev/null || true
+  [ -n "$HEALTHCHECK_ERR_FILE" ] && [ -f "$HEALTHCHECK_ERR_FILE" ] && rm -f "$HEALTHCHECK_ERR_FILE"
 }
 trap cleanup EXIT
+
+HEALTHCHECK_ERR_FILE=$(mktemp)
 
 for i in $(seq 1 "$WORKER_STABILITY_SECONDS"); do
   if ! kill -0 $WORKER_PID 2>/dev/null; then
     echo "FATAL: Process exited prematurely (after ${i}s)"
-    set +e
-    wait $WORKER_PID 2>/dev/null
-    EXIT_CODE=$?
-    set -e
-    echo "Process exit code: $EXIT_CODE"
-    echo ""
-    echo "--- Process log (last 80 lines) ---"
-    tail -80 "$WORKER_LOG" || true
+    report_process_exit
+    print_process_log_tail
     exit 1
   fi
 
@@ -91,14 +103,8 @@ done
 # Avoid a false pass if the process exits in the final sleep interval.
 if ! kill -0 $WORKER_PID 2>/dev/null; then
   echo "FATAL: Process exited before completing stability window (${WORKER_STABILITY_SECONDS}s)"
-  set +e
-  wait $WORKER_PID 2>/dev/null
-  EXIT_CODE=$?
-  set -e
-  echo "Process exit code: $EXIT_CODE"
-  echo ""
-  echo "--- Process log (last 80 lines) ---"
-  tail -80 "$WORKER_LOG" || true
+  report_process_exit
+  print_process_log_tail
   exit 1
 fi
 
@@ -111,22 +117,42 @@ if [ -n "$WORKER_HEALTHCHECK_URL" ]; then
   echo "Running healthcheck..."
   HEALTH_OK=0
   for i in $(seq 1 "$WORKER_HEALTHCHECK_RETRIES"); do
-    if curl -fsS --connect-timeout 5 --max-time 10 "$WORKER_HEALTHCHECK_URL" >/dev/null 2>&1; then
+    if ! kill -0 $WORKER_PID 2>/dev/null; then
+      echo "FATAL: Process died during healthcheck phase"
+      report_process_exit
+      print_process_log_tail
+      exit 1
+    fi
+
+    > "$HEALTHCHECK_ERR_FILE"
+    if curl -fsS --connect-timeout 5 --max-time 10 "$WORKER_HEALTHCHECK_URL" >/dev/null 2>"$HEALTHCHECK_ERR_FILE"; then
       HEALTH_OK=1
       break
     fi
 
     if [ "$WORKER_DEBUG" = "1" ]; then
       echo "  healthcheck attempt $i/$WORKER_HEALTHCHECK_RETRIES failed"
+      if [ -s "$HEALTHCHECK_ERR_FILE" ]; then
+        echo "    curl stderr: $(cat "$HEALTHCHECK_ERR_FILE")"
+      fi
     fi
     sleep "$WORKER_HEALTHCHECK_INTERVAL"
   done
 
   if [ "$HEALTH_OK" -ne 1 ]; then
+    if ! kill -0 $WORKER_PID 2>/dev/null; then
+      echo "FATAL: Process died during healthcheck phase"
+      report_process_exit
+      print_process_log_tail
+      exit 1
+    fi
+
     echo "FATAL: Process is alive but healthcheck failed: $WORKER_HEALTHCHECK_URL"
-    echo ""
-    echo "--- Process log (last 80 lines) ---"
-    tail -80 "$WORKER_LOG" || true
+    if [ -s "$HEALTHCHECK_ERR_FILE" ]; then
+      echo "--- Last healthcheck curl stderr ---"
+      cat "$HEALTHCHECK_ERR_FILE"
+    fi
+    print_process_log_tail
     exit 1
   fi
   echo "Healthcheck passed"

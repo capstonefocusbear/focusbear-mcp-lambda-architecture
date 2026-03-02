@@ -195,6 +195,7 @@ export enum BullQueues {
   WEBHOOK = 'webhook',
   STRIPE_CUSTOMER = 'stripe-customer',
   PASSWORD_RESET_EMAIL = 'password-reset-email',
+  SETTINGS_NOTIFICATION = 'settings-notification',
 }
 
 export enum BullWorkers {
@@ -222,6 +223,7 @@ export enum BullWorkers {
   PROCESS_HABIT_IMPORT = 'process-habit-import',
   SEND_WEBHOOK = 'send-webhook',
   SEND_PASSWORD_RESET_EMAIL = 'send-password-reset-email',
+  SEND_SETTINGS_NOTIFICATION = 'send-settings-notification',
 }
 
 export const createActivityFunction = {

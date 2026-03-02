@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, DeleteResult } from 'typeorm';
+import { DataSource, DeleteResult, In } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { TaskReaction } from '../entities/task-reaction.entity';
 
@@ -12,6 +12,14 @@ export class TaskReactionRepository extends BaseRepository<TaskReaction> {
   async getReactionsByTaskId(taskId: string): Promise<TaskReaction[]> {
     return this.orm.find({
       where: { task_id: taskId },
+      order: { created_at: 'ASC' },
+    });
+  }
+
+  async getReactionsByTaskIds(taskIds: string[]): Promise<TaskReaction[]> {
+    if (!taskIds.length) return [];
+    return this.orm.find({
+      where: { task_id: In(taskIds) },
       order: { created_at: 'ASC' },
     });
   }

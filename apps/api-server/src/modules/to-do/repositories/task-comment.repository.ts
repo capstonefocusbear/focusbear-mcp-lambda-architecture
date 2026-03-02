@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { TaskComment } from '../entities/task-comment.entity';
 
@@ -19,6 +19,15 @@ export class TaskCommentRepository extends BaseRepository<TaskComment> {
       order: { created_at: 'ASC' },
       skip: options?.skip,
       take: options?.take,
+    });
+  }
+
+  async getCommentsByTaskIds(taskIds: string[]): Promise<TaskComment[]> {
+    if (!taskIds.length) return [];
+    return this.orm.find({
+      where: { task_id: In(taskIds) },
+      relations: ['user'],
+      order: { created_at: 'ASC' },
     });
   }
 

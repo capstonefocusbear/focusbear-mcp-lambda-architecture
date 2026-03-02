@@ -7,6 +7,9 @@ import { OpenAIService } from '@app/openai';
 import { InjectSentry, SentryService } from '@app/observability';
 import { BraindumpTaskDto } from '@app/openai/dto/braindump-task-response.dto';
 import { ToDoRepository } from '../repositories/to-do.repository';
+import { TaskCommentRepository } from '../repositories/task-comment.repository';
+import { TaskReactionRepository } from '../repositories/task-reaction.repository';
+import { TaskCommentReactionRepository } from '../repositories/task-comment-reaction.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { ToDo } from '../entities/to-do.entity';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
@@ -38,6 +41,9 @@ export class ToDoService {
   constructor(
     private readonly platformIntegrationsRepository: PlatformIntegrationRepository,
     private readonly toDoRepository: ToDoRepository,
+    private readonly taskCommentRepository: TaskCommentRepository,
+    private readonly taskReactionRepository: TaskReactionRepository,
+    private readonly taskCommentReactionRepository: TaskCommentReactionRepository,
     private readonly taskTimeLogsRepository: TaskTimeLogsRepository,
     @InjectQueue(BullQueues.TIME_LOGS) private timeLogsQueue: Queue,
     private readonly syncedProjectsRepository: SyncedProjectsRepository,
@@ -150,6 +156,8 @@ export class ToDoService {
       perspiration_lte,
       synced_project_id,
       sort_mode,
+      include_comments,
+      include_reactions,
     } = getToDosQueryDto;
     const [toDos, total] = await this.toDoRepository.getUserToDos(user_id, {
       take,
@@ -175,10 +183,77 @@ export class ToDoService {
     } else {
       updateToDos = await this.addProjectStatusesToToDos(cleanedToDos, user_id);
     }
+
+    if (include_comments || include_reactions) {
+      updateToDos = await this.enrichToDosWithCommentsAndReactions(updateToDos, {
+        include_comments,
+        include_reactions,
+      });
+    }
+
     return new PaginationDto(
       updateToDos,
       new PaginationMetaDto({ paginationOptionsDto: { page, order, skip, take }, itemCount: total }),
     );
+  }
+
+  private async enrichToDosWithCommentsAndReactions(
+    toDos: ToDoResponse[],
+    options: { include_comments?: boolean; include_reactions?: boolean },
+  ): Promise<ToDoResponse[]> {
+    const taskIds = toDos.map((todo) => todo.id).filter(Boolean);
+    if (!taskIds.length) return toDos;
+
+    const [comments, taskReactions] = await Promise.all([
+      options.include_comments ? this.taskCommentRepository.getCommentsByTaskIds(taskIds) : Promise.resolve([]),
+      options.include_reactions ? this.taskReactionRepository.getReactionsByTaskIds(taskIds) : Promise.resolve([]),
+    ]);
+
+    // Fetch comment reactions if comments were loaded
+    const commentIds = comments.map((c) => c.id);
+    const commentReactions = options.include_comments
+      ? await this.taskCommentReactionRepository.getReactionsByCommentIds(commentIds)
+      : [];
+
+    // Group comment reactions by comment_id
+    const commentReactionsByCommentId = new Map<string, typeof commentReactions>();
+    for (const reaction of commentReactions) {
+      const existing = commentReactionsByCommentId.get(reaction.comment_id) ?? [];
+      existing.push(reaction);
+      commentReactionsByCommentId.set(reaction.comment_id, existing);
+    }
+
+    // Group comments by task_id, attaching their reactions
+    const commentsByTaskId = new Map<string, any[]>();
+    for (const comment of comments) {
+      const commentWithReactions = {
+        id: comment.id,
+        task_id: comment.task_id,
+        user_id: comment.user_id,
+        content: comment.content,
+        user: comment.user ? { id: comment.user.id, username: (comment.user as any).username } : undefined,
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
+        reactions: commentReactionsByCommentId.get(comment.id) ?? [],
+      };
+      const existing = commentsByTaskId.get(comment.task_id) ?? [];
+      existing.push(commentWithReactions);
+      commentsByTaskId.set(comment.task_id, existing);
+    }
+
+    // Group task reactions by task_id
+    const reactionsByTaskId = new Map<string, typeof taskReactions>();
+    for (const reaction of taskReactions) {
+      const existing = reactionsByTaskId.get(reaction.task_id) ?? [];
+      existing.push(reaction);
+      reactionsByTaskId.set(reaction.task_id, existing);
+    }
+
+    return toDos.map((todo) => ({
+      ...todo,
+      ...(options.include_comments ? { comments: commentsByTaskId.get(todo.id) ?? [] } : {}),
+      ...(options.include_reactions ? { reactions: reactionsByTaskId.get(todo.id) ?? [] } : {}),
+    }));
   }
 
   async addCachedStatusesToToDos(toDos: ToDo[], userId: string) {

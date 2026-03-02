@@ -18,6 +18,9 @@ import {
 } from '../../../../test/mocks';
 import { ToDoService } from './to-do.service';
 import { ToDoRepository } from '../repositories/to-do.repository';
+import { TaskCommentRepository } from '../repositories/task-comment.repository';
+import { TaskReactionRepository } from '../repositories/task-reaction.repository';
+import { TaskCommentReactionRepository } from '../repositories/task-comment-reaction.repository';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import {
   adminUserDummy,
@@ -52,6 +55,18 @@ const ProjectRepositoryMock = {
   getProjectById: jest.fn(),
 };
 
+const TaskCommentRepositoryMock = {
+  getCommentsByTaskIds: jest.fn(),
+};
+
+const TaskReactionRepositoryMock = {
+  getReactionsByTaskIds: jest.fn(),
+};
+
+const TaskCommentReactionRepositoryMock = {
+  getReactionsByCommentIds: jest.fn(),
+};
+
 describe('toDoService', () => {
   let toDoService: ToDoService;
 
@@ -62,6 +77,9 @@ describe('toDoService', () => {
         IntegrationFactory,
         ToDoService,
         ToDoRepository,
+        TaskCommentRepository,
+        TaskReactionRepository,
+        TaskCommentReactionRepository,
         TaskTimeLogsRepository,
         SyncedProjectsRepository,
         OpenAIService,
@@ -81,6 +99,12 @@ describe('toDoService', () => {
       .useValue(IntegrationFactoryMock)
       .overrideProvider(ToDoRepository)
       .useValue(ToDoRepositoryMock)
+      .overrideProvider(TaskCommentRepository)
+      .useValue(TaskCommentRepositoryMock)
+      .overrideProvider(TaskReactionRepository)
+      .useValue(TaskReactionRepositoryMock)
+      .overrideProvider(TaskCommentReactionRepository)
+      .useValue(TaskCommentReactionRepositoryMock)
       .overrideProvider(PlatformIntegrationRepository)
       .useValue(PlatformIntegrationsRepositoryMock)
       .overrideProvider(TaskTimeLogsRepository)
@@ -389,6 +413,159 @@ describe('toDoService', () => {
         status_id: 'test-id',
         should_complete_task: true,
       });
+    });
+  });
+
+  describe('getToDos - include_comments and include_reactions', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('positive: should include comments with reactions when include_comments is true', async () => {
+      const todoId = 'todo-with-comments';
+      const commentId = 'comment-1';
+      const mockTodos = [{ id: todoId, title: 'Test', user_id: userDummy.id, subtasks: [] }];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+      TaskCommentRepositoryMock.getCommentsByTaskIds.mockResolvedValueOnce([
+        {
+          id: commentId,
+          task_id: todoId,
+          user_id: userDummy.id,
+          content: 'A comment',
+          user: { id: userDummy.id, username: 'testuser' },
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ]);
+      TaskCommentReactionRepositoryMock.getReactionsByCommentIds.mockResolvedValueOnce([
+        { id: 'reaction-1', comment_id: commentId, user_id: userDummy.id, emoji: '👍' },
+      ]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+        include_comments: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].comments).toHaveLength(1);
+      expect(data[0].comments[0].content).toBe('A comment');
+      expect(data[0].comments[0].reactions).toHaveLength(1);
+      expect(data[0].comments[0].reactions[0].emoji).toBe('👍');
+      expect(data[0]).not.toHaveProperty('reactions');
+    });
+
+    it('positive: should include task reactions when include_reactions is true', async () => {
+      const todoId = 'todo-with-reactions';
+      const mockTodos = [{ id: todoId, title: 'Test', user_id: userDummy.id, subtasks: [] }];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+      TaskReactionRepositoryMock.getReactionsByTaskIds.mockResolvedValueOnce([
+        { id: 'reaction-1', task_id: todoId, user_id: userDummy.id, emoji: '🔥' },
+        { id: 'reaction-2', task_id: todoId, user_id: randomUUID(), emoji: '❤️' },
+      ]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+        include_reactions: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].reactions).toHaveLength(2);
+      expect(data[0].reactions[0].emoji).toBe('🔥');
+      expect(data[0].reactions[1].emoji).toBe('❤️');
+      expect(data[0]).not.toHaveProperty('comments');
+    });
+
+    it('positive: should include both comments and reactions when both flags are true', async () => {
+      const todoId = 'todo-both';
+      const commentId = 'comment-1';
+      const mockTodos = [{ id: todoId, title: 'Test', user_id: userDummy.id, subtasks: [] }];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+      TaskCommentRepositoryMock.getCommentsByTaskIds.mockResolvedValueOnce([
+        {
+          id: commentId,
+          task_id: todoId,
+          user_id: userDummy.id,
+          content: 'A comment',
+          user: { id: userDummy.id, username: 'testuser' },
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ]);
+      TaskCommentReactionRepositoryMock.getReactionsByCommentIds.mockResolvedValueOnce([]);
+      TaskReactionRepositoryMock.getReactionsByTaskIds.mockResolvedValueOnce([
+        { id: 'reaction-1', task_id: todoId, user_id: userDummy.id, emoji: '👍' },
+      ]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+        include_comments: true,
+        include_reactions: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].comments).toHaveLength(1);
+      expect(data[0].reactions).toHaveLength(1);
+    });
+
+    it('positive: should not include comments or reactions when flags are false', async () => {
+      const mockTodos = [{ id: 'todo-1', title: 'Test', user_id: userDummy.id, subtasks: [] }];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+        include_comments: false,
+        include_reactions: false,
+      });
+
+      const data = response.data as any[];
+      expect(data[0]).not.toHaveProperty('comments');
+      expect(data[0]).not.toHaveProperty('reactions');
+      expect(TaskCommentRepositoryMock.getCommentsByTaskIds).not.toHaveBeenCalled();
+      expect(TaskReactionRepositoryMock.getReactionsByTaskIds).not.toHaveBeenCalled();
+    });
+
+    it('positive: should return empty arrays for tasks with no comments or reactions', async () => {
+      const todoId = 'todo-empty';
+      const mockTodos = [{ id: todoId, title: 'Test', user_id: userDummy.id, subtasks: [] }];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+      TaskCommentRepositoryMock.getCommentsByTaskIds.mockResolvedValueOnce([]);
+      TaskCommentReactionRepositoryMock.getReactionsByCommentIds.mockResolvedValueOnce([]);
+      TaskReactionRepositoryMock.getReactionsByTaskIds.mockResolvedValueOnce([]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+        include_comments: true,
+        include_reactions: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].comments).toEqual([]);
+      expect(data[0].reactions).toEqual([]);
     });
   });
 

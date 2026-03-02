@@ -211,6 +211,9 @@ jobs:
         env:
           WORKER_CMD: "node dist/apps/api-server/main.js"
           WORKER_STABILITY_SECONDS: "15"
+          WORKER_HEALTHCHECK_URL: "http://127.0.0.1:5038/healthcheck"
+          WORKER_HEALTHCHECK_RETRIES: "10"
+          WORKER_HEALTHCHECK_INTERVAL: "2"
           WORKER_DEBUG: "1"
         run: bash scripts/worker-startup-check.sh
 

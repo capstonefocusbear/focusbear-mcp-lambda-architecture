@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../mobile-app"
+		},
+		{
+			"path": "../../../web_dashboard"
+		}
+	],
+	"settings": {}
+}

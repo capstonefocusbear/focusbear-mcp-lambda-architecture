@@ -31,6 +31,12 @@ export SENDGRID_KEY="${SENDGRID_KEY:-SG.ci-dummy-key-for-smoke-test}"
 export SERVER_URL="${SERVER_URL:-http://127.0.0.1:5038}"
 export SMOKE_DEBUG="${SMOKE_DEBUG:-1}"
 
+if [ ! -f "dist/apps/api-server/main.js" ]; then
+  echo "FATAL: dist/apps/api-server/main.js not found."
+  echo "Build the app first: npm run build"
+  exit 1
+fi
+
 echo "Starting API server in background (no worker)..."
 npm run start:no-migration > server.log 2>&1 &
 API_PID=$!

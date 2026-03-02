@@ -1,5 +1,6 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { DateTime } from 'luxon';
+import { FindOptionsWhere, UpdateResult } from 'typeorm';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
 import { IntegrationPlatforms } from '../domain/integration-platforms.enum';
 import { PlatformIntegration } from '../entities/platform-integration.entity';
@@ -14,22 +15,24 @@ export class PlatformIntegrationsService {
     private readonly googleAuthService: GoogleAuthService,
   ) {}
 
+  private shouldScopeByExternalUserId(platform: IntegrationPlatforms, userExternalId?: string): boolean {
+    return (
+      !!userExternalId && (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT)
+    );
+  }
+
   async getPlatformIntegrationData(
     platform: IntegrationPlatforms,
     userId: string,
     userExternalId?: string,
   ): Promise<PlatformIntegration> {
-    if (platform === IntegrationPlatforms.GOOGLE || platform === IntegrationPlatforms.MICROSOFT) {
-      const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
-        where: { user_id: userId, platform, external_user_id: userExternalId },
-      });
-      return platformRecord;
+    const criteria: FindOptionsWhere<PlatformIntegration> = { user_id: userId, platform };
+    if (this.shouldScopeByExternalUserId(platform, userExternalId)) {
+      criteria.external_user_id = userExternalId;
     }
-    const platformRecord = await this.platformIntegrationsRepository.orm.findOne({
-      where: { user_id: userId, platform },
+    return this.platformIntegrationsRepository.orm.findOne({
+      where: criteria,
     });
-
-    return platformRecord;
   }
 
   async updatePlatformIntegration(
@@ -57,10 +60,28 @@ export class PlatformIntegrationsService {
       ...(authData.expiry_date && { expiry_date: authData.expiry_date }),
     };
 
-    return this.platformIntegrationsRepository.orm.update(
-      { user_id: userId, platform, external_user_id: userExternalId },
-      { data: updatedData },
-    );
+    const criteria: FindOptionsWhere<PlatformIntegration> = {
+      user_id: userId,
+      platform,
+    };
+
+    if (this.shouldScopeByExternalUserId(platform, userExternalId)) {
+      criteria.external_user_id = userExternalId;
+    }
+
+    const result = await this.platformIntegrationsRepository.orm.update(criteria, {
+      data: updatedData,
+    });
+
+    if (!result?.affected || result.affected === 0) {
+      throw new Error(
+        `PlatformIntegration update failed for user=${userId}, platform=${platform}, externalId=${
+          userExternalId ?? ''
+        }`,
+      );
+    }
+
+    return result;
   }
 
   async getUserSyncedPlatforms(userId: string) {
@@ -142,8 +163,12 @@ export class PlatformIntegrationsService {
       });
   }
 
-  async updateAssigneeStatus(userId: string, platform: IntegrationPlatforms, only_assigned: boolean) {
-    await this.platformIntegrationsRepository.orm.update(
+  async updateAssigneeStatus(
+    userId: string,
+    platform: IntegrationPlatforms,
+    only_assigned: boolean,
+  ): Promise<UpdateResult> {
+    return this.platformIntegrationsRepository.orm.update(
       {
         user_id: userId,
         platform,

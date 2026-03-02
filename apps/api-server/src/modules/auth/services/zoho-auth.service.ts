@@ -68,12 +68,18 @@ export class ZohoAuthService extends BaseIntegrationAuthService {
       userId,
     );
     if (!platformIntegrationRecord) return;
+    const externalUserId = platformIntegrationRecord.external_user_id;
     const { data: record } = platformIntegrationRecord;
     const url = `${record.account_server}/oauth/v2/token?client_id=${this.clientId}&grant_type=refresh_token&client_secret=${this.clientSecret}&refresh_token=${record.refresh_token}`;
     const { data } = await axios.post(url);
-    await this.platformIntegrationsService.updatePlatformIntegration(userId, IntegrationPlatforms.ZOHO, {
-      access_token: data?.access_token || '',
-    });
+    await this.platformIntegrationsService.updatePlatformIntegration(
+      userId,
+      IntegrationPlatforms.ZOHO,
+      {
+        access_token: data?.access_token || '',
+      },
+      externalUserId,
+    );
     return data;
   }
 

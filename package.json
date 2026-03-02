@@ -81,7 +81,6 @@
     "@types/handlebars": "^4.0.40",
     "@types/html-to-text": "^9.0.0",
     "@types/mjml": "^4.7.4",
-    "api": "^6.1.2",
     "auth0": "^4.25.0",
     "axios": "^1.12.2",
     "axios-retry": "^3.6.0",
@@ -138,15 +137,15 @@
     "@types/pg": "^8.6.5",
     "@types/semver": "^7.7.1",
     "@types/supertest": "^2.0.11",
-    "@typescript-eslint/eslint-plugin": "^5.47.0",
-    "@typescript-eslint/parser": "^5.47.0",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
     "commitlint": "^18.4.3",
-    "eslint": "^7.30.0",
-    "eslint-config-airbnb-typescript": "^12.3.1",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-import": "^2.23.4",
-    "eslint-plugin-jsx-a11y": "^6.4.1",
-    "eslint-plugin-prettier": "^3.4.0",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-typescript": "^17.1.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
     "husky": "^1.3.1",
     "jest": "^30.2.0",
     "jest-extended": "^4.0.2",
@@ -176,20 +175,24 @@
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
     "undici": "6.23.0",
-    "brace-expansion": "^2.0.2",
+    "minimatch@<9": {
+      "brace-expansion": "^2.0.2"
+    },
+    "minimatch@>=9": {
+      "brace-expansion": "^5.0.2"
+    },
     "form-data": "^4.0.4",
     "tmp": "0.2.4",
-    "glob": {
-      ".": "11.1.0",
-      "minimatch": {
-        "brace-expansion": "^5.0.2"
-      }
-    },
+    "glob": "11.1.0",
     "@modelcontextprotocol/sdk": "^1.24.1",
     "jws": "4.0.1",
     "jsdiff": "^8.03",
     "hono": "^4.11.10",
-    "fast-xml-parser": "^5.3.6"
+    "fast-xml-parser": "^5.3.6",
+    "node-emoji": "^2.0.0",
+    "@sentry/node": { "minimatch": "10.2.2" },
+    "mjml-cli": { "minimatch": "10.2.2" },
+    "editorconfig": { "minimatch": "10.2.2" }
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",
@@ -205,20 +208,24 @@
     "test-exclude": "7.0.1",
     "cross-spawn": "7.0.6",
     "undici": "6.23.0",
-    "brace-expansion": "^2.0.2",
+    "minimatch@<9": {
+      "brace-expansion": "^2.0.2"
+    },
+    "minimatch@>=9": {
+      "brace-expansion": "^5.0.2"
+    },
     "form-data": "^4.0.4",
     "tmp": "0.2.4",
-    "glob": {
-      ".": "11.1.0",
-      "minimatch": {
-        "brace-expansion": "^5.0.2"
-      }
-    },
+    "glob": "11.1.0",
     "@modelcontextprotocol/sdk": "^1.24.1",
     "jws": "4.0.1",
     "jsdiff": "^8.03",
     "hono": "^4.11.10",
-    "fast-xml-parser": "^5.3.6"
+    "fast-xml-parser": "^5.3.6",
+    "node-emoji": "^2.0.0",
+    "@sentry/node": { "minimatch": "10.2.2" },
+    "mjml-cli": { "minimatch": "10.2.2" },
+    "editorconfig": { "minimatch": "10.2.2" }
   },
   "husky": {
     "hooks": {

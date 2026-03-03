@@ -40,7 +40,7 @@ prompts:
       - **Terminals/CLI** (iTerm, Terminal, PowerShell, Warp) — coding, debugging, deployment, git, server tasks, running scripts
       - **IDEs/Code Editors** (VS Code, Xcode, IntelliJ) — any coding/development task
       - **Browsers** (Chrome, Safari, Firefox) — research, documentation, debugging, API reference
-      - **Video conferencing** (Zoom, Microsoft Teams, Google Meet, WebEx) — meetings, calls, standups
+      - **Video conferencing** (Zoom, Microsoft Teams, Google Meet, WebEx) — meetings, calls, standups, presentations, pitches, speeches, demos, practice sessions, recordings
       - **Email clients** (Outlook, Gmail, Apple Mail) — email-related tasks
       - **Calendars** (Calendar, Fantastical, Google Calendar) — scheduling, planning, availability checks
       - **Database tools** (DBeaver, DataGrip, TablePlus) — data queries, usage stats, analytics
@@ -61,9 +61,16 @@ prompts:
         - "help [Name]" ✓
         - "reply to [Name]" ✓
         - "[Name] has a question" ✓
+      - Task itself describes a TEAM communication action — even without a specific person's name, the task is explicitly about team communication:
+        - "check with team" ✓
+        - "team update" ✓
+        - "team standup" ✓
+        - "coordinate with team" ✓
+        - "update the team" ✓
+        - Any task containing words like "team" combined with communication verbs (check, sync, update, coordinate, discuss, notify, inform, message)
 
       **Block/low-score (0.0-0.3) when:**
-      - No justification AND task doesn't describe the communication action
+      - No justification AND task doesn't describe any communication action (neither person-specific nor team-level)
       - Generic tasks like "meeting", "[Name] meeting", "book meeting" without justification
 
       **Note:** Video conferencing apps (Zoom, Teams, Meet) are evaluated as Task-Matched Tools, not communication apps. They're allowed for any meeting-related task.
@@ -536,7 +543,7 @@ tests:
     assert:
       - type: javascript
         value: file://validate-probability.js
-  - description: "Safe FB Team Comms for team sync (blocked without justification)"
+  - description: "Safe FB Team Comms for team sync (task describes team communication action)"
     vars:
       appName: "Safe FB Team Comms"
       focusMode: "Deep Work"
@@ -544,8 +551,8 @@ tests:
       justificationForThisSpecificApp: ""
       currentTaskInToDoPlayer: "team sync"
       lastFiveJustificationsInThisFocusSession: '[]'
-      min_probability: 0.0
-      max_probability: 0.3
+      min_probability: 0.7
+      max_probability: 1.0
     assert:
       - type: javascript
         value: file://validate-probability.js
@@ -625,6 +632,48 @@ tests:
       intention: "sinch work"
       justificationForThisSpecificApp: "install instructions here"
       currentTaskInToDoPlayer: "freepbx on digital ocean"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "Safe FB Team Comms for 'check with team' task (Issue #1661)"
+    vars:
+      appName: "Safe FB Team Comms"
+      focusMode: "Deep Work"
+      intention: "MAA meeting"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "check with team"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "Zoom for practise pitch with plan speech intention (Issue #1661)"
+    vars:
+      appName: "zoom.us"
+      focusMode: "Deep Work"
+      intention: "plan speech"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "practise pitch"
+      lastFiveJustificationsInThisFocusSession: '[]'
+      min_probability: 0.7
+      max_probability: 1.0
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+
+  - description: "Zoom for presentation rehearsal"
+    vars:
+      appName: "zoom.us"
+      focusMode: "Deep Work"
+      intention: "prepare presentation"
+      justificationForThisSpecificApp: ""
+      currentTaskInToDoPlayer: "CoC presentation"
       lastFiveJustificationsInThisFocusSession: '[]'
       min_probability: 0.7
       max_probability: 1.0

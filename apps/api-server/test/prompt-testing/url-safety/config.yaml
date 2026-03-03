@@ -32,6 +32,12 @@ prompts:
           - Score **0.9+** as a direct connection
           - Example: Empty task + intention "AADPA comms" + URL "aadpa.eventify.io" → **0.9+** (domain matches intention)
 
+      4.  **AUTH/LOGIN/OAUTH URL RULE:** If the URL path clearly indicates an authentication, login, or OAuth page (contains segments like 'login', 'signin', 'sign-in', 'oauth', 'authorize', 'authenticate', 'auth', 'sso', or 'callback'):
+          - **Evaluate the SERVICE (the domain/brand) against the task, NOT the auth page itself.** Users must log in to access tools — the login page is never the destination.
+          - Treat the URL as if it were the service's main page and evaluate the service's purpose against the task.
+          - Example: Task "Run OpenClaw on Hetzner" + URL "claude.ai/oauth/authorize" → evaluate "Claude AI" (an AI coding assistant) against the task → **0.7+** (relevant for coding/setup tasks)
+          - Example: Task "code BearlyMail" + URL "github.com/login" → evaluate "GitHub" against the task → **0.9+**
+
       ## SIGNAL HIERARCHY
       When evaluating the URL, you MUST prioritize information in this order of importance:
 
@@ -1799,6 +1805,36 @@ tests:
       currentTaskInToDoPlayer: Thursday insta post
       min_probability: 0.7
       max_probability: 0.9
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: Claude AI OAuth during OpenClaw setup (Issue #1661 - auth URL should evaluate service)
+    vars:
+      url: claude.ai/oauth/authorize
+      tab_title: ''
+      meta_description: ''
+      focus_mode: Deep Work
+      intention: openclaw setup
+      justificationForThisUrl: ''
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: Run OpenClaw on Hetzner
+      min_probability: 0.7
+      max_probability: 1
+    assert:
+      - type: javascript
+        value: file://validate-probability.js
+  - description: GitHub login during coding task (auth URL should evaluate service)
+    vars:
+      url: github.com/login
+      tab_title: 'Sign in to GitHub'
+      meta_description: 'GitHub is where people build software.'
+      focus_mode: Deep Work
+      intention: code development
+      justificationForThisUrl: ''
+      lastFiveJustificationsInThisFocusSession: '[]'
+      currentTaskInToDoPlayer: code BearlyMail
+      min_probability: 0.7
+      max_probability: 1
     assert:
       - type: javascript
         value: file://validate-probability.js

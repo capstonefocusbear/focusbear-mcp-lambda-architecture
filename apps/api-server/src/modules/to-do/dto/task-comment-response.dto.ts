@@ -19,7 +19,7 @@ export class TaskCommentResponseDto {
   user?: TaskCommentUserDto;
 
   @ApiProperty({ type: [TaskCommentReactionResponseDto] })
-  reactions?: TaskCommentReactionResponseDto[];
+  reactions: TaskCommentReactionResponseDto[];
 
   @ApiProperty()
   created_at: string;

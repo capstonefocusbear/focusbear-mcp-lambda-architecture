@@ -34,6 +34,7 @@ export enum OpenAIKeyType {
   TODOS_TRANSCRIPT_ANALYSIS = 'todosTranscriptAnalysis',
   ROUTINE_SUGGESTION_EMBEDDING = 'routineSuggestionEmbedding',
   ROUTINE_SUGGESTION = 'routineSuggestion',
+  OCCUPATION_SITES = 'occupationSites',
 }
 
 export const APP_SAFETY_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/app-safety/config.yaml';
@@ -71,6 +72,8 @@ export const BRAIN_DUMP_CONVERSION_PROMPT_CONFIG_PATH =
 export const EMOJI_GENERATION_PROMPT_CONFIG_PATH = 'apps/api-server/test/prompt-testing/emoji-generation/config.yaml';
 export const HABIT_INSTRUCTION_GENERATION_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/habit-instruction-generation/config.yaml';
+export const OCCUPATION_SITES_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/occupation-sites/config.yaml';
 
 export const PROMPT_INJECTION_PATTERNS = {
   // Critical patterns - these are almost always malicious
@@ -197,6 +200,12 @@ export const OPENAI_PARAMS: Record<string, OpenAI.Chat.Completions.ChatCompletio
     messages: null,
   },
   habitImportExtraction: {
+    model: GPT_5_MINI,
+    n: 1,
+    messages: null,
+    response_format: { type: 'json_object' },
+  },
+  occupationSites: {
     model: GPT_5_MINI,
     n: 1,
     messages: null,

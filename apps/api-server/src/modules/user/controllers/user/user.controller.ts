@@ -50,6 +50,7 @@ import { EmailTemplateCompilerService } from '../../../email/services/email-temp
 import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-preferences-with-token.dto';
 import { CreateProfileImageUploadUrlQueryDto } from '../../dto/create-profile-image-upload-url-query.dto';
 import { RequestEmailPreferencesLinkDto } from '../../dto/request-email-preferences-link.dto';
+import { GenerateOccupationSitesDto } from '../../dto/generate-occupation-sites.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -254,6 +255,14 @@ export class UserController {
   @Post('/is-app-safe-to-use')
   async checkIfAppIsSafe(@Body() isAppSafeDto: IsAppSafeDto, @AuthContext() { user }: Passport) {
     return this.userService.checkIsAppSafe(isAppSafeDto, user.id);
+  }
+
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @Post('/generate-occupation-specific-relevant-sites')
+  @ApiOperation({ summary: 'Generate occupation-specific relevant sites and typical distractions using AI' })
+  async generateOccupationSites(@Body() dto: GenerateOccupationSitesDto) {
+    return this.userService.generateOccupationSites(dto);
   }
 
   @Patch('/long-term-goals')

@@ -39,6 +39,7 @@ import { AiToneOptions } from './domain/ai-tones.enum';
 import { URLSafeProbabilityResponseDto } from './dto/url-safe-probability-response.dto';
 import { BraindumpTaskDto } from './dto/braindump-task-response.dto';
 import { SubtasksDto } from './dto/subtasks-response.dto';
+import { OccupationSitesResponseDto } from './dto/occupation-sites-response.dto';
 import { PromptCacheService } from './prompt-cache.service';
 
 type SafetyUserContext = {
@@ -66,6 +67,7 @@ export class OpenAIService {
     [OpenAIKeyType.TODOS_TRANSCRIPT_ANALYSIS]?: OpenAI;
     [OpenAIKeyType.ROUTINE_SUGGESTION_EMBEDDING]?: OpenAI;
     [OpenAIKeyType.ROUTINE_SUGGESTION]?: OpenAI;
+    [OpenAIKeyType.OCCUPATION_SITES]?: OpenAI;
   } = {};
 
   private cacheDir = join(__dirname, '../../../tmp/url-metadata-cache');
@@ -992,6 +994,46 @@ export class OpenAIService {
     const { content } = newMessage;
     const parsedResponse = JSON.parse(content);
     return plainToClass(SubtasksDto, parsedResponse);
+  }
+
+  async generateOccupationSites(userOccupation: string): Promise<OccupationSitesResponseDto> {
+    const isValid = this.isValidInput(userOccupation, MAX_WORD_LENGTH.default);
+    if (!isValid) {
+      throw new Error('Invalid Input');
+    }
+
+    this.sentryService.instance().addBreadcrumb({
+      category: 'Service',
+      level: 'debug',
+      message: 'Generating occupation-specific sites using OpenAI API',
+      data: {
+        occupation_length: userOccupation.length,
+      },
+    });
+
+    const promptTemplate = this.promptCacheService.getPrompt('occupation-sites');
+    if (!promptTemplate) {
+      throw new Error('occupation-sites prompt template not found');
+    }
+    const promptContent = this.fillPrompt(promptTemplate, {
+      input_wrapper: INPUT_WRAPPER,
+      user_occupation: userOccupation,
+    });
+    const defaultChat: ChatCompletionMessageParam = {
+      role: 'system',
+      content: promptContent,
+    };
+
+    const completions = await this.getOpenAIChatCompletionsNonStreaming(
+      [defaultChat],
+      OpenAIKeyType.OCCUPATION_SITES,
+      OPENAI_PARAMS.occupationSites as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+    );
+
+    const occupationMessage = completions.choices[0].message;
+    const occupationContent = occupationMessage.content;
+    const parsedOccupationResponse = JSON.parse(occupationContent);
+    return plainToClass(OccupationSitesResponseDto, parsedOccupationResponse);
   }
 
   async convertBrainDumpToTasks(brainDumpContents: string): Promise<BraindumpTaskDto[]> {

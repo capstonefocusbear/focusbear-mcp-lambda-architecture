@@ -25,6 +25,7 @@ import {
   EMOJI_GENERATION_PROMPT_CONFIG_PATH,
   HABIT_INSTRUCTION_GENERATION_PROMPT_CONFIG_PATH,
   ROUTINE_SUGGESTIONS_GENERATE_PROMPT_CONFIG_PATH,
+  OCCUPATION_SITES_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -255,6 +256,9 @@ export class PromptCacheService implements OnModuleInit {
       );
       allPrompts = allPrompts.concat(
         await loadPromptsFromYaml(HABIT_INSTRUCTION_GENERATION_PROMPT_CONFIG_PATH, 'habit instruction generation'),
+      );
+      allPrompts = allPrompts.concat(
+        await loadPromptsFromYaml(OCCUPATION_SITES_PROMPT_CONFIG_PATH, 'occupation sites'),
       );
 
       // Load handwritten todos prompt (image flow) - prompt.json style (same as usage screenshot)

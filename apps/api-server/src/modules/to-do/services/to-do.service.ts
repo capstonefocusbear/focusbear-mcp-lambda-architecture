@@ -12,13 +12,16 @@ import { TaskReactionRepository } from '../repositories/task-reaction.repository
 import { TaskCommentReactionRepository } from '../repositories/task-comment-reaction.repository';
 import { CreateToDoDto } from '../dto/create-to-do.dto';
 import { ToDo } from '../entities/to-do.entity';
+import { TaskComment } from '../entities/task-comment.entity';
+import { TaskCommentReaction } from '../entities/task-comment-reaction.entity';
+import { TaskReaction } from '../entities/task-reaction.entity';
 import { GetToDosQueryDto } from '../dto/get-to-dos-query.dto';
 import { FocusModeTag } from '../../focus-mode/entities/focus-mode-tags';
 import { ToDoTimeLogDto } from '../dto/to-do-time-log.dto.ts';
 import { TaskTimeLog } from '../entities/tasks-time-logs.entity';
 import { TaskTimeLogsRepository } from '../repositories/task-time-logs.repository';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';
-import { ToDoResponse } from '../dto/to-do-response.dto';
+import { TaskCommentWithReactionsDto, ToDoResponse } from '../dto/to-do-response.dto';
 import { ToDoStatus } from '../domain/to-do-status.enum';
 import { GenerateSubtasksDto } from '../dto/generate-subtasks.dto';
 import { IntegrationPlatforms } from '../../platform-integrations/domain/integration-platforms.enum';
@@ -34,6 +37,8 @@ import { PaginationMetaDto } from '../../../shared/pagination/pagination-meta.dt
 import { UserRepository } from '../../user/repositories/user.repository';
 import { UserTypes } from '../../user/domain/user-types.enum';
 import { AdminTaskResponseDto } from '../dto/admin-task-response.dto';
+import { TaskCommentReactionResponseDto } from '../dto/task-comment-reaction-response.dto';
+import { TaskReactionResponseDto } from '../dto/task-reaction-response.dto';
 import { ProjectRepository } from '../../project/repositories/project.repository';
 
 @Injectable()
@@ -201,8 +206,9 @@ export class ToDoService {
     toDos: ToDoResponse[],
     options: { include_comments?: boolean; include_reactions?: boolean },
   ): Promise<ToDoResponse[]> {
-    const taskIds = toDos.map((todo) => todo.id).filter(Boolean);
-    if (!taskIds.length) return toDos;
+    const normalizedToDos = toDos.filter((todo): todo is ToDoResponse => !!todo);
+    const taskIds = normalizedToDos.map((todo) => todo.id).filter((id): id is string => !!id);
+    if (!taskIds.length) return normalizedToDos;
 
     const [comments, taskReactions] = await Promise.all([
       options.include_comments ? this.taskCommentRepository.getCommentsByTaskIds(taskIds) : Promise.resolve([]),
@@ -216,44 +222,86 @@ export class ToDoService {
       : [];
 
     // Group comment reactions by comment_id
-    const commentReactionsByCommentId = new Map<string, typeof commentReactions>();
+    const commentReactionsByCommentId = new Map<string, TaskCommentReactionResponseDto[]>();
     for (const reaction of commentReactions) {
+      const mappedReaction = this.mapTaskCommentReactionToResponse(reaction);
       const existing = commentReactionsByCommentId.get(reaction.comment_id) ?? [];
-      existing.push(reaction);
+      existing.push(mappedReaction);
       commentReactionsByCommentId.set(reaction.comment_id, existing);
     }
 
     // Group comments by task_id, attaching their reactions
-    const commentsByTaskId = new Map<string, any[]>();
+    const commentsByTaskId = new Map<string, TaskCommentWithReactionsDto[]>();
     for (const comment of comments) {
-      const commentWithReactions = {
-        id: comment.id,
-        task_id: comment.task_id,
-        user_id: comment.user_id,
-        content: comment.content,
-        user: comment.user ? { id: comment.user.id, username: (comment.user as any).username } : undefined,
-        created_at: comment.created_at,
-        updated_at: comment.updated_at,
-        reactions: commentReactionsByCommentId.get(comment.id) ?? [],
-      };
+      const commentWithReactions = this.mapTaskCommentWithReactions(comment, commentReactionsByCommentId);
       const existing = commentsByTaskId.get(comment.task_id) ?? [];
       existing.push(commentWithReactions);
       commentsByTaskId.set(comment.task_id, existing);
     }
 
     // Group task reactions by task_id
-    const reactionsByTaskId = new Map<string, typeof taskReactions>();
+    const reactionsByTaskId = new Map<string, TaskReactionResponseDto[]>();
     for (const reaction of taskReactions) {
+      const mappedReaction = this.mapTaskReactionToResponse(reaction);
       const existing = reactionsByTaskId.get(reaction.task_id) ?? [];
-      existing.push(reaction);
+      existing.push(mappedReaction);
       reactionsByTaskId.set(reaction.task_id, existing);
     }
 
-    return toDos.map((todo) => ({
+    return normalizedToDos.map((todo) => ({
       ...todo,
       ...(options.include_comments ? { comments: commentsByTaskId.get(todo.id) ?? [] } : {}),
       ...(options.include_reactions ? { reactions: reactionsByTaskId.get(todo.id) ?? [] } : {}),
     }));
+  }
+
+  private mapTaskCommentReactionToResponse(reaction: TaskCommentReaction): TaskCommentReactionResponseDto {
+    return {
+      id: reaction.id,
+      comment_id: reaction.comment_id,
+      user_id: reaction.user_id,
+      emoji: reaction.emoji,
+      user: reaction.user
+        ? {
+            id: reaction.user.id,
+            username: reaction.user.username,
+          }
+        : undefined,
+      created_at: reaction.created_at,
+      updated_at: reaction.updated_at,
+    };
+  }
+
+  private mapTaskCommentWithReactions(
+    comment: TaskComment,
+    commentReactionsByCommentId: Map<string, TaskCommentReactionResponseDto[]>,
+  ): TaskCommentWithReactionsDto {
+    return {
+      id: comment.id,
+      task_id: comment.task_id,
+      user_id: comment.user_id,
+      content: comment.content,
+      user: comment.user
+        ? {
+            id: comment.user.id,
+            username: comment.user.username,
+          }
+        : undefined,
+      created_at: comment.created_at,
+      updated_at: comment.updated_at,
+      reactions: commentReactionsByCommentId.get(comment.id) ?? [],
+    };
+  }
+
+  private mapTaskReactionToResponse(reaction: TaskReaction): TaskReactionResponseDto {
+    return {
+      id: reaction.id,
+      task_id: reaction.task_id,
+      user_id: reaction.user_id,
+      emoji: reaction.emoji,
+      created_at: reaction.created_at,
+      updated_at: reaction.updated_at,
+    };
   }
 
   async addCachedStatusesToToDos(toDos: ToDo[], userId: string) {
@@ -344,7 +392,7 @@ export class ToDoService {
     );
     // Update to dos external metadata with newly fetched data
     await this.toDoRepository.orm.save(updatedToDos);
-    return toDosWithAvailableStatuses;
+    return toDosWithAvailableStatuses.filter((todo): todo is ToDoResponse => !!todo);
   }
 
   async deleteToDo(user_id: string, toDoId: string) {

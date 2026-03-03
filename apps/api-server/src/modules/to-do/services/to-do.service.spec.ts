@@ -459,6 +459,63 @@ describe('toDoService', () => {
       expect(data[0]).not.toHaveProperty('reactions');
     });
 
+    it('positive: should sanitize nested comment reaction user fields when include_comments is true', async () => {
+      const todoId = 'todo-with-comments';
+      const commentId = 'comment-1';
+      const mockTodos = [{ id: todoId, title: 'Test', user_id: userDummy.id, subtasks: [] }];
+
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTodos, 1]);
+      ToDoRepositoryMock.addCachedStatusesToToDos.mockImplementation((todos) => Promise.resolve(todos));
+      TaskCommentRepositoryMock.getCommentsByTaskIds.mockResolvedValueOnce([
+        {
+          id: commentId,
+          task_id: todoId,
+          user_id: userDummy.id,
+          content: 'A comment',
+          user: { id: userDummy.id, username: 'testuser' },
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ]);
+      TaskCommentReactionRepositoryMock.getReactionsByCommentIds.mockResolvedValueOnce([
+        {
+          id: 'reaction-1',
+          comment_id: commentId,
+          user_id: userDummy.id,
+          emoji: '👍',
+          user: {
+            id: userDummy.id,
+            username: 'testuser',
+            email: 'hidden@example.com',
+            password_for_settings: 'secret-hash',
+          },
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+        include_comments: true,
+      });
+
+      const data = response.data as any[];
+      expect(data[0].comments[0].reactions[0]).toEqual({
+        id: 'reaction-1',
+        comment_id: commentId,
+        user_id: userDummy.id,
+        emoji: '👍',
+        user: { id: userDummy.id, username: 'testuser' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      });
+      expect(data[0].comments[0].reactions[0].user).not.toHaveProperty('email');
+      expect(data[0].comments[0].reactions[0].user).not.toHaveProperty('password_for_settings');
+    });
+
     it('positive: should include task reactions when include_reactions is true', async () => {
       const todoId = 'todo-with-reactions';
       const mockTodos = [{ id: todoId, title: 'Test', user_id: userDummy.id, subtasks: [] }];
@@ -566,6 +623,43 @@ describe('toDoService', () => {
       const data = response.data as any[];
       expect(data[0].comments).toEqual([]);
       expect(data[0].reactions).toEqual([]);
+    });
+
+    it('positive: should skip stale external todos without crashing when include flags are enabled', async () => {
+      const staleTaskId = 'stale-task-id';
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([
+        [
+          {
+            id: 'todo-stale',
+            title: 'Stale Todo',
+            user_id: userDummy.id,
+            subtasks: [],
+            external_task_id: staleTaskId,
+            external_task_metadata: {
+              task_data: { project_id: 'project-1' },
+            },
+          },
+        ],
+        1,
+      ]);
+      PlatformIntegrationsRepositoryMock.orm.find.mockResolvedValueOnce([{ platform: IntegrationPlatforms.ZOHO }]);
+      ServiceMock.getAllUserTasks.mockResolvedValueOnce([]);
+      SyncedProjectsRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ToDoRepositoryMock.orm.save.mockResolvedValueOnce([]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: false,
+        include_comments: true,
+        include_reactions: true,
+      });
+
+      expect(response.data).toEqual([]);
+      expect(TaskCommentRepositoryMock.getCommentsByTaskIds).not.toHaveBeenCalled();
+      expect(TaskCommentReactionRepositoryMock.getReactionsByCommentIds).not.toHaveBeenCalled();
+      expect(TaskReactionRepositoryMock.getReactionsByTaskIds).not.toHaveBeenCalled();
     });
   });
 

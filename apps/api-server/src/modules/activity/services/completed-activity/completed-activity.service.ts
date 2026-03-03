@@ -752,8 +752,9 @@ export class CompletedActivityService implements OnModuleInit {
       const [sequence, activity, user, choice] = await this.fetchPreparatoryData(activity_id, user_id, choice_id);
       // Respect client-provided skip reason if present. Default to "did not complete".
       const skippedActivityMetadata = skippedActivity?.metadata ?? { skipped_did_not_complete: true };
+      const enrichedSkippedActivity = { ...skippedActivity, metadata: skippedActivityMetadata };
       const completingSequenceLog = await this.updateUserAndSequence(
-        { ...skippedActivity, metadata: skippedActivityMetadata },
+        enrichedSkippedActivity,
         { user_id },
         user,
         sequence,
@@ -761,7 +762,7 @@ export class CompletedActivityService implements OnModuleInit {
         choice,
       );
       const createdItem = await this.saveCompletedLog(
-        skippedActivity,
+        enrichedSkippedActivity,
         activity,
         choice,
         user_id,
@@ -771,7 +772,7 @@ export class CompletedActivityService implements OnModuleInit {
       await this.broadcastCompletionEvent(
         user_id,
         createdItem.completed_activity_log.id,
-        { ...skippedActivity },
+        enrichedSkippedActivity,
         activity,
         user.language,
       );

@@ -553,6 +553,16 @@ export class CompletedActivitySequenceService {
       }
     }
 
+    const extractRoutineHabitIds = (logs: Array<{ activity_id?: string | null; metadata?: unknown }> = []) => {
+      const completedHabitIds = logs.map((log) => log.activity_id).filter((id): id is string => Boolean(id));
+      const skippedHabitIds = logs
+        .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
+        .map((log) => log.activity_id)
+        .filter((id): id is string => Boolean(id));
+
+      return { completedHabitIds, skippedHabitIds };
+    };
+
     const morningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.morning);
     const eveningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.evening);
     const { standaloneRoutines, customRoutines } = userActivitySequences
@@ -591,12 +601,7 @@ export class CompletedActivitySequenceService {
 
         if (inProgressSequence?.completed_activity_logs) {
           // Keep this aligned with `current_sequence_completed_activities`.
-          completedHabitIds = inProgressSequence.completed_activity_logs.map((log) => log.activity_id).filter(Boolean);
-          // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
-          skippedHabitIds = inProgressSequence.completed_activity_logs
-            .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
-            .map((log) => log.activity_id)
-            .filter(Boolean);
+          ({ completedHabitIds, skippedHabitIds } = extractRoutineHabitIds(inProgressSequence.completed_activity_logs));
         } else {
           // Fallback: directly query completed activities if relation is not loaded
 
@@ -610,21 +615,11 @@ export class CompletedActivitySequenceService {
           const activities = completedActivities?.completed_activity_logs || [];
 
           // Keep this aligned with `current_sequence_completed_activities`.
-          completedHabitIds = activities.map((log) => log.activity_id).filter(Boolean);
-          // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
-          skippedHabitIds = activities
-            .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
-            .map((log) => log.activity_id)
-            .filter(Boolean);
+          ({ completedHabitIds, skippedHabitIds } = extractRoutineHabitIds(activities));
         }
       } else {
         // For other sequences, get from completed sequence logs
-        const completedActivityLogs = completedSequence?.completed_activity_logs || [];
-        completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
-        skippedHabitIds = completedActivityLogs
-          .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
-          .map((log) => log.activity_id)
-          .filter(Boolean);
+        ({ completedHabitIds, skippedHabitIds } = extractRoutineHabitIds(completedSequence?.completed_activity_logs));
       }
 
       let status: SequenceStatus;

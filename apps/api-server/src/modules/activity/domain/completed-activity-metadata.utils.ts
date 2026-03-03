@@ -1,4 +1,5 @@
 import { CompletedActivityMetadata } from './completed-activity.metadata';
+import { isTruthyBooleanLike } from './completed-activity-metadata-coercion.utils';
 
 /**
  * Legacy clients can still send `is_skipped`, while newer clients may send
@@ -6,23 +7,6 @@ import { CompletedActivityMetadata } from './completed-activity.metadata';
  * If flags conflict, `skipped_did_complete` wins to preserve existing behavior
  * where "already did it" counts as completion.
  */
-function isTruthyBooleanLike(value: unknown): boolean {
-  if (value === true) {
-    return true;
-  }
-
-  if (typeof value === 'number') {
-    return value === 1;
-  }
-
-  if (typeof value === 'string') {
-    const normalizedValue = value.trim().toLowerCase();
-    return normalizedValue === 'true' || normalizedValue === '1';
-  }
-
-  return false;
-}
-
 export function isSkippedDidCompleteFromMetadata(metadata?: CompletedActivityMetadata | null): boolean {
   return isTruthyBooleanLike(metadata?.skipped_did_complete);
 }

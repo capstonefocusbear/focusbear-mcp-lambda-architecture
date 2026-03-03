@@ -1572,6 +1572,35 @@ describe('CompletedActivityService', () => {
       expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(updatedCompletedActivity);
     });
 
+    it('positive: should default skip metadata to skipped_did_not_complete when client sends no metadata', async () => {
+      const previousSkippedId = randomUUID();
+      const userWithCurrentActivity: User = {
+        ...userDummy,
+        current_activity_id: completedActivity.activity_id,
+        current_activity_sequence_id: completedActivity.activity_sequence_id,
+        current_sequence_started_at: new Date(),
+        current_sequence_skipped_activities: [previousSkippedId],
+      };
+      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(sequenceWhenThereIsNoNextActivity);
+      ActivityRepositoryMock.orm.findOneBy.mockResolvedValueOnce(ActivityDummy);
+      UserRepositoryMock.orm.findOne.mockResolvedValue(userWithCurrentActivity);
+      CompletedActivitySequenceServiceMock.completeActivitySequence.mockResolvedValueOnce(null);
+      CompletedActivityRepositoryMock.create.mockResolvedValueOnce({ id: randomUUID() });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([]);
+      CompletedActivitySequenceServiceMock.getOrCreateCompletingSequenceLog.mockResolvedValueOnce(
+        UncompletedSequenceLogDummy,
+      );
+      CompletedActivityRepositoryMock.upsertActivity.mockResolvedValueOnce({ id: randomUUID() });
+
+      await completedActivityService.skipActivity({ ...completedActivity, metadata: undefined }, { user_id });
+
+      expect(CompletedActivityRepositoryMock.upsertActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: { skipped_did_not_complete: true },
+        }),
+      );
+    });
+
     it('positive: if client passes skipped_did_complete, service should respect it and treat as completion in guard later', async () => {
       const userWithCurrentActivity: User = {
         ...userDummy,

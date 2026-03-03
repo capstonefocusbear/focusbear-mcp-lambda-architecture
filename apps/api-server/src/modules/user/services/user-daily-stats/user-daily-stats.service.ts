@@ -40,6 +40,7 @@ import { CompletedActivitySequence } from '../../../activity/entities/completed-
 import { DailySequenceDurations } from '../../../activity/domain/daily-sequence-durations.model';
 import { UserTypes } from '../../domain/user-types.enum';
 import { AdminUserStatsResponseDto } from '../../dto/admin-user-stats-response.dto';
+import { countsAsCompletionFromMetadata } from '../../../activity/domain/completed-activity-metadata.utils';
 
 @Injectable()
 export class UserDailyStatsService {
@@ -160,8 +161,10 @@ export class UserDailyStatsService {
       const activitiesFromRoutine = await this.completedActivityRepository.orm.find({
         where: { completed_sequence_id: existingRoutineLog.id },
       });
-      const activitiesThatWereCompleted = activitiesFromRoutine.filter(
-        (activity) => !activity.metadata?.is_skipped && !activity.metadata?.skipped_did_not_complete,
+      // `skipped_did_complete` means the user already completed the habit, so it counts.
+      // This remains true even if legacy skip flags are present in the same metadata payload.
+      const activitiesThatWereCompleted = activitiesFromRoutine.filter((activity) =>
+        countsAsCompletionFromMetadata(activity.metadata),
       );
       const totalOfCompletedActivities = activitiesThatWereCompleted.reduce(
         (totalSeconds, { duration_logged }) => totalSeconds + Number(duration_logged),

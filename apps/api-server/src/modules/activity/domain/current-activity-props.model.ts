@@ -4,10 +4,11 @@ import { User } from '../../user/entities/user.entity';
 import { ActivitySequence } from '../entities/activity-sequence.entity';
 import { Activity } from '../entities/activity.entity';
 import { CompletedFocusBlock } from '../../focus-mode/entities/completed-focus-block.entity';
+import { TodayRoutineProgress } from './today-routine-progress.model';
 
 interface ExtendedActivityProps {
   current_sequence_completed_activities?: string[];
-  today_routine_progress: any;
+  today_routine_progress: TodayRoutineProgress;
 }
 
 export class CurrentActivityProps {
@@ -63,6 +64,6 @@ export class CurrentActivityProps {
   @ApiProperty()
   completing_focus_block?: CompletedFocusBlock;
 
-  @ApiProperty()
-  today_routine_progress: any;
+  @ApiProperty({ type: TodayRoutineProgress })
+  today_routine_progress: TodayRoutineProgress;
 }

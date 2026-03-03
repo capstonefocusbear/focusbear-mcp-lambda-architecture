@@ -15,6 +15,10 @@ import { ActivitySequenceRepository } from '../../repositories/activity-sequence
 import { CompletedActivitySequenceRepository } from '../../repositories/completed-activity-sequence.repository';
 import { ActivitySequence } from '../../entities/activity-sequence.entity';
 import { SequenceStatus } from '../../domain/sequence-status.enum';
+import {
+  countsAsCompletionFromMetadata,
+  isSkippedWithoutCompletionFromMetadata,
+} from '../../domain/completed-activity-metadata.utils';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 
@@ -159,9 +163,7 @@ export class CompletedActivitySequenceService {
       // Guard: do not auto-complete routines that have zero non-skipped logs
       // Treat "skipped_did_complete" as a completed habit (counts toward routine completion)
       const hasNonSkippedLogs = (uncompletedSequenceLog.completed_activity_logs || []).some((log) => {
-        const m = log?.metadata || {};
-        const countsAsCompletion = m.skipped_did_complete === true || !(m.is_skipped || m.skipped_did_not_complete);
-        return countsAsCompletion;
+        return countsAsCompletionFromMetadata(log?.metadata);
       });
 
       if (!hasNonSkippedLogs) {
@@ -551,6 +553,16 @@ export class CompletedActivitySequenceService {
       }
     }
 
+    const extractRoutineHabitIds = (logs: Array<{ activity_id?: string | null; metadata?: unknown }> = []) => {
+      const completedHabitIds = logs.map((log) => log.activity_id).filter((id): id is string => Boolean(id));
+      const skippedHabitIds = logs
+        .filter((log) => isSkippedWithoutCompletionFromMetadata(log.metadata))
+        .map((log) => log.activity_id)
+        .filter((id): id is string => Boolean(id));
+
+      return { completedHabitIds, skippedHabitIds };
+    };
+
     const morningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.morning);
     const eveningRoutine = userActivitySequences.find((seq) => seq.type === ActivityType.evening);
     const { standaloneRoutines, customRoutines } = userActivitySequences
@@ -571,7 +583,11 @@ export class CompletedActivitySequenceService {
       if (!sequence) return null;
 
       const completedSequence = completedMap.get(sequence.id);
-      let completedHabitIds = [];
+      let completedHabitIds: string[] = [];
+      let skippedHabitIds: string[] = [];
+      // Contract note:
+      // `completed_habit_ids` intentionally contains every logged activity ID (including skipped).
+      // Clients that need strictly completed habits should subtract `skipped_habit_ids`.
 
       // If this is the current in-progress sequence, get completed activities from the current log
       if (sequence.id === user.current_activity_sequence_id && user.current_completing_sequence_log_id) {
@@ -584,10 +600,8 @@ export class CompletedActivitySequenceService {
         });
 
         if (inProgressSequence?.completed_activity_logs) {
-          completedHabitIds = inProgressSequence.completed_activity_logs
-            .filter((log) => !log.metadata?.is_skipped)
-            .map((log) => log.activity_id)
-            .filter(Boolean);
+          // Keep this aligned with `current_sequence_completed_activities`.
+          ({ completedHabitIds, skippedHabitIds } = extractRoutineHabitIds(inProgressSequence.completed_activity_logs));
         } else {
           // Fallback: directly query completed activities if relation is not loaded
 
@@ -600,15 +614,12 @@ export class CompletedActivitySequenceService {
 
           const activities = completedActivities?.completed_activity_logs || [];
 
-          completedHabitIds = activities
-            .filter((log) => !log.metadata?.is_skipped)
-            .map((log) => log.activity_id)
-            .filter(Boolean);
+          // Keep this aligned with `current_sequence_completed_activities`.
+          ({ completedHabitIds, skippedHabitIds } = extractRoutineHabitIds(activities));
         }
       } else {
         // For other sequences, get from completed sequence logs
-        const completedActivityLogs = completedSequence?.completed_activity_logs || [];
-        completedHabitIds = completedActivityLogs.map((log) => log.activity_id).filter(Boolean);
+        ({ completedHabitIds, skippedHabitIds } = extractRoutineHabitIds(completedSequence?.completed_activity_logs));
       }
 
       let status: SequenceStatus;
@@ -628,11 +639,12 @@ export class CompletedActivitySequenceService {
         status,
       };
 
-      // Only include completed_habit_ids for non-completed routines
+      // Only include completed_habit_ids and skipped_habit_ids for non-completed routines
       if (status !== SequenceStatus.COMPLETED) {
         return {
           ...baseData,
           completed_habit_ids: completedHabitIds,
+          skipped_habit_ids: skippedHabitIds,
         };
       }
 

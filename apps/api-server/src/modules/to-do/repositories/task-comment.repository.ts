@@ -15,7 +15,7 @@ export class TaskCommentRepository extends BaseRepository<TaskComment> {
   ): Promise<[TaskComment[], number]> {
     return this.orm.findAndCount({
       where: { task_id: taskId },
-      relations: ['user'],
+      relations: ['user', 'reactions', 'reactions.user'],
       order: { created_at: 'ASC' },
       skip: options?.skip,
       take: options?.take,

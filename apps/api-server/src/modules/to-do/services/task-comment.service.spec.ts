@@ -41,15 +41,29 @@ describe('TaskCommentService', () => {
     title: 'Test Task',
   };
 
+  const reactionDummy = {
+    id: randomUUID(),
+    comment_id: '', // set below
+    user_id: userDummy.id,
+    emoji: '👍',
+    user: userDummy,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
   const commentDummy = {
     id: randomUUID(),
     task_id: taskDummy.id,
     user_id: userDummy.id,
     content: 'Test comment',
     user: userDummy,
+    reactions: [{ ...reactionDummy }],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+
+  reactionDummy.comment_id = commentDummy.id;
+  commentDummy.reactions[0].comment_id = commentDummy.id;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -173,6 +187,58 @@ describe('TaskCommentService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].content).toBe('Test comment');
       expect(result.meta.itemCount).toBe(1);
+    });
+
+    it('positive: should include reactions in each comment', async () => {
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskCommentRepositoryMock.getCommentsByTaskId.mockResolvedValueOnce([[commentDummy], 1]);
+
+      const result = await taskCommentService.getCommentsByTaskId(userDummy.id, taskDummy.id);
+
+      expect(result.data[0].reactions).toBeDefined();
+      expect(result.data[0].reactions).toHaveLength(1);
+      expect(result.data[0].reactions[0].emoji).toBe('👍');
+      expect(result.data[0].reactions[0].comment_id).toBe(commentDummy.id);
+      expect(result.data[0].reactions[0].user_id).toBe(userDummy.id);
+      expect(result.data[0].reactions[0].user).toEqual({ id: userDummy.id, username: undefined });
+    });
+
+    it('positive: should return empty reactions array when comment has no reactions loaded', async () => {
+      const commentWithoutReactions = { ...commentDummy, reactions: undefined };
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskCommentRepositoryMock.getCommentsByTaskId.mockResolvedValueOnce([[commentWithoutReactions], 1]);
+
+      const result = await taskCommentService.getCommentsByTaskId(userDummy.id, taskDummy.id);
+
+      expect(result.data[0].reactions).toEqual([]);
+    });
+
+    it('positive: should sort reactions deterministically by created_at then id', async () => {
+      const commentWithOutOfOrderReactions = {
+        ...commentDummy,
+        reactions: [
+          {
+            ...reactionDummy,
+            id: '00000000-0000-0000-0000-000000000002',
+            created_at: '2026-03-03T00:00:00.000Z',
+          },
+          {
+            ...reactionDummy,
+            id: '00000000-0000-0000-0000-000000000001',
+            created_at: '2026-03-03T00:00:00.000Z',
+          },
+        ],
+      };
+
+      ToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(taskDummy);
+      TaskCommentRepositoryMock.getCommentsByTaskId.mockResolvedValueOnce([[commentWithOutOfOrderReactions], 1]);
+
+      const result = await taskCommentService.getCommentsByTaskId(userDummy.id, taskDummy.id);
+
+      expect(result.data[0].reactions.map((reaction) => reaction.id)).toEqual([
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+      ]);
     });
 
     it('positive: should return empty paginated result when no comments', async () => {

@@ -1,5 +1,4 @@
-import { CompletedActivityMetadata } from './completed-activity.metadata';
-import { isTruthyBooleanLike } from './completed-activity-metadata-coercion.utils';
+import { CompletedActivityMetadata, isTruthyBooleanLike } from './completed-activity.metadata';
 
 /**
  * Legacy clients can still send `is_skipped`, while newer clients may send

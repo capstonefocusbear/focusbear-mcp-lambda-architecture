@@ -279,6 +279,36 @@ describe('UserDailyStatsService', () => {
 
       expect(percentage).toBe(50);
     });
+
+    it('positive: if metadata conflicts, skipped_did_complete should still count toward completion percentage', async () => {
+      CompletedActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
+        ...UncompletedSequenceLogDummy,
+        start_time: new Date('2023-08-21T06:00:00.000Z'),
+      });
+      CompletedActivityRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          ...CompletedActivityDummy,
+          duration_logged: 120,
+          metadata: { is_skipped: true, skipped_did_complete: true },
+        },
+        {
+          ...CompletedActivityDummy,
+          duration_logged: 60,
+          metadata: { skipped_did_not_complete: true },
+        },
+      ]);
+      ActivitySequenceServiceMock.getUserRoutineDailyDurations.mockResolvedValueOnce({
+        morningRoutineDailyDurations: { ...routineDurationsDummy, MON: 360 },
+        eveningRoutineDailyDurations: routineDurationsDummy,
+        microBreaksDailyDurations: routineDurationsDummy,
+      });
+
+      const sequenceId = randomUUID();
+
+      const percentage = await service.calculateRoutineCompletionPercentage(userDummy.id, sequenceId);
+
+      expect(percentage).toBe(33);
+    });
   });
 
   describe('CalculateUserStatsResponse', () => {

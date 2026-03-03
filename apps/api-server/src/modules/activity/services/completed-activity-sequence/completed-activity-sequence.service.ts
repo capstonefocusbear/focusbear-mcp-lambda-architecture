@@ -575,6 +575,9 @@ export class CompletedActivitySequenceService {
       const completedSequence = completedMap.get(sequence.id);
       let completedHabitIds: string[] = [];
       let skippedHabitIds: string[] = [];
+      // Contract note:
+      // `completed_habit_ids` intentionally contains every logged activity ID (including skipped).
+      // Clients that need strictly completed habits should subtract `skipped_habit_ids`.
 
       // If this is the current in-progress sequence, get completed activities from the current log
       if (sequence.id === user.current_activity_sequence_id && user.current_completing_sequence_log_id) {
@@ -587,7 +590,7 @@ export class CompletedActivitySequenceService {
         });
 
         if (inProgressSequence?.completed_activity_logs) {
-          // Include all activity IDs (including skipped) for consistency with current_sequence_completed_activities
+          // Keep this aligned with `current_sequence_completed_activities`.
           completedHabitIds = inProgressSequence.completed_activity_logs.map((log) => log.activity_id).filter(Boolean);
           // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
           skippedHabitIds = inProgressSequence.completed_activity_logs
@@ -606,7 +609,7 @@ export class CompletedActivitySequenceService {
 
           const activities = completedActivities?.completed_activity_logs || [];
 
-          // Include all activity IDs (including skipped) for consistency with current_sequence_completed_activities
+          // Keep this aligned with `current_sequence_completed_activities`.
           completedHabitIds = activities.map((log) => log.activity_id).filter(Boolean);
           // Track skipped activities separately (exclude skipped_did_complete since it counts as completion)
           skippedHabitIds = activities

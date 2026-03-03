@@ -161,6 +161,8 @@ export class UserDailyStatsService {
       const activitiesFromRoutine = await this.completedActivityRepository.orm.find({
         where: { completed_sequence_id: existingRoutineLog.id },
       });
+      // `skipped_did_complete` means the user already completed the habit, so it counts.
+      // This remains true even if legacy skip flags are present in the same metadata payload.
       const activitiesThatWereCompleted = activitiesFromRoutine.filter((activity) =>
         countsAsCompletionFromMetadata(activity.metadata),
       );

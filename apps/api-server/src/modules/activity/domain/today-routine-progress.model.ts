@@ -8,10 +8,17 @@ export class RoutineProgressItem {
   @ApiProperty({ enum: SequenceStatus, enumName: 'SequenceStatus' })
   status: SequenceStatus;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'All logged activity IDs for this routine, including skipped activities.',
+  })
   completed_habit_ids?: string[];
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Subset of completed_habit_ids that were skipped without completion. skipped_did_complete is excluded.',
+  })
   skipped_habit_ids?: string[];
 }
 

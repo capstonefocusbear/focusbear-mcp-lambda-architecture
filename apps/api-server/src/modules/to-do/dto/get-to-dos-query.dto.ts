@@ -56,4 +56,26 @@ export class GetToDosQueryDto extends PaginationOptionsDto {
   @IsEnum(ToDoSortMode)
   @ApiProperty({ enum: ToDoSortMode, default: ToDoSortMode.SMART, required: false })
   sort_mode?: ToDoSortMode = ToDoSortMode.SMART;
+
+  @IsOptional()
+  @Transform(({ obj, key }) => {
+    const value = obj[key];
+    if (typeof value === 'string') {
+      return value === 'true';
+    }
+    return value;
+  })
+  @ApiProperty({ required: false, default: false, description: 'Include comments (with reactions) for each task' })
+  include_comments? = false;
+
+  @IsOptional()
+  @Transform(({ obj, key }) => {
+    const value = obj[key];
+    if (typeof value === 'string') {
+      return value === 'true';
+    }
+    return value;
+  })
+  @ApiProperty({ required: false, default: false, description: 'Include task-level reactions for each task' })
+  include_reactions? = false;
 }

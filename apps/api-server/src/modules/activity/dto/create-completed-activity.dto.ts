@@ -92,6 +92,7 @@ export class CreateCompletedActivityDto {
   finish_time?: Date;
 
   @IsOptional()
+  @ValidateNested()
   @Type(() => CompletedActivityMetadata)
   metadata?: CompletedActivityMetadata;
 

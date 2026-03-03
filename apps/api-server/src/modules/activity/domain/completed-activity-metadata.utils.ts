@@ -6,8 +6,25 @@ import { CompletedActivityMetadata } from './completed-activity.metadata';
  * If flags conflict, `skipped_did_complete` wins to preserve existing behavior
  * where "already did it" counts as completion.
  */
+function isTruthyBooleanLike(value: unknown): boolean {
+  if (value === true) {
+    return true;
+  }
+
+  if (typeof value === 'number') {
+    return value === 1;
+  }
+
+  if (typeof value === 'string') {
+    const normalizedValue = value.trim().toLowerCase();
+    return normalizedValue === 'true' || normalizedValue === '1';
+  }
+
+  return false;
+}
+
 export function isSkippedDidCompleteFromMetadata(metadata?: CompletedActivityMetadata | null): boolean {
-  return metadata?.skipped_did_complete === true;
+  return isTruthyBooleanLike(metadata?.skipped_did_complete);
 }
 
 export function isSkippedWithoutCompletionFromMetadata(metadata?: CompletedActivityMetadata | null): boolean {
@@ -15,7 +32,7 @@ export function isSkippedWithoutCompletionFromMetadata(metadata?: CompletedActiv
     return false;
   }
 
-  return metadata?.is_skipped === true || metadata?.skipped_did_not_complete === true;
+  return isTruthyBooleanLike(metadata?.is_skipped) || isTruthyBooleanLike(metadata?.skipped_did_not_complete);
 }
 
 export function countsAsCompletionFromMetadata(metadata?: CompletedActivityMetadata | null): boolean {

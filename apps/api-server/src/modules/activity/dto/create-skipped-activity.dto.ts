@@ -52,6 +52,7 @@ export class CreateSkippedActivityDto {
   finish_time?: Date;
 
   @IsOptional()
+  @ValidateNested()
   @Type(() => CompletedActivityMetadata)
   metadata?: CompletedActivityMetadata;
 

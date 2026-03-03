@@ -4,7 +4,7 @@ import { R2Service } from '@app/r2';
 import { InjectSentry, SentryService } from '@app/observability';
 import { Auth0ManagementService } from '@app/auth0';
 import axios from 'axios';
-import { SendGridService } from '@app/send-grid';
+import { SendGridService, isTestEmail } from '@app/send-grid';
 import { EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS, S3_BUCKET_APP_USAGE_LOGS } from '../../../shared/utils/constants';
 import {
   constructLogUploadEmailBody,
@@ -81,7 +81,7 @@ export class AppLogsService {
   }
 
   async emailFeedback(data: string, email: string) {
-    if (email.includes('internaltest')) {
+    if (isTestEmail(email)) {
       return;
     }
     await this.emailService.sendEmail({

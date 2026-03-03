@@ -7,15 +7,19 @@ import { LessThan, MoreThan } from 'typeorm';
 import { ManagementClient } from 'auth0';
 import axios from 'axios';
 import Stripe from 'stripe';
+import { isTestEmail } from '@app/send-grid';
 import { AppModule } from '../../apps/api-server/src/app.module';
 import { CronJobDataSource } from '../data-source';
 import { User, EmailFrequency } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { UserProgressMetricsService } from '../../apps/api-server/src/modules/user/services/user-progress-metrics/user-progress-metrics.service';
 import { UserEmailPreferencesService } from '../../apps/api-server/src/modules/user/services/user-email-preferences/user-email-preferences.service';
-import { STRIPE_API_VERSION, FEATURE_FLAGS } from '../../apps/api-server/src/shared/utils/constants';
+import {
+  STRIPE_API_VERSION,
+  FEATURE_FLAGS,
+  CRON_JOB_TIMEOUT_MS,
+} from '../../apps/api-server/src/shared/utils/constants';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
-import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 
 const BATCH_SIZE = 25; // Process users in smaller batches for inactive users
 
@@ -179,7 +183,10 @@ async function sendEnhancedProgressEmails(
     const batch = users.slice(i, i + BATCH_SIZE);
 
     const emailPromises = batch.map(async (userData) => {
-      if (userData.user.email_frequency === EmailFrequency.WEEKLY && userData.user.feature_flags?.includes(FEATURE_FLAGS.WEEKLY_EMAILS)) {
+      if (
+        userData.user.email_frequency === EmailFrequency.WEEKLY &&
+        userData.user.feature_flags?.includes(FEATURE_FLAGS.WEEKLY_EMAILS)
+      ) {
         try {
           // Calculate progress metrics
           const metrics = await userProgressMetricsService.calculateWeeklyProgress(userData.user);
@@ -293,7 +300,7 @@ async function getInternalTestUsers() {
     const internalTestUsers = [];
     for (const user of inactiveUsers) {
       const auth0User = auth0UsersMap.get(user.auth0_id);
-      if (auth0User?.email && auth0User.email.match(/^internaltest\+.*@focusbear\.io$/)) {
+      if (auth0User?.email && isTestEmail(auth0User.email)) {
         internalTestUsers.push({ email: auth0User.email, user });
       }
     }
@@ -363,17 +370,19 @@ async function runInactiveAccountsCronJob() {
     // Get users for inactivity warning (5+ months inactive, no warning sent)
     const inactiveUsers = await getInactiveUsers();
     if (inactiveUsers.length > 0) {
-      console.log(`Sending inactivity warnings to ${inactiveUsers.length} users`);
-      inactivityWarningsQueued = await sendEnhancedInactivityWarningEmails(inactiveUsers, emailQueue);
-      await updateUsersInactivityWarningFields(inactiveUsers);
+      const realInactiveUsers = inactiveUsers.filter((userData) => !isTestEmail(userData.email));
+      console.log(`Sending inactivity warnings to ${realInactiveUsers.length} users`);
+      inactivityWarningsQueued = await sendEnhancedInactivityWarningEmails(realInactiveUsers, emailQueue);
+      await updateUsersInactivityWarningFields(realInactiveUsers);
     }
 
     // Get recently active users for progress emails
     const activeUsers = await getActiveUsers();
     if (activeUsers.length > 0) {
-      console.log(`Sending progress emails to ${activeUsers.length} active users`);
+      const realActiveUsers = activeUsers.filter((userData) => !isTestEmail(userData.email));
+      console.log(`Sending progress emails to ${realActiveUsers.length} active users`);
       progressEmailsQueued = await sendEnhancedProgressEmails(
-        activeUsers,
+        realActiveUsers,
         emailQueue,
         userProgressMetricsService,
         userEmailPreferencesService,

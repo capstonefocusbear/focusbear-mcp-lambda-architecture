@@ -1,8 +1,8 @@
-/* eslint-disable no-console */
 import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   ValidationError,
   forwardRef,
@@ -12,11 +12,10 @@ import { InjectSentry, SentryService } from '@app/observability';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { randomUUID } from 'crypto';
-import { PusherBeamsService } from '@app/pusher-beams';
 import { PusherService } from '@app/pusher';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 import { I18nService } from 'nestjs-i18n';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { NotificationEvents } from '@app/pusher-beams/domains/notification-events.enum';
 import { Auth0ManagementService } from '@app/auth0';
 import { ActivityParserService } from '../../../activity/services/activity-parser/activity-parser.service';
 import { GetUserSettingsDto } from '../../dto/get-user-settings.dto';
@@ -42,9 +41,19 @@ import { UpdateSettingsQueryDto } from '../../dto/update-settings-query.dto';
 import { CustomRoutine } from '../../entities/custom-routine';
 import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 import { UpdateCustomRoutineDto } from '../../dto/update-custom-routine.dto.dto';
+import { timed } from '../../../../shared/utils/helpers';
+import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
+
+const PERFORMANCE_BUDGETS = {
+  AUTH0_API_CALL: 500,
+  DB_TRANSACTION: 1000,
+  TOTAL_UPDATE_SETTINGS: 2000,
+} as const;
 
 @Injectable()
 export class UserSettingsService {
+  private readonly logger = new Logger(UserSettingsService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly activityParserService: ActivityParserService,
@@ -57,10 +66,11 @@ export class UserSettingsService {
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     private readonly pusher: PusherService,
-    private readonly pusherBeams: PusherBeamsService,
     private readonly i18nService: I18nService,
     private readonly customRoutineRepository: CustomRoutineRepository,
     private readonly auth0ManagementService: Auth0ManagementService,
+    @InjectQueue(BullQueues.SETTINGS_NOTIFICATION)
+    private readonly settingsNotificationQueue: Queue,
   ) {}
 
   async getSettings({ user_id, timezone, language }: GetUserSettingsDto): Promise<UpdateUserSettingsDto> {
@@ -86,7 +96,14 @@ export class UserSettingsService {
       }
 
       if (timezone || language) {
-        await this.updateUserTimezoneAndLanguage(user_id, { timezone, language });
+        await this.updateUserTimezoneAndLanguage(
+          user_id,
+          { timezone, language },
+          {
+            startupTime: userSettings.startup_time,
+            shutdownTime: userSettings.shutdown_time,
+          },
+        );
       }
       const settings = this.serializeSettings(userSettings, userCustomRoutines);
       this.sentryService.instance().addBreadcrumb({
@@ -135,6 +152,7 @@ export class UserSettingsService {
     should_update_has_edited_settings: boolean,
     { is_onboarding, device_id }: UpdateSettingsQueryDto,
   ) {
+    const methodStartTime = Date.now();
     try {
       const { isVerboseLoggingAllowed, user } = await this.userService.isVerboseLoggingAllowed(user_id);
       this.sentryService.instance().addBreadcrumb({
@@ -166,18 +184,34 @@ export class UserSettingsService {
         this.validateActivityTutorialAndCutoffTimeConstraints(updateSettingsData);
       }
 
+      let currentSettings: UpdateUserSettingsDto | null = null;
+      let hasLoadedCurrentSettings = false;
+      const loadCurrentSettings = async (): Promise<UpdateUserSettingsDto | null> => {
+        if (hasLoadedCurrentSettings) {
+          return currentSettings;
+        }
+        currentSettings = await this.getSettings({ user_id });
+        hasLoadedCurrentSettings = true;
+        return currentSettings;
+      };
+
       let mergedSettingsData = updateSettingsData;
       let isFirstLogin = false;
       if (user?.auth0_id) {
-        const auth0User = await this.auth0ManagementService.getAuth0User(user.auth0_id);
+        const { result: auth0User } = await timed(() => this.auth0ManagementService.getAuth0User(user.auth0_id), {
+          operationName: 'auth0_get_user',
+          budgetMs: PERFORMANCE_BUDGETS.AUTH0_API_CALL,
+          logger: this.logger,
+          context: { user_id },
+        });
         isFirstLogin = (auth0User?.logins_count ?? 0) <= 4; // We support 4 platforms; simultaneous first sign-ins can increment count rapidly
       }
       if (is_onboarding && !isFirstLogin) {
-        let currentSettings: UpdateUserSettingsDto | null = null;
         try {
-          currentSettings = await this.getSettings({ user_id });
+          currentSettings = await loadCurrentSettings();
         } catch {
           currentSettings = null;
+          hasLoadedCurrentSettings = true;
         }
 
         const hasExistingRoutines =
@@ -219,10 +253,23 @@ export class UserSettingsService {
         user.id,
       );
       const userHasEditedSettings = user.has_edited_settings || (!!should_update_has_edited_settings && !is_onboarding);
-      const { eveningActivities, is_relax_activity_generated } = await this.optimizeEveningActivities(
+
+      const hasRelaxActivityInCurrent =
+        mergedSettingsData.evening_activities?.some((activity) => activity.show_saved_distracting_websites) ?? false;
+      const shouldLoadCurrentSettingsForRelaxCheck =
+        !is_onboarding &&
+        !!mergedSettingsData.cutoff_time_for_non_high_priority_activities &&
+        !hasRelaxActivityInCurrent;
+
+      if (shouldLoadCurrentSettingsForRelaxCheck && !hasLoadedCurrentSettings) {
+        currentSettings = await loadCurrentSettings();
+      }
+
+      const { eveningActivities, is_relax_activity_generated } = this.optimizeEveningActivities(
         mergedSettingsData,
         user,
         is_onboarding,
+        currentSettings,
       );
 
       const updatedUser = new User({
@@ -285,12 +332,21 @@ export class UserSettingsService {
         user_id,
       );
 
-      await this.userRepository.consistentlyUpdateUserSettings(
-        updatedUser,
-        deserializedActivities.concat(deserializeCustomRoutineActivities),
-        logQuantityQuestions,
-        tutorials,
-        customRoutines,
+      await timed(
+        () =>
+          this.userRepository.consistentlyUpdateUserSettings(
+            updatedUser,
+            deserializedActivities.concat(deserializeCustomRoutineActivities),
+            logQuantityQuestions,
+            tutorials,
+            customRoutines,
+          ),
+        {
+          operationName: 'db_transaction',
+          budgetMs: PERFORMANCE_BUDGETS.DB_TRANSACTION,
+          logger: this.logger,
+          context: { user_id },
+        },
       );
       if (typeof verbose_logging === 'boolean') {
         this.userService.clearVerboseLoggingCache(user_id);
@@ -298,8 +354,21 @@ export class UserSettingsService {
       if (should_update_has_edited_settings) {
         await Promise.all([
           this.userDailyStatsService.updateUserOnboardingProgress(user_id, UserProgressUpdateTypes.EDIT_SETTINGS),
-          this.sendSettingsUpdatedBroadcast(user_id, user.language, device_id),
+          this.queueSettingsNotification(user_id, device_id, user.language),
         ]);
+      }
+
+      const totalDurationMs = Date.now() - methodStartTime;
+      if (totalDurationMs > PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS) {
+        this.logger.warn(
+          {
+            operationName: 'updateSettings_total',
+            budgetMs: PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS,
+            actualMs: totalDurationMs,
+            user_id,
+          },
+          `Performance budget exceeded for updateSettings total: ${totalDurationMs}ms (budget: ${PERFORMANCE_BUDGETS.TOTAL_UPDATE_SETTINGS}ms)`,
+        );
       }
       return await this.getSettings({ user_id });
     } catch (error) {
@@ -359,30 +428,62 @@ export class UserSettingsService {
     return merged;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async sendSettingsUpdatedBroadcast(userId: string, language: string, deviceId: string) {
+  private async queueSettingsNotification(userId: string, deviceId?: string, language?: string): Promise<void> {
+    const startTime = Date.now();
     try {
-      await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
+      await this.settingsNotificationQueue.add(
+        BullWorkers.SEND_SETTINGS_NOTIFICATION,
+        { userId, deviceId, language },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
+        },
+      );
+
+      const queueTime = Date.now() - startTime;
+      if (queueTime > 50) {
+        this.logger.warn(
+          {
+            operationName: 'queue_settings_notification',
+            actualMs: queueTime,
+            budgetMs: 50,
+            userId,
+          },
+          `Slow queue add: ${queueTime}ms`,
+        );
+      }
     } catch (error) {
       this.sentryService.instance().captureException(error, {
         level: 'warning',
-        tags: { service: 'pusher-channels', operation: 'trigger', event: 'settings-updated' },
-        extra: { userId, deviceId },
+        tags: { service: 'bull-queue', operation: 'add', queue: 'settings-notification' },
+        extra: { userId, deviceId, language },
       });
+
+      this.logger.warn(
+        { operationName: 'queue_settings_notification_fallback', userId },
+        'Queue add failed, sending settings notification directly',
+      );
+
+      try {
+        await this.pusher.trigger(`private-${userId}`, 'settings-updated', { device_id: deviceId });
+      } catch (fallbackError) {
+        this.sentryService.instance().captureException(fallbackError, {
+          level: 'warning',
+          tags: {
+            service: 'pusher-channels',
+            operation: 'trigger',
+            event: 'settings-updated',
+            source: 'queue-fallback',
+          },
+          extra: { userId, deviceId, language },
+        });
+      }
     }
-    // NOTE: comment out until implemented in mobile app
-    // const title = this.i18nService.t('common.settings_updated', { lang: language });
-    // const body = this.i18nService.t('common.settings_updated_message', {
-    //   lang: language,
-    // });
-    // const pushData = { event: NotificationEvents.UPDATED_SETTINGS };
-    // const publishRequest = this.pusherBeams.createBeamsPublishRequest({
-    //   title,
-    //   body,
-    //   should_send_only_data_for_android: true,
-    //   pushData,
-    // });
-    // await this.pusherBeams.publishToUsers([userId], publishRequest);
   }
 
   calculateRelaxActivityDuration(cutoffTime: string, shutdownTime: string, eveningActivities: UpdateActivityDto[]) {
@@ -416,6 +517,7 @@ export class UserSettingsService {
   async updateUserTimezoneAndLanguage(
     user_id: string,
     { timezone, language }: { timezone?: string; language?: LanguageOptions },
+    routineTimes?: { startupTime?: string; shutdownTime?: string },
   ) {
     const { isVerboseLoggingAllowed } = await this.userService.isVerboseLoggingAllowed(user_id);
     this.sentryService.instance().addBreadcrumb({
@@ -427,34 +529,49 @@ export class UserSettingsService {
         ...(isVerboseLoggingAllowed && { timezone }),
       },
     });
-    const currentTime = DateTime.local({ zone: timezone });
-    if (currentTime.invalidReason) {
-      throw new BadRequestException(currentTime.invalidExplanation);
-    }
-    const currentTimeISO = currentTime.toISO();
-    const positiveTime = currentTimeISO.split('+')[1];
-    const negativeTime = currentTimeISO.split('-')[3];
+    const updateData: Partial<User> = {};
+
     if (timezone) {
-      if (positiveTime) {
-        const userZone = `UTC+${positiveTime}`;
-        await this.userRepository.update(user_id, {
-          timezone: userZone,
-          ...(language && { language }),
-        });
-        return;
+      // Normalize timezone input to a stable UTC offset string (for example "UTC-05:00")
+      // so routine matching can compare persisted "HH:mm" UTC fields directly in cron.
+      // For IANA zones, this captures the current offset only; DST shifts are picked up
+      // the next time client settings sync sends timezone again.
+      const currentTime = DateTime.local({ zone: timezone });
+      if (currentTime.invalidReason) {
+        throw new BadRequestException(currentTime.invalidExplanation);
       }
-      if (negativeTime) {
-        const userZone = `UTC-${negativeTime}`;
-        await this.userRepository.update(user_id, {
-          timezone: userZone,
-          ...(language && { language }),
-        });
-        return;
+
+      const offsetMinutes = currentTime.offset;
+      const absoluteOffsetMinutes = Math.abs(offsetMinutes);
+      const hours = this.formatTimeToDoubleDigits(Math.floor(absoluteOffsetMinutes / 60));
+      const minutes = this.formatTimeToDoubleDigits(absoluteOffsetMinutes % 60);
+      const offsetPrefix = offsetMinutes >= 0 ? '+' : '-';
+      const userZone = `UTC${offsetPrefix}${hours}:${minutes}`;
+
+      updateData.timezone = userZone;
+
+      const { startupTime, shutdownTime } = routineTimes ?? {};
+      if (startupTime && shutdownTime) {
+        // Keep cached UTC routine times aligned with timezone changes.
+        const { utc_startup_time, utc_shutdown_time } = this.calculateUserUTCRoutineTimes(
+          startupTime,
+          shutdownTime,
+          userZone,
+          user_id,
+        );
+        updateData.utc_startup_time = utc_startup_time;
+        updateData.utc_shutdown_time = utc_shutdown_time;
       }
     }
+
     if (language) {
+      updateData.language = language;
+    }
+
+    if (Object.keys(updateData).length > 0) {
       await this.userRepository.update(user_id, {
-        language,
+        ...updateData,
+        updated_at: new Date().toISOString(),
       });
     }
   }
@@ -728,10 +845,11 @@ export class UserSettingsService {
     return false;
   };
 
-  private async optimizeEveningActivities(
+  private optimizeEveningActivities(
     updateSettingsData: UpdateUserSettingsDto,
     user: User,
     is_onboarding?: boolean,
+    currentSettings?: UpdateUserSettingsDto | null,
   ) {
     let eveningActivities = [...updateSettingsData.evening_activities];
     let { is_relax_activity_generated } = user;
@@ -747,9 +865,8 @@ export class UserSettingsService {
       return { eveningActivities, is_relax_activity_generated };
     }
 
-    // Backward compatibility: Handle existing relax activities
-    const prev_user_settings = await this.userRepository.getUserSettings(user.id);
-    const hasRelaxActivityInPrevious = this.serializeSettings(prev_user_settings).evening_activities?.some(
+    // Backward compatibility: Handle existing relax activities (use pre-fetched data)
+    const hasRelaxActivityInPrevious = currentSettings?.evening_activities?.some(
       (activity) => activity.show_saved_distracting_websites,
     );
 

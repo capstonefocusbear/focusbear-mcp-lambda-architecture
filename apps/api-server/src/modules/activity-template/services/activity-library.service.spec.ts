@@ -36,11 +36,15 @@ import { ActivityTemplateRetrieverService } from './activity-template-retriever.
 import { RoutineSuggestionGeneratorService } from './routine-suggestion-generator.service';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
+import { PromptCacheService } from '../../../../../../libs/openai/src/prompt-cache.service';
 
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
   const habitLibraryRequestRepositoryMock = {
     logRequests: jest.fn(),
+  };
+  const promptCacheServiceMock = {
+    getPrompt: jest.fn(),
   };
 
   beforeAll(async () => {
@@ -70,6 +74,10 @@ describe('ActivityLibraryService', () => {
         {
           provide: HabitLibraryRequestRepository,
           useValue: habitLibraryRequestRepositoryMock,
+        },
+        {
+          provide: PromptCacheService,
+          useValue: promptCacheServiceMock,
         },
       ],
     })
@@ -216,6 +224,7 @@ describe('ActivityLibraryService', () => {
           ai_goals,
           ai_generated,
           description,
+          text_instructions,
           ...rest
         } = activity;
         return rest;
@@ -261,6 +270,28 @@ describe('ActivityLibraryService', () => {
       expect(
         matchedActivities.find((activity: any) => activity.original_template_id === validTemplate.id),
       ).toBeDefined();
+    });
+
+    it('preserves canonical activity_type even when activity_data contains a legacy activity_type field', () => {
+      const routineDurationSeconds = dummyGetRoutineSuggestionsDto.routine_duration * ONE_MINUTE_SECONDS;
+      const templateWithLegacyType = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: 'legacy-type-template',
+        activity_type: ActivityType.morning,
+        duration_seconds: 300,
+        activity_data: {
+          ...dummyActivityTemplatesWithTags[0].activity_data,
+          activity_type: 'morning_activity',
+        },
+      } as any;
+
+      const matchedActivities = activityLibraryService.userDesiredRoutineDurationSeconds(
+        [templateWithLegacyType],
+        routineDurationSeconds,
+      ) as any[];
+
+      expect(matchedActivities).toHaveLength(1);
+      expect(matchedActivities[0].activity_type).toBe(ActivityType.morning);
     });
 
     it('positive: strips emoji characters from user goals before querying templates', async () => {
@@ -442,6 +473,66 @@ describe('ActivityLibraryService', () => {
       expect(response[0]).toHaveProperty('ai_justification', 'Supports strength goals.');
       expect(response[0]).toHaveProperty('original_template_id', template.id);
       expect(response[0].name).toBe('Goal-Aligned Strength Session');
+    });
+
+    it('filters non-routine RAG matches and generates morning suggestions when routine is omitted', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+
+      const libraryTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: 'library-template-id',
+        activity_type: ActivityType.library,
+      };
+
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([
+        { activityTemplateId: libraryTemplate.id, similarity: 0.93 },
+      ]);
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([libraryTemplate]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [
+          {
+            habitId: libraryTemplate.id,
+            name: 'Task triage',
+            justification: 'Ranks tasks by impact.',
+            matchScore: 0.9,
+            template: libraryTemplate,
+            description: 'Sort and prioritize tasks.',
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([
+        {
+          name: 'Morning priority plan',
+          description: 'Choose the top 3 tasks for today.',
+          routineType: ActivityType.morning,
+          durationMinutes: 10,
+          justification: 'Creates daily focus.',
+        },
+      ]);
+
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(
+        {
+          ...dummyGetRoutineSuggestionsDto,
+          user_goals: ['Organize your tasks using AI'],
+        },
+        userDummy.id,
+      )) as any[];
+
+      expect(response).toHaveLength(1);
+      expect(response[0].activity_type).toBe(ActivityType.morning);
+      expect(response[0].ai_generated).toBe(true);
+      expect(response[0].name).toBe('Morning priority plan');
+      expect(response.some((activity: any) => activity.original_template_id === libraryTemplate.id)).toBe(false);
+      expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).toHaveBeenCalledWith(
+        'Organize your tasks using AI',
+        expect.objectContaining({
+          routineType: ActivityType.morning,
+        }),
+      );
     });
 
     it('skips the RAG pipeline when explicitly disabled', async () => {
@@ -1011,6 +1102,163 @@ describe('ActivityLibraryService', () => {
         expect(Array.isArray(templates)).toBe(true);
         expect(templates).toHaveLength(0);
       });
+    });
+  });
+
+  describe('ensureHabitsHaveInstructions', () => {
+    beforeEach(() => {
+      jest.resetAllMocks();
+      promptCacheServiceMock.getPrompt.mockReturnValue(null);
+    });
+
+    it('should generate AI instructions for habits with missing text_instructions', async () => {
+      const habits = [
+        { name: 'Morning meditation', text_instructions: '', description: 'Meditate in the morning' },
+        { name: 'Drink water', text_instructions: null, description: '' },
+      ];
+
+      OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                'Morning meditation': 'Sit quietly for 10 minutes and focus on your breath.',
+                'Drink water': 'Drink a glass of water to stay hydrated.',
+              }),
+            },
+          },
+        ],
+      });
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalledTimes(1);
+      expect(habits[0].text_instructions).toBe('Sit quietly for 10 minutes and focus on your breath.');
+      expect(habits[1].text_instructions).toBe('Drink a glass of water to stay hydrated.');
+    });
+
+    it('should skip habits that already have text_instructions', async () => {
+      const habits = [
+        { name: 'Morning meditation', text_instructions: 'Already set', description: 'Meditate' },
+        { name: 'Drink water', text_instructions: 'Drink 8 glasses', description: '' },
+      ];
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(OpenAIServiceMock.createChatCompletion).not.toHaveBeenCalled();
+      expect(habits[0].text_instructions).toBe('Already set');
+      expect(habits[1].text_instructions).toBe('Drink 8 glasses');
+    });
+
+    it('should treat text_instructions === name as missing and generate AI instructions', async () => {
+      const habits = [{ name: 'Exercise', text_instructions: 'Exercise', description: '' }];
+
+      OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+        choices: [{ message: { content: 'Do 30 minutes of physical activity.' } }],
+      });
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalledTimes(1);
+      expect(habits[0].text_instructions).toBe('Do 30 minutes of physical activity.');
+    });
+
+    it('should do nothing when all habits have valid text_instructions', async () => {
+      const habits = [
+        { name: 'Morning meditation', text_instructions: 'Meditate for 10 minutes', description: 'Meditate' },
+        { name: 'Drink water', text_instructions: 'Drink 8 glasses of water', description: '' },
+      ];
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(OpenAIServiceMock.createChatCompletion).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to habit name when AI call fails', async () => {
+      const habits = [{ name: 'Morning meditation', text_instructions: '', description: '' }];
+
+      OpenAIServiceMock.createChatCompletion.mockRejectedValue(new Error('OpenAI API error'));
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(habits[0].text_instructions).toBe('Morning meditation');
+    });
+
+    it('should use a single batched API call for multiple habits', async () => {
+      const habits = [
+        { name: 'Meditation', text_instructions: '', description: '' },
+        { name: 'Exercise', text_instructions: null, description: '' },
+        { name: 'Read', text_instructions: 'Read', description: '' },
+      ];
+
+      OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                Meditation: 'Sit quietly and focus on your breath for 10 minutes.',
+                Exercise: 'Do 30 minutes of physical activity.',
+                Read: 'Read for 20 minutes to expand your knowledge.',
+              }),
+            },
+          },
+        ],
+      });
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalledTimes(1);
+      expect(habits[0].text_instructions).toBe('Sit quietly and focus on your breath for 10 minutes.');
+      expect(habits[1].text_instructions).toBe('Do 30 minutes of physical activity.');
+      expect(habits[2].text_instructions).toBe('Read for 20 minutes to expand your knowledge.');
+    });
+
+    it('should map batched instructions by response order for names with special characters', async () => {
+      const habits = [
+        { name: 'Read "Deep Work"', text_instructions: '', description: '' },
+        { name: 'Stretch \\ mobility', text_instructions: '', description: '' },
+      ];
+
+      OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                instructions: [
+                  'Read for 20 focused minutes without distractions.',
+                  'Do a short mobility stretch routine.',
+                ],
+              }),
+            },
+          },
+        ],
+      });
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(OpenAIServiceMock.createChatCompletion).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          params: expect.objectContaining({
+            response_format: { type: 'json_object' },
+          }),
+        }),
+      );
+      expect(habits[0].text_instructions).toBe('Read for 20 focused minutes without distractions.');
+      expect(habits[1].text_instructions).toBe('Do a short mobility stretch routine.');
+    });
+
+    it('should preserve existing description when it differs from habit name', async () => {
+      const habits = [{ name: 'Morning meditation', text_instructions: '', description: 'A calming morning practice' }];
+
+      OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+        choices: [{ message: { content: 'Sit quietly for 10 minutes and focus on your breath.' } }],
+      });
+
+      await activityLibraryService.ensureHabitsHaveInstructions(habits);
+
+      expect(habits[0].text_instructions).toBe('Sit quietly for 10 minutes and focus on your breath.');
+      expect(habits[0].description).toBe('A calming morning practice');
     });
   });
 });

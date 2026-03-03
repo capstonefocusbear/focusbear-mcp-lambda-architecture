@@ -67,6 +67,12 @@ export class ActivityChoiceData {
 
   @IsArray()
   @IsOptional()
+  @IsString({ each: true })
+  @ApiProperty()
+  allowed_mobile_apps?: string[];
+
+  @IsArray()
+  @IsOptional()
   @ValidateIf((o) => o.allowed_urls?.length > 0)
   @IsString({ each: true })
   @ApiProperty()
@@ -91,4 +97,9 @@ export class ActivityChoiceData {
   @IsOptional()
   @IsString()
   habit_icon?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  @ApiProperty({ required: false, nullable: true })
+  geofence_id?: string | null;
 }

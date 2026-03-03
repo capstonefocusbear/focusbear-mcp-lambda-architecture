@@ -1,5 +1,14 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import { CreateNoteTagDto } from './create-note-tag.dto';
 
 export class CreateNoteDto {
@@ -32,4 +41,8 @@ export class CreateNoteDto {
   @IsArray()
   @IsUUID('4', { each: true })
   embedded_todo_ids?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  is_brain_dump?: boolean;
 }

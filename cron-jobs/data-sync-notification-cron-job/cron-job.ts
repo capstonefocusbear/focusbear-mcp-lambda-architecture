@@ -2,6 +2,7 @@
 /* eslint-disable no-await-in-loop */
 import * as sendGrid from '@sendgrid/mail';
 import { ManagementClient } from 'auth0';
+import { isTestEmail } from '@app/send-grid';
 import { NestFactory } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -161,6 +162,9 @@ export async function getUserDetails(
 async function sendEmail(email: string, language: string) {
   ensureI18n();
   ensureSendGrid();
+  if (isTestEmail(email)) {
+    return;
+  }
   const msg = {
     to: email,
     from: FOCUS_BEAR_EMAILS.SUPPORT,
@@ -185,6 +189,9 @@ async function sendEmail(email: string, language: string) {
 // Move the UNICAES-specific logic to a new function
 async function sendUnicaesDataSyncEmail(email: string, name?: string, os: 'ios' | 'android' = 'ios') {
   ensureSendGrid();
+  if (isTestEmail(email)) {
+    return;
+  }
   const imageUrl = 'https://images.focusbear.io/unicaes-email-header.png';
 
   const content = {

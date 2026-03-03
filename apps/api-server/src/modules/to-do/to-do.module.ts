@@ -6,16 +6,22 @@ import { R2Module } from '@app/r2';
 import { UserModule } from '../user/user.module';
 import { TodoController } from './controllers/to-do.controller';
 import { TaskCommentController } from './controllers/task-comment.controller';
+import { TaskCommentReactionController } from './controllers/task-comment-reaction.controller';
 import { TaskAttachmentController } from './controllers/task-attachment.controller';
 import { CommentAttachmentController } from './controllers/comment-attachment.controller';
+import { TaskReactionController } from './controllers/task-reaction.controller';
 import { ToDoService } from './services/to-do.service';
 import { TaskCommentService } from './services/task-comment.service';
+import { TaskCommentReactionService } from './services/task-comment-reaction.service';
 import { TaskAttachmentService } from './services/task-attachment.service';
 import { CommentAttachmentService } from './services/comment-attachment.service';
+import { TaskReactionService } from './services/task-reaction.service';
 import { ToDoRepository } from './repositories/to-do.repository';
 import { TaskCommentRepository } from './repositories/task-comment.repository';
+import { TaskCommentReactionRepository } from './repositories/task-comment-reaction.repository';
 import { TaskAttachmentRepository } from './repositories/task-attachment.repository';
 import { CommentAttachmentRepository } from './repositories/comment-attachment.repository';
+import { TaskReactionRepository } from './repositories/task-reaction.repository';
 import { TaskTimeLogsRepository } from './repositories/task-time-logs.repository';
 import { TimeLogsConsumer } from './consumers/time-logs.consumer';
 import { TodoImageConsumer } from './consumers/todo-image.consumer';
@@ -34,13 +40,17 @@ import { BullQueues } from '../../shared/utils/constants';
   providers: [
     ToDoService,
     TaskCommentService,
+    TaskCommentReactionService,
     TaskAttachmentService,
     CommentAttachmentService,
+    TaskReactionService,
     PlatformIntegrationRepository,
     ToDoRepository,
     TaskCommentRepository,
+    TaskCommentReactionRepository,
     TaskAttachmentRepository,
     CommentAttachmentRepository,
+    TaskReactionRepository,
     TaskTimeLogsRepository,
     TimeLogsConsumer,
     TodoImageConsumer,
@@ -57,6 +67,8 @@ import { BullQueues } from '../../shared/utils/constants';
     TaskAttachmentService,
     CommentAttachmentRepository,
     CommentAttachmentService,
+    TaskReactionRepository,
+    TaskReactionService,
     SyncedProjectsRepository,
     SyncedProjectsService,
   ],
@@ -97,8 +109,10 @@ import { BullQueues } from '../../shared/utils/constants';
   controllers: [
     TodoController,
     TaskCommentController,
+    TaskCommentReactionController,
     TaskAttachmentController,
     CommentAttachmentController,
+    TaskReactionController,
     SyncedProjectsController,
   ],
 })

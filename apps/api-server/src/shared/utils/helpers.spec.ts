@@ -1,4 +1,5 @@
-import { safeDecodeURIComponent, withTimeout } from './helpers';
+import { Logger } from '@nestjs/common';
+import { safeDecodeURIComponent, timed, withTimeout } from './helpers';
 
 describe('safeDecodeURIComponent', () => {
   describe('Windows bug report fix - handling + as spaces', () => {
@@ -126,5 +127,126 @@ describe('withTimeout', () => {
     jest.advanceTimersByTime(500);
     await expect(promise).rejects.toThrow('Operation timed out');
     expect(onTimeout).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('timed', () => {
+  let mockLogger: Logger;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockLogger = {
+      warn: jest.fn(),
+    } as unknown as Logger;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('should return result and duration for successful operations', async () => {
+    const operation = jest.fn().mockResolvedValue('success');
+    const result = await timed(operation, {
+      operationName: 'test_operation',
+      budgetMs: 1000,
+      logger: mockLogger,
+    });
+
+    expect(result.result).toBe('success');
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('should log warning when budget is exceeded', async () => {
+    const slowOperation = () => new Promise<string>((resolve) => setTimeout(() => resolve('done'), 50));
+
+    const timedPromise = timed(slowOperation, {
+      operationName: 'slow_operation',
+      budgetMs: 10,
+      logger: mockLogger,
+    });
+    await jest.advanceTimersByTimeAsync(50);
+    const result = await timedPromise;
+
+    expect(result.result).toBe('done');
+    expect(result.durationMs).toBeGreaterThan(10);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationName: 'slow_operation',
+        budgetMs: 10,
+        actualMs: expect.any(Number),
+        exceededByMs: expect.any(Number),
+      }),
+      expect.stringContaining('Performance budget exceeded for slow_operation'),
+    );
+  });
+
+  it('should propagate errors while still logging warnings for slow failed operations', async () => {
+    const failingOperation = () =>
+      new Promise<string>((_, reject) => setTimeout(() => reject(new Error('operation failed')), 50));
+
+    const timedPromise = timed(failingOperation, {
+      operationName: 'failing_operation',
+      budgetMs: 10,
+      logger: mockLogger,
+    });
+    const rejectionExpectation = expect(timedPromise).rejects.toThrow('operation failed');
+    await jest.advanceTimersByTimeAsync(50);
+    await rejectionExpectation;
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationName: 'failing_operation',
+        error: 'operation failed',
+      }),
+      expect.stringContaining('Performance budget exceeded for failing_operation (failed)'),
+    );
+  });
+
+  it('should include context in warning logs', async () => {
+    const slowOperation = () => new Promise<string>((resolve) => setTimeout(() => resolve('done'), 50));
+
+    const timedPromise = timed(slowOperation, {
+      operationName: 'contextualized_operation',
+      budgetMs: 10,
+      logger: mockLogger,
+      context: { user_id: 'test-user-123', request_id: 'req-456' },
+    });
+    await jest.advanceTimersByTimeAsync(50);
+    await timedPromise;
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: 'test-user-123',
+        request_id: 'req-456',
+      }),
+      expect.any(String),
+    );
+  });
+
+  it('should not log warning when operation completes within budget', async () => {
+    const fastOperation = jest.fn().mockResolvedValue('fast');
+
+    await timed(fastOperation, {
+      operationName: 'fast_operation',
+      budgetMs: 1000,
+      logger: mockLogger,
+    });
+
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('should propagate errors without logging when within budget', async () => {
+    const fastFailingOperation = jest.fn().mockRejectedValue(new Error('fast failure'));
+
+    await expect(
+      timed(fastFailingOperation, {
+        operationName: 'fast_failing_operation',
+        budgetMs: 1000,
+        logger: mockLogger,
+      }),
+    ).rejects.toThrow('fast failure');
+
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 });

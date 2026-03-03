@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { FastifyReply } from 'fastify';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
 import { Passport } from '../../auth/domain/passport.model';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
@@ -20,6 +21,9 @@ import { HasTeamSubscription } from '../../subscription/guards/has-team-subscrip
 import { RemoveTeamMemberDto } from '../dto/remove-team-member.dto';
 import { GetTeamInsightsQueryDto } from '../dto/get-team-insights-query.dto';
 import { GetMemberInsightsResponseDto } from '../dto/get-member-insights-response.dto';
+import { JoinTeamDto } from '../dto/join-team.dto';
+import { CreateJoinCodeDto } from '../dto/create-join-code.dto';
+import { CreateBatchJoinCodesDto } from '../dto/create-batch-join-codes.dto';
 
 @Controller('team-management')
 @ApiTags('team-management')
@@ -67,6 +71,68 @@ export class TeamManagementController {
     @AuthContext() { user: { id: user_id } }: Passport,
   ): Promise<any> {
     return this.teamManagementService.acceptInvitation(token, user_id);
+  }
+
+  @Post('/join')
+  @ApiOperation({ summary: 'Self-enroll authenticated user into a team using a join code' })
+  @ApiResponse({ status: 201, description: 'Successfully joined team' })
+  @ApiResponse({ status: 200, description: 'User is already a member of this team' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired join code, or team has reached its member limit' })
+  @ApiResponse({ status: 404, description: 'Join code or team not found' })
+  async joinTeam(
+    @Body() { join_code }: JoinTeamDto,
+    @AuthContext() { user: { id: userId } }: Passport,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ): Promise<any> {
+    const result = await this.teamManagementService.joinTeam(userId, join_code);
+    res.status(result.statusCode);
+    return result;
+  }
+
+  @Post('/join-codes')
+  @UseGuards(HasTeamSubscription)
+  @RequireEntitlements([Entitlement.team_admin])
+  @ApiOperation({ summary: 'Create a join code for a team (unlimited or limited redemptions)' })
+  @ApiResponse({ status: 201, description: 'Join code created' })
+  async createJoinCode(
+    @Body() createJoinCodeDto: CreateJoinCodeDto,
+    @AuthContext() { user: { id: adminId } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.createJoinCode(adminId, createJoinCodeDto);
+  }
+
+  @Post('/join-codes/batch')
+  @UseGuards(HasTeamSubscription)
+  @RequireEntitlements([Entitlement.team_admin])
+  @ApiOperation({ summary: 'Create multiple single-use join codes for a team' })
+  @ApiResponse({ status: 201, description: 'Batch join codes created' })
+  async createBatchJoinCodes(
+    @Body() createBatchDto: CreateBatchJoinCodesDto,
+    @AuthContext() { user: { id: adminId } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.createBatchJoinCodes(adminId, createBatchDto);
+  }
+
+  @Get('/join-codes')
+  @RequireEntitlements([Entitlement.team_admin])
+  @ApiOperation({ summary: 'List all join codes for a team' })
+  async getJoinCodes(
+    @Query() { team_id }: { team_id: string },
+    @AuthContext() { user: { id: adminId } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.getJoinCodes(adminId, team_id);
+  }
+
+  @Delete('/join-codes')
+  @HttpCode(204)
+  @UseGuards(HasTeamSubscription)
+  @RequireEntitlements([Entitlement.team_admin])
+  @ApiOperation({ summary: 'Deactivate a join code' })
+  async deactivateJoinCode(
+    @Query() { code_id }: { code_id: string },
+    @AuthContext() { user: { id: adminId } }: Passport,
+  ): Promise<void> {
+    return this.teamManagementService.deactivateJoinCode(adminId, code_id);
   }
 
   @Post('/assign-admin')

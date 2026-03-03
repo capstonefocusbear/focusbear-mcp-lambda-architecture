@@ -6,6 +6,10 @@ import { RoutineType } from '../../modules/user/domain/routine-type.enum';
 import { BearsonaProfile } from '../../modules/user/domain/onboarding/bearsona-profile.enum';
 import { OnboardFlowTimeUI } from '../../modules/user/domain/onboarding/onboarding-flow-time-ui.enum';
 
+export enum PostgresErrorCode {
+  UNIQUE_VIOLATION = '23505',
+}
+
 export const TWENTY_FOUR_HOURS_AGO = new Date(Date.now() - 24 * 60 * 60 * 1000);
 export const CURRENT_TIME = new Date();
 export const ROUTINE_COMPLETION_PERCENTAGE_THRESHOLD = 10;
@@ -23,6 +27,7 @@ export const FOCUS_BEAR_EMAILS = {
 };
 export const EMAIL_TEMPLATE_IDS = {
   TEAM_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
+  PROJECT_INVITE: 'd-a920d24eac1948adab718cb3f62556f2',
   VERIFY_EMAIL: 'd-d6cff2b375e54523b86061abebb8dbdf',
   REQUEST_PASSWORD_RESET: 'd-67cec7f121f04901814f6f41ec6e0122',
   ACCOUNTABILITY_BUDDY_INVITATION: 'd-ffddae2b9fb040a79244c8a871cce582',
@@ -190,6 +195,7 @@ export enum BullQueues {
   WEBHOOK = 'webhook',
   STRIPE_CUSTOMER = 'stripe-customer',
   PASSWORD_RESET_EMAIL = 'password-reset-email',
+  SETTINGS_NOTIFICATION = 'settings-notification',
 }
 
 export enum BullWorkers {
@@ -217,6 +223,7 @@ export enum BullWorkers {
   PROCESS_HABIT_IMPORT = 'process-habit-import',
   SEND_WEBHOOK = 'send-webhook',
   SEND_PASSWORD_RESET_EMAIL = 'send-password-reset-email',
+  SEND_SETTINGS_NOTIFICATION = 'send-settings-notification',
 }
 
 export const createActivityFunction = {
@@ -350,6 +357,7 @@ export const S3_BUCKET_USAGE_IMAGES = 'activity-images';
 export const S3_BUCKET_TODO_IMAGES = 'todo-images';
 export const S3_BUCKET_TODO_AUDIOS = 'todo-audios';
 export const S3_BUCKET_HABIT_IMPORTS = 'habit-imports';
+export const S3_BUCKET_PROFILE_IMAGES = 'profile-images';
 export const S3_BUCKET_TASK_ATTACHMENTS = 'task-attachments';
 export const S3_BUCKET_COMMENT_ATTACHMENTS = 'comment-attachments';
 export const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB

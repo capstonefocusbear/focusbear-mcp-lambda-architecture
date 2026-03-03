@@ -40,6 +40,13 @@ export class Note extends BaseEntity {
   })
   completed_activity_id?: string;
 
+  @Column({
+    type: 'boolean',
+    nullable: false,
+    default: false,
+  })
+  is_brain_dump: boolean;
+
   @ManyToOne(() => User, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;

@@ -67,6 +67,7 @@ import { HealthMetrics } from './entities/health-metrics.entity';
 import { UsageImageConsumer } from './consumers/usage-image.consumer';
 import { SyncHealthMetricsConsumer } from './consumers/sync-health-metrics.consumer';
 import { UsageDataConsumer } from './consumers/usage-data.consumer';
+import { SettingsNotificationConsumer } from './consumers/settings-notification.consumer';
 import { FlankerTestService } from './services/flanker-test/flanker-test.service';
 import { FlankerTest } from './entities/flanker-test.entity';
 import { MetricsInterceptor } from '../../shared/interceptors/metrics.interceptor';
@@ -99,6 +100,7 @@ import { MetricsInterceptor } from '../../shared/interceptors/metrics.intercepto
     UsageImageConsumer,
     SyncHealthMetricsConsumer,
     UsageDataConsumer,
+    SettingsNotificationConsumer,
     FlankerTestService,
   ],
   exports: [
@@ -172,6 +174,9 @@ import { MetricsInterceptor } from '../../shared/interceptors/metrics.intercepto
       },
       {
         name: BullQueues.STRIPE_CUSTOMER,
+      },
+      {
+        name: BullQueues.SETTINGS_NOTIFICATION,
       },
     ),
     R2Module.registerAsync({

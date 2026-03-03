@@ -31,6 +31,7 @@ import {
   UserDailyStatsServiceMock,
   DailyStatsRepositoryMock,
   DeviceServiceMock,
+  TeamJoinCodeRepositoryMock,
 } from '../../../../../test/mocks';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { TeamRepository } from '../../repositories/team.repository';
@@ -41,6 +42,7 @@ import { Entitlement } from '../../../subscription/domain/entitlement.enum';
 import { Team } from '../../entities/team.entity';
 import { TeamToMemberRepository } from '../../repositories/team-to-member.repository';
 import { TeamToAdminRepository } from '../../repositories/team-to-admin.repository';
+import { TeamJoinCodeRepository } from '../../repositories/team-join-code.repository';
 import { TeamToAdmin } from '../../entities/team-to-admin.entity';
 import { PaymentType } from '../../domain/payment-type.enum';
 import { UserDailyStatsService } from '../../../user/services/user-daily-stats/user-daily-stats.service';
@@ -89,6 +91,7 @@ describe('TeamManagementService', () => {
         UserDailyStatsService,
         DailyStatsRepository,
         DeviceService,
+        TeamJoinCodeRepository,
       ],
     })
       .overrideProvider(UserRepository)
@@ -117,6 +120,8 @@ describe('TeamManagementService', () => {
       .useValue(DailyStatsRepositoryMock)
       .overrideProvider(DeviceService)
       .useValue(DeviceServiceMock)
+      .overrideProvider(TeamJoinCodeRepository)
+      .useValue(TeamJoinCodeRepositoryMock)
       .compile();
 
     teamManagementService = moduleRef.get<TeamManagementService>(TeamManagementService);
@@ -1643,6 +1648,511 @@ describe('TeamManagementService', () => {
         Entitlement.team_member,
         TeamWithMembersDummy.expires_date,
       );
+    });
+  });
+
+  describe('joinTeam', () => {
+    const userId = randomUUID();
+    const validJoinCode = 'ABCD1234';
+    const validCodeRecord = {
+      id: randomUUID(),
+      team_id: TeamWithMembersDummy.id,
+      code: validJoinCode,
+      is_active: true,
+      max_redemptions: null,
+      redemption_count: 0,
+      expires_at: null,
+      created_by: adminId,
+    };
+
+    const setupJoinTeamTransactionMocks = ({
+      codeRecord = validCodeRecord,
+      team = TeamWithMembersDummy,
+      existingMember = null,
+      membersCount = 1,
+      insertIdentifiers = [{ id: randomUUID() }],
+      updateAffected = 1,
+    }: {
+      codeRecord?: any;
+      team?: any;
+      existingMember?: any;
+      membersCount?: number;
+      insertIdentifiers?: any[];
+      updateAffected?: number;
+    } = {}) => {
+      const joinCodeQueryBuilder = {
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(codeRecord),
+      };
+      const teamQueryBuilder = {
+        setLock: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(team),
+      };
+      const insertQueryBuilder = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orIgnore: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ identifiers: insertIdentifiers }),
+      };
+      const updateQueryBuilder = {
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: updateAffected }),
+      };
+      const teamToMemberOrm = {
+        findOne: jest.fn().mockResolvedValue(existingMember),
+        count: jest.fn().mockResolvedValue(membersCount),
+      };
+
+      const manager = {
+        createQueryBuilder: jest
+          .fn()
+          .mockReturnValueOnce(joinCodeQueryBuilder)
+          .mockReturnValueOnce(teamQueryBuilder)
+          .mockReturnValueOnce(insertQueryBuilder)
+          .mockReturnValueOnce(updateQueryBuilder),
+        getRepository: jest.fn().mockImplementation((entity) => {
+          if (entity === TeamToMember) {
+            return teamToMemberOrm;
+          }
+          throw new Error(`Unexpected entity: ${entity}`);
+        }),
+      };
+
+      (TeamJoinCodeRepositoryMock.orm as any).manager = {
+        transaction: jest.fn().mockImplementationOnce(async (callback) => callback(manager)),
+      };
+
+      return {
+        manager,
+        joinCodeQueryBuilder,
+        teamQueryBuilder,
+        insertQueryBuilder,
+        updateQueryBuilder,
+        teamToMemberOrm,
+      };
+    };
+
+    it('negative: if join code does not exist, throw NotFoundException', async () => {
+      setupJoinTeamTransactionMocks({ codeRecord: null });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, 'INVALID_CODE');
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual('Invalid join code');
+    });
+
+    it('negative: if join code is deactivated, throw BadRequestException', async () => {
+      setupJoinTeamTransactionMocks({ codeRecord: { ...validCodeRecord, is_active: false } });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('This join code has been deactivated');
+    });
+
+    it('negative: if join code has expired, throw BadRequestException', async () => {
+      setupJoinTeamTransactionMocks({
+        codeRecord: {
+          ...validCodeRecord,
+          expires_at: new Date('2020-01-01'),
+        },
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('This join code has expired');
+    });
+
+    it('negative: if join code has reached max redemptions, throw BadRequestException', async () => {
+      setupJoinTeamTransactionMocks({
+        codeRecord: {
+          ...validCodeRecord,
+          max_redemptions: 1,
+          redemption_count: 1,
+        },
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('This join code has reached its maximum number of redemptions');
+    });
+
+    it('negative: if team does not exist, throw NotFoundException with "Team not found"', async () => {
+      setupJoinTeamTransactionMocks({ team: null });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual('Team not found');
+    });
+
+    it('negative: if team is expired, throw NotFoundException with "Team not found"', async () => {
+      setupJoinTeamTransactionMocks({
+        team: {
+          ...TeamWithMembersDummy,
+          expires_date: new Date('2020-01-01'),
+        },
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual('Team not found');
+    });
+
+    it('positive: if user is already a member, return 200 idempotent response', async () => {
+      const { manager } = setupJoinTeamTransactionMocks({ existingMember: TeamMemberDummy });
+
+      const result = await teamManagementService.joinTeam(TeamMemberDummy.member_id, validJoinCode);
+
+      expect(result).toEqual({
+        message: 'User is already a member of this team',
+        statusCode: 200,
+      });
+      expect(manager.createQueryBuilder).toHaveBeenCalledTimes(2);
+    });
+
+    it('negative: if team has reached its member limit, throw BadRequestException', async () => {
+      const fullTeam = {
+        ...TeamWithMembersDummy,
+        team_size_limit: 2,
+      };
+      setupJoinTeamTransactionMocks({ team: fullTeam, existingMember: null, membersCount: 2 });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('Team has reached its member limit');
+    });
+
+    it('positive: user should be added as standard member with correct fields and code redemption incremented', async () => {
+      const teamWithCapacity = {
+        ...TeamWithMembersDummy,
+        team_size_limit: 10,
+      };
+      const { insertQueryBuilder, updateQueryBuilder } = setupJoinTeamTransactionMocks({
+        team: teamWithCapacity,
+        existingMember: null,
+        membersCount: 1,
+      });
+
+      const result = await teamManagementService.joinTeam(userId, validJoinCode);
+
+      expect(result).toEqual({
+        message: 'Successfully joined team',
+        team_id: TeamWithMembersDummy.id,
+        team_name: TeamWithMembersDummy.name,
+        statusCode: 201,
+      });
+
+      expect(insertQueryBuilder.values).toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        member_id: userId,
+        member_expiry_date: teamWithCapacity.expires_date,
+        invitation_status: InvitationStatus.ACCEPTED,
+        invitation_sent_at: null,
+        invitation_send_count: 0,
+        invitation_responded_at: null,
+      });
+
+      expect(updateQueryBuilder.execute).toHaveBeenCalled();
+
+      expect(RevenueCatServiceMock.grantTeamMembership).toHaveBeenCalledWith(
+        userId,
+        Entitlement.team_member,
+        teamWithCapacity.expires_date,
+      );
+    });
+
+    it('positive: user should be added when team has no team_size_limit (null)', async () => {
+      const teamNoLimit = {
+        ...TeamWithMembersDummy,
+        team_size_limit: null,
+      };
+      setupJoinTeamTransactionMocks({ team: teamNoLimit, existingMember: null, membersCount: 1 });
+
+      const result = await teamManagementService.joinTeam(userId, validJoinCode);
+
+      expect(result.statusCode).toBe(201);
+      expect(result.message).toBe('Successfully joined team');
+    });
+
+    it('positive: member_expiry_date should be null if team has no expires_date', async () => {
+      const teamNoExpiry = {
+        ...TeamWithMembersDummy,
+        expires_date: null,
+        team_size_limit: 10,
+      };
+      const { insertQueryBuilder } = setupJoinTeamTransactionMocks({
+        team: teamNoExpiry,
+        existingMember: null,
+        membersCount: 0,
+      });
+
+      await teamManagementService.joinTeam(userId, validJoinCode);
+
+      expect(insertQueryBuilder.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          member_expiry_date: null,
+        }),
+      );
+    });
+
+    it('positive: entitlement grant failure should be logged via Sentry but not fail the request', async () => {
+      const teamWithCapacity = {
+        ...TeamWithMembersDummy,
+        team_size_limit: 10,
+      };
+      setupJoinTeamTransactionMocks({ team: teamWithCapacity, existingMember: null, membersCount: 1 });
+      RevenueCatServiceMock.grantTeamMembership.mockRejectedValueOnce(new Error('RevenueCat API error'));
+
+      const result = await teamManagementService.joinTeam(userId, validJoinCode);
+
+      expect(result.statusCode).toBe(201);
+      expect(SentryServiceMock.instance().captureException).toHaveBeenCalled();
+    });
+
+    it('negative: if redemption increment fails due concurrent limit hit, throw BadRequestException and rollback insert', async () => {
+      const teamWithCapacity = {
+        ...TeamWithMembersDummy,
+        team_size_limit: 10,
+      };
+      setupJoinTeamTransactionMocks({
+        team: teamWithCapacity,
+        existingMember: null,
+        membersCount: 1,
+        updateAffected: 0,
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toEqual('This join code has reached its maximum number of redemptions');
+      expect(RevenueCatServiceMock.grantTeamMembership).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createJoinCode', () => {
+    it('positive: should create an unlimited join code', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+      TeamJoinCodeRepositoryMock.orm.create.mockImplementation((args) => args);
+      TeamJoinCodeRepositoryMock.orm.save.mockImplementation((args) => Promise.resolve(args));
+
+      const result = await teamManagementService.createJoinCode(adminId, {
+        team_id: TeamWithMembersDummy.id,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          team_id: TeamWithMembersDummy.id,
+          is_active: true,
+          max_redemptions: null,
+          redemption_count: 0,
+          created_by: adminId,
+        }),
+      );
+      expect(result.code).toBeDefined();
+      expect(typeof result.code).toBe('string');
+    });
+
+    it('positive: should create a single-use join code', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+      TeamJoinCodeRepositoryMock.orm.create.mockImplementation((args) => args);
+      TeamJoinCodeRepositoryMock.orm.save.mockImplementation((args) => Promise.resolve(args));
+
+      const result = await teamManagementService.createJoinCode(adminId, {
+        team_id: TeamWithMembersDummy.id,
+        max_redemptions: 1,
+      });
+
+      expect(result.max_redemptions).toBe(1);
+    });
+
+    it('negative: non-admin should not be able to create join codes', async () => {
+      const nonAdminId = randomUUID();
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.createJoinCode(nonAdminId, {
+          team_id: TeamWithMembersDummy.id,
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('negative: should reject expired join code dates', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.createJoinCode(adminId, {
+          team_id: TeamWithMembersDummy.id,
+          expires_at: '2020-01-01T00:00:00.000Z',
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toBe('Join code expiration must be in the future');
+    });
+  });
+
+  describe('createBatchJoinCodes', () => {
+    it('positive: should create requested number of single-use join codes', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+      TeamJoinCodeRepositoryMock.orm.create.mockImplementation((args) => args);
+      TeamJoinCodeRepositoryMock.orm.save.mockImplementation((args) => Promise.resolve(args));
+
+      const result = await teamManagementService.createBatchJoinCodes(adminId, {
+        team_id: TeamWithMembersDummy.id,
+        count: 3,
+      });
+
+      expect(result).toHaveLength(3);
+      result.forEach((code) => {
+        expect(code.max_redemptions).toBe(1);
+        expect(code.redemption_count).toBe(0);
+        expect(code.is_active).toBe(true);
+        expect(code.created_by).toBe(adminId);
+      });
+    });
+
+    it('negative: should reject expired join code dates', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      let exception: any;
+      try {
+        await teamManagementService.createBatchJoinCodes(adminId, {
+          team_id: TeamWithMembersDummy.id,
+          count: 2,
+          expires_at: '2020-01-01T00:00:00.000Z',
+        });
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(BadRequestException);
+      expect(exception.message).toBe('Join code expiration must be in the future');
+    });
+  });
+
+  describe('deactivateJoinCode', () => {
+    it('positive: should deactivate a join code', async () => {
+      const joinCodeRecord = {
+        id: randomUUID(),
+        team_id: TeamWithMembersDummy.id,
+        code: 'TESTCODE',
+        is_active: true,
+      };
+      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(joinCodeRecord);
+      TeamRepositoryMock.orm.findOne.mockResolvedValueOnce(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [{ admin_id: adminId }],
+      });
+
+      await teamManagementService.deactivateJoinCode(adminId, joinCodeRecord.id);
+
+      expect(TeamJoinCodeRepositoryMock.orm.save).toHaveBeenCalledWith(expect.objectContaining({ is_active: false }));
+    });
+
+    it('negative: should throw NotFoundException if join code does not exist', async () => {
+      TeamJoinCodeRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+
+      let exception: any;
+      try {
+        await teamManagementService.deactivateJoinCode(adminId, randomUUID());
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual('Join code not found');
     });
   });
 });

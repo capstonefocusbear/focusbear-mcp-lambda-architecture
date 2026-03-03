@@ -11,6 +11,7 @@ import { PusherBeamsService } from '@app/pusher-beams';
 import { PusherService } from '@app/pusher';
 import { I18nService } from 'nestjs-i18n';
 import { mockDeep } from 'jest-mock-extended';
+import { getQueueToken } from '@nestjs/bull';
 import {
   ActivitySequenceDummy,
   deserializedActivitiesDummy,
@@ -23,6 +24,7 @@ import {
   userSettingsDummy,
   dummyUserCutoffTimeActivities,
   dummyFreeTimeActivity,
+  QueueMock,
 } from '../../../../../test/dummies';
 import {
   ActivityParserServiceMock,
@@ -53,7 +55,7 @@ import { DaysOfWeek } from '../../../activity/domain/days-of-week.enum';
 import { UserService } from '../user/user.service';
 import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { ActivityPriority } from '../../../activity/domain/activity-priority.enum';
-import { ONE_HOUR_SECONDS } from '../../../../shared/utils/constants';
+import { BullQueues, BullWorkers, ONE_HOUR_SECONDS } from '../../../../shared/utils/constants';
 import { CustomRoutineRepository } from '../../repositories/custom-routine.repository';
 
 describe('UserSettingsService', () => {
@@ -87,6 +89,10 @@ describe('UserSettingsService', () => {
           useValue: i18nServiceMock,
         },
         CustomRoutineRepository,
+        {
+          provide: getQueueToken(BullQueues.SETTINGS_NOTIFICATION),
+          useValue: QueueMock,
+        },
       ],
     })
       .overrideProvider(UserRepository)
@@ -215,6 +221,7 @@ describe('UserSettingsService', () => {
       expect(exception).toBeDefined();
       expect(exception).toBeInstanceOf(BadRequestException);
       expect(exception.message).toEqual(errorMessage);
+      expect(UserRepositoryMock.getUserSettings).not.toHaveBeenCalled();
     });
 
     it('negative: If any evening activity has a cutoff time before the cutoff time for non-high priority activities, throw BadRequestException', async () => {
@@ -390,6 +397,62 @@ describe('UserSettingsService', () => {
         userDummy.id,
       );
     });
+
+    it('queues settings notification with retry options when has_edited_settings is updated', async () => {
+      const deviceId = randomUUID();
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+      QueueMock.add.mockResolvedValueOnce({ id: 'job-1' });
+
+      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true, {
+        is_onboarding: false,
+        device_id: deviceId,
+      });
+
+      expect(QueueMock.add).toHaveBeenCalledWith(
+        BullWorkers.SEND_SETTINGS_NOTIFICATION,
+        {
+          userId: userDummy.id,
+          deviceId,
+          language: userDummy.language,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          },
+          removeOnComplete: 10,
+          removeOnFail: 5,
+        },
+      );
+    });
+
+    it('falls back to direct pusher trigger when queue enqueue fails', async () => {
+      const deviceId = randomUUID();
+      ActivityParserServiceMock.deserialize.mockResolvedValue({
+        deserializedActivities: deserializedActivitiesDummy,
+        logQuantityQuestions: logQuantityQuestionsDummy,
+        tutorials: dummyTutorials,
+      });
+      UserRepositoryMock.getUserSettings.mockResolvedValue(userSettingsDummy);
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true, user: userDummy });
+      QueueMock.add.mockRejectedValueOnce(new Error('Redis unavailable'));
+
+      await userSettingsService.updateSettings({ user_id: userDummy.id }, userSettingsDummy, true, {
+        is_onboarding: false,
+        device_id: deviceId,
+      });
+
+      expect(PusherServiceMock.trigger).toHaveBeenCalledWith(`private-${userDummy.id}`, 'settings-updated', {
+        device_id: deviceId,
+      });
+    });
   });
 
   describe('updateUserTimezoneAndLanguage', () => {
@@ -414,7 +477,13 @@ describe('UserSettingsService', () => {
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'America/New_York' });
 
       // NY time zone alternates between -4 and -5 hours UTC based on daylight savings time
-      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC-04:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          timezone: 'UTC-04:00',
+          updated_at: expect.any(String),
+        }),
+      );
       Settings.now = () => new Date().valueOf();
     });
 
@@ -422,21 +491,59 @@ describe('UserSettingsService', () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC-2' });
 
-      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC-02:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          timezone: 'UTC-02:00',
+          updated_at: expect.any(String),
+        }),
+      );
     });
 
     it('positive: should update user timezone in UTC offset format receiving positive UTC offset zone format', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { timezone: 'UTC+2' });
 
-      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { timezone: 'UTC+02:00' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          timezone: 'UTC+02:00',
+          updated_at: expect.any(String),
+        }),
+      );
+    });
+
+    it('positive: should refresh utc routine times when timezone and routine times are provided', async () => {
+      UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
+
+      await userSettingsService.updateUserTimezoneAndLanguage(
+        userDummy.id,
+        { timezone: 'UTC+10' },
+        { startupTime: '07:00', shutdownTime: '21:00' },
+      );
+
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          timezone: 'UTC+10:00',
+          utc_startup_time: '21:00',
+          utc_shutdown_time: '11:00',
+          updated_at: expect.any(String),
+        }),
+      );
     });
 
     it('positive: if only language is passed in timezone should not be updated', async () => {
       UserServiceMock.isVerboseLoggingAllowed.mockResolvedValueOnce({ isVerboseLoggingAllowed: true });
       await userSettingsService.updateUserTimezoneAndLanguage(userDummy.id, { language: LanguageOptions.SPANISH });
 
-      expect(UserRepositoryMock.update).toHaveBeenCalledWith(userDummy.id, { language: 'es' });
+      expect(UserRepositoryMock.update).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({
+          language: 'es',
+          updated_at: expect.any(String),
+        }),
+      );
     });
   });
 

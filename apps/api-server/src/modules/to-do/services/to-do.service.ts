@@ -137,9 +137,8 @@ export class ToDoService {
     return this.toDoRepository.orm.save(newToDo);
   }
 
-  async getToDos(
-    user_id: string,
-    {
+  async getToDos(user_id: string, getToDosQueryDto: GetToDosQueryDto) {
+    const {
       page,
       order,
       skip,
@@ -150,8 +149,8 @@ export class ToDoService {
       perspiration_gte,
       perspiration_lte,
       synced_project_id,
-    }: GetToDosQueryDto,
-  ) {
+      sort_mode,
+    } = getToDosQueryDto;
     const [toDos, total] = await this.toDoRepository.getUserToDos(user_id, {
       take,
       skip,
@@ -161,6 +160,7 @@ export class ToDoService {
       perspiration_gte,
       perspiration_lte,
       synced_project_id,
+      sort_mode,
     });
 
     // Clean up legacy data: filter out empty arrays and invalid subtask entries

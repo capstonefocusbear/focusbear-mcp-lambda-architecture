@@ -132,6 +132,30 @@ export class TaskCommentService {
   }
 
   private mapCommentToResponse(comment: TaskComment): TaskCommentResponseDto {
+    const reactions = [...(comment.reactions || [])]
+      .sort((left, right) => {
+        const createdAtOrder = (left.created_at || '').localeCompare(right.created_at || '');
+        if (createdAtOrder !== 0) {
+          return createdAtOrder;
+        }
+
+        return (left.id || '').localeCompare(right.id || '');
+      })
+      .map((reaction) => ({
+        id: reaction.id,
+        comment_id: reaction.comment_id,
+        user_id: reaction.user_id,
+        emoji: reaction.emoji,
+        user: reaction.user
+          ? {
+              id: reaction.user.id,
+              username: reaction.user.username,
+            }
+          : undefined,
+        created_at: reaction.created_at,
+        updated_at: reaction.updated_at,
+      }));
+
     return {
       id: comment.id,
       task_id: comment.task_id,
@@ -143,6 +167,7 @@ export class TaskCommentService {
             username: comment.user.username,
           }
         : undefined,
+      reactions,
       created_at: comment.created_at,
       updated_at: comment.updated_at,
     };

@@ -669,7 +669,7 @@ Analyse the goal text to understand the desired outcome, key skills, and relevan
 Return ONLY a JSON object with a "habits" array. Each habit must include:
 - name (string, concise and goal-aligned)
 - description (string, what the user does)
-- routineType ("morning", "evening", or "break")
+- routineType ("morning", "evening", or "break"; when the preferred routine type is "any", assign "morning" for habits best done at the start of the day and "evening" for wind-down or end-of-day habits)
 - durationMinutes (integer, >= 1)
 - justification (<=120 characters summarising why it helps)
 Example: { "habits": [{ "name": "...", "description": "...", "routineType": "morning", "durationMinutes": 10, "justification": "..." }] }

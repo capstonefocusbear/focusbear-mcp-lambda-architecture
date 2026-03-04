@@ -24,6 +24,7 @@ import {
   BRAIN_DUMP_CONVERSION_PROMPT_CONFIG_PATH,
   EMOJI_GENERATION_PROMPT_CONFIG_PATH,
   HABIT_INSTRUCTION_GENERATION_PROMPT_CONFIG_PATH,
+  ROUTINE_SUGGESTIONS_GENERATE_PROMPT_CONFIG_PATH,
 } from './openai.constants';
 
 @Injectable()
@@ -219,6 +220,11 @@ export class PromptCacheService implements OnModuleInit {
       // Load routine suggestions prompt
       allPrompts = allPrompts.concat(
         await loadPromptsFromYaml(ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH, 'routine suggestions'),
+      );
+
+      // Load routine suggestions generation prompt
+      allPrompts = allPrompts.concat(
+        await loadPromptsFromYaml(ROUTINE_SUGGESTIONS_GENERATE_PROMPT_CONFIG_PATH, 'routine suggestions generation'),
       );
 
       // Load new prompts from .md files

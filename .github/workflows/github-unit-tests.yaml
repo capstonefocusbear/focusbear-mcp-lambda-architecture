@@ -135,6 +135,7 @@ jobs:
           name: smoke-test-server-log
           path: server.log
           retention-days: 7
+          if-no-files-found: warn
 
   # App startup check: verifies API server entrypoint starts and stays up. Same services/env as smoke.
   # Failure dependency: continue-on-error so when this check fails, the pipeline still passes —

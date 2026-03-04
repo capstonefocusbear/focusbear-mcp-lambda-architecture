@@ -18,8 +18,8 @@ export class UserStatsController {
   constructor(private readonly userDailyStatsService: UserDailyStatsService) {}
 
   @Get('leaderboard')
-  async getStreaksLeaderBoard(@Query() { streak_type, limit }: GetLeaderBoardQuery, @AuthContext() { user }: Passport) {
-    return this.userDailyStatsService.getLeaderBoardRankings(user.id, { streak_type, limit });
+  async getStreaksLeaderBoard(@Query() query: GetLeaderBoardQuery, @AuthContext() { user }: Passport) {
+    return this.userDailyStatsService.getLeaderBoardRankings(user.id, query);
   }
 
   @Get('daily-summary')

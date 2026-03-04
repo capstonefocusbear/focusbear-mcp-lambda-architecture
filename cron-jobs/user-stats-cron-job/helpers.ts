@@ -331,11 +331,30 @@ export function calculateStreaks(
 
   const micro_breaks_streak = calculateStreakForMicroBreaks(daysWhereMicroBreaksWereCompleted, timeZone);
 
+  // Ensure streak is consistent with 90-day completion: if user completed every day in the window,
+  // streak must be at least that count (fixes UI showing e.g. "streak 19" with "90/90 days completed").
+  const morning_streak_final =
+    num_days_of_stats > 0 && daysWhereMorningRoutinesWereCompletedIn90Days.length >= num_days_of_stats
+      ? Math.max(morning_routines_streak, morning_number_days_completed)
+      : morning_routines_streak;
+  const evening_streak_final =
+    num_days_of_stats > 0 && daysWhereEveningRoutinesWereCompletedIn90Days.length >= num_days_of_stats
+      ? Math.max(evening_routines_streak, evening_number_days_completed)
+      : evening_routines_streak;
+  const focus_streak_final =
+    num_days_of_stats > 0 && daysWhereFocusModesWereCompletedIn90Days.length >= num_days_of_stats
+      ? Math.max(focus_modes_streak, focus_modes_number_days_completed)
+      : focus_modes_streak;
+  const micro_streak_final =
+    num_days_of_stats > 0 && daysWhereMicroBreaksWereCompletedIn90Days.length >= num_days_of_stats
+      ? Math.max(micro_breaks_streak, micro_breaks_number_days_completed)
+      : micro_breaks_streak;
+
   return {
-    focus_modes_streak: isValidStreak(focus_modes_streak) ? focus_modes_streak : 0,
-    morning_routines_streak: isValidStreak(morning_routines_streak) ? morning_routines_streak : 0,
-    evening_routines_streak: isValidStreak(evening_routines_streak) ? evening_routines_streak : 0,
-    micro_breaks_streak: isValidStreak(micro_breaks_streak) ? micro_breaks_streak : 0,
+    focus_modes_streak: isValidStreak(focus_streak_final) ? focus_streak_final : 0,
+    morning_routines_streak: isValidStreak(morning_streak_final) ? morning_streak_final : 0,
+    evening_routines_streak: isValidStreak(evening_streak_final) ? evening_streak_final : 0,
+    micro_breaks_streak: isValidStreak(micro_streak_final) ? micro_streak_final : 0,
     percent_morning_routines_streak_complete_in_90days:
       num_days_of_stats > 0
         ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)

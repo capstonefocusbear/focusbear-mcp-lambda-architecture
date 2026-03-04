@@ -437,10 +437,14 @@ export class UserDailyStatsService {
 
   async getLeaderBoardRankings(
     user_id: string,
-    { streak_type = StreakTypes.MORNING_ROUTINES_STREAK, limit }: GetLeaderBoardQuery,
+    { streak_type = StreakTypes.MORNING_ROUTINES_STREAK, limit, active_within_days }: GetLeaderBoardQuery,
   ) {
-    const users_rankings = await this.userRepository.getLeaderboardRankingsByStreakType({ streak_type, limit });
-    const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type);
+    const users_rankings = await this.userRepository.getLeaderboardRankingsByStreakType({
+      streak_type,
+      limit,
+      active_within_days,
+    });
+    const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type, active_within_days);
     return { user_rank, users_rankings };
   }
 

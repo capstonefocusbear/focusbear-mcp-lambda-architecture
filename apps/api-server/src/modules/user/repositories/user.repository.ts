@@ -350,6 +350,7 @@ export class UserRepository extends BaseRepository<User> {
   async getLeaderboardRankingsByStreakType({
     streak_type = StreakTypes.MORNING_ROUTINES_STREAK,
     limit = 50,
+    active_within_days,
   }: GetLeaderBoardQuery) {
     return this.orm.query(
       `
@@ -430,15 +431,16 @@ export class UserRepository extends BaseRepository<User> {
         LEFT JOIN daily_stats ON daily_stats.user_id = users.id 
           AND daily_stats.date_completed >= NOW() - INTERVAL '90 days'
         WHERE users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
+          AND (($3::int IS NULL) OR (users.last_time_stats_updated >= NOW() - ($3::int || ' days')::interval))
         GROUP BY users.id
         ) as result
         LIMIT $2
     `,
-      [streak_type, limit],
+      [streak_type, limit, active_within_days ?? null],
     );
   }
 
-  async getUserLeaderboardRank(userId: string, streakType: StreakTypes): Promise<any> {
+  async getUserLeaderboardRank(userId: string, streakType: StreakTypes, activeWithinDays?: number): Promise<any> {
     const result = await this.orm.query(
       `
         WITH leaderBoard AS
@@ -522,6 +524,7 @@ export class UserRepository extends BaseRepository<User> {
               AND daily_stats.date_completed >= NOW() - INTERVAL '90 days'
             WHERE 
               users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
+              AND (($3::int IS NULL) OR (users.last_time_stats_updated >= NOW() - ($3::int || ' days')::interval))
             GROUP BY users.id
           ) as result 
         )
@@ -550,7 +553,7 @@ export class UserRepository extends BaseRepository<User> {
       FROM leaderBoard
       WHERE id = $2
     `,
-      [streakType, userId],
+      [streakType, userId, activeWithinDays ?? null],
     );
     return result[0] || null;
   }

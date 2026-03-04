@@ -1302,6 +1302,7 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
           ai_justification: habit.justification ?? '',
           ai_match_score: null,
           ai_goals: [goal],
+          habit_icon: habit.emoji || undefined,
         };
 
         byGoal[goal].push(generatedActivity);

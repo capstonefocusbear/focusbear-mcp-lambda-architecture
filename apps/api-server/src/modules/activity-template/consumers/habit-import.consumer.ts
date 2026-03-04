@@ -462,6 +462,20 @@ export class HabitImportConsumer {
           activityType = String(fallbackActivityType);
         }
 
+        const sourceEmoji =
+          typeof sourceHabit.emoji === 'string' &&
+          /\p{Emoji}/u.test(sourceHabit.emoji) &&
+          sourceHabit.emoji.length <= 10
+            ? sourceHabit.emoji
+            : undefined;
+        const templateEmoji =
+          typeof template?.habitIcon === 'string' &&
+          /\p{Emoji}/u.test(template.habitIcon) &&
+          template.habitIcon.length <= 10
+            ? template.habitIcon
+            : undefined;
+        const validEmoji = sourceEmoji ?? templateEmoji;
+
         const habit: UpdateActivityDto = {
           id: resolvedId,
           name,
@@ -472,6 +486,9 @@ export class HabitImportConsumer {
           category: sourceHabit.category,
           text_instructions: description,
         };
+        if (validEmoji) {
+          (habit as any).habit_icon = validEmoji;
+        }
         return habit;
       })
       .filter((habit): habit is UpdateActivityDto => Boolean(habit));

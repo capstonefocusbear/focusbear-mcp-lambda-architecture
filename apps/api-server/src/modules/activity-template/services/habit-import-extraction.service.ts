@@ -271,6 +271,7 @@ export class HabitImportExtractionService {
           durationSeconds: bestMatch.template.duration_seconds,
           matchScore: bestMatch.matchScore,
           justification: bestMatch.justification,
+          habitIcon: bestMatch.template.activity_data?.habit_icon,
         },
       },
       telemetryDelta,

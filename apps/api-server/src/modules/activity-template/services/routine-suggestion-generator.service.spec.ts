@@ -425,6 +425,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
               habits: [
                 {
                   name: 'Buff Morning Circuit',
+                  emoji: '💪',
                   description: 'Strength routine tailored to building muscle.',
                   routineType: ActivityType.morning,
                   durationMinutes: 20,
@@ -447,6 +448,7 @@ describe(RoutineSuggestionGeneratorService.name, () => {
     expect(result).toEqual([
       {
         name: 'Buff Morning Circuit',
+        emoji: '💪',
         description: 'Strength routine tailored to building muscle.',
         routineType: ActivityType.morning,
         durationMinutes: 20,

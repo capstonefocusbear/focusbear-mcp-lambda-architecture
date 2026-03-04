@@ -744,6 +744,7 @@ describe('ActivityLibraryService', () => {
       RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([
         {
           name: 'AI Buff Builder',
+          emoji: '💪',
           description: 'Strength routine generated for the user goal.',
           routineType: ActivityType.morning,
           durationMinutes: 18,
@@ -770,6 +771,7 @@ describe('ActivityLibraryService', () => {
       expect(response[0].ai_generated).toBe(true);
       expect(response[0].description).toBe('Strength routine generated for the user goal.');
       expect(response[0].ai_justification).toBe('Aligns with muscle gain objective.');
+      expect(response[0].habit_icon).toBe('💪');
     });
 
     it('falls back to generated habits when all suggested match scores are below threshold', async () => {

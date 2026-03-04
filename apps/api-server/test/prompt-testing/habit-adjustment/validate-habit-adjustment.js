@@ -43,13 +43,13 @@ function validateSingleHabit(habit) {
     };
   }
   // Check for extra fields (should only have id, name, duration_seconds)
-  const allowedFields = ['id', 'name', 'duration_seconds'];
+  const allowedFields = ['id', 'name', 'duration_seconds', 'emoji'];
   const extraFields = Object.keys(habit).filter((key) => !allowedFields.includes(key));
   if (extraFields.length > 0) {
     return {
       pass: false,
       score: 0.0,
-      reason: `Extra fields found: ${extraFields.join(', ')}. Only id, name, and duration_seconds are allowed.`,
+      reason: `Extra fields found: ${extraFields.join(', ')}. Only id, name, duration_seconds, and emoji are allowed.`,
     };
   }
   // Validate duration is reasonable (between 1 second and 24 hours)

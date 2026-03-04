@@ -1372,6 +1372,7 @@ export class OpenAIService {
         name: habit.name,
         duration_seconds: habit.duration_seconds,
         activity_type: habit.activity_type,
+        emoji: habit.habit_icon || habit.emoji || undefined,
       }));
 
       const filledPromptContent = this.buildAdjustHabitsPrompt(
@@ -1408,6 +1409,8 @@ export class OpenAIService {
           for (const { goal, habits } of parsed) {
             validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
               const rest = currentHabits.find((incomingHabit) => incomingHabit.id === habit?.id) ?? {};
+              const rawEmoji = typeof habit?.emoji === 'string' ? habit.emoji : undefined;
+              const emoji = rawEmoji && /\p{Emoji}/u.test(rawEmoji) && rawEmoji.length <= 10 ? rawEmoji : undefined;
               return {
                 ...rest,
                 id: String(habit?.id ?? ''),
@@ -1415,6 +1418,7 @@ export class OpenAIService {
                 duration_seconds: Number.isFinite(Number(habit?.duration_seconds))
                   ? Math.max(0, Math.round(Number(habit?.duration_seconds)))
                   : 0,
+                habit_icon: emoji || rest?.habit_icon,
               };
             });
           }
@@ -1435,7 +1439,16 @@ export class OpenAIService {
             const rest = currentHabits.find((incomingHabit) => incomingHabit.id === adjustedHabit.id) || {};
             const generatedId = isUUID(rawId) ? rawId : randomUUID();
             const resolvedName = name || rest?.name || '';
-            return { ...rest, id: rest.id || generatedId, name: resolvedName, duration_seconds };
+            const rawEmoji =
+              typeof (adjustedHabit as any)?.emoji === 'string' ? (adjustedHabit as any).emoji : undefined;
+            const emoji = rawEmoji && /\p{Emoji}/u.test(rawEmoji) && rawEmoji.length <= 10 ? rawEmoji : undefined;
+            return {
+              ...rest,
+              id: rest.id || generatedId,
+              name: resolvedName,
+              duration_seconds,
+              habit_icon: emoji || rest?.habit_icon,
+            };
           })
           .filter((adjustedHabit) => Boolean(adjustedHabit.name));
 
@@ -1555,7 +1568,9 @@ export class OpenAIService {
 
   async extractHabitsFromImage(
     imageBuffer: string,
-  ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
+  ): Promise<
+    { name: string; emoji?: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]
+  > {
     try {
       const prompt = this.promptCacheService.getPrompt('habit-import-image');
 
@@ -1660,7 +1675,9 @@ export class OpenAIService {
 
   async extractHabitsFromTranscript(
     transcript: string,
-  ): Promise<{ name: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]> {
+  ): Promise<
+    { name: string; emoji?: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]
+  > {
     try {
       if (!this.isValidInput(transcript, MAX_WORD_LENGTH.audioTranscript, 'habit_import_transcript')) {
         throw new Error('Invalid input');

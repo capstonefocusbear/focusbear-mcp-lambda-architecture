@@ -530,7 +530,7 @@ describe('ActivityLibraryService', () => {
       expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).toHaveBeenCalledWith(
         'Organize your tasks using AI',
         expect.objectContaining({
-          routineType: ActivityType.morning,
+          routineType: undefined,
         }),
       );
     });
@@ -945,6 +945,64 @@ describe('ActivityLibraryService', () => {
       expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).toHaveBeenCalled();
       expect(list.length).toBeGreaterThanOrEqual(1);
       expect(list.find((item: any) => item.ai_generated)).toBeDefined();
+    });
+
+    it('passes undefined routineType in post-aggregation generation fallback when routine is not specified', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      // Return a library-type template that will survive per-goal processing but be
+      // filtered out by filterTemplatesForRoutineScope (which keeps only morning/evening).
+      const libraryTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        activity_type: 'library',
+        duration_seconds: 300,
+      };
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([
+        { activityTemplateId: libraryTemplate.id, similarity: 0.85 },
+      ]);
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([libraryTemplate]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [
+          {
+            habitId: libraryTemplate.id,
+            name: 'Library habit',
+            justification: 'Good match.',
+            matchScore: 0.85,
+            template: libraryTemplate,
+            description: 'desc',
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      });
+      // First call: per-goal path (no candidates after scope filter reach generation)
+      // Second call: post-aggregation fallback
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValue([
+        {
+          name: 'Evening wind-down',
+          description: 'Relaxation routine.',
+          routineType: ActivityType.evening,
+          durationMinutes: 10,
+          justification: 'Helps the user relax.',
+        },
+      ]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: ['Improve focus'],
+      };
+
+      await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+
+      // The post-aggregation fallback should pass undefined routineType (not default to morning)
+      const generateCalls = RoutineSuggestionGeneratorServiceMock.generateNewHabits.mock.calls;
+      const lastCall = generateCalls[generateCalls.length - 1];
+      expect(lastCall[1]).toEqual(
+        expect.objectContaining({
+          routineType: undefined,
+        }),
+      );
     });
 
     it('strips duration phrases from generated descriptions', async () => {

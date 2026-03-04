@@ -47,6 +47,8 @@ export const TODOS_TRANSCRIPT_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/todos-transcript-analysis/prompt.json';
 export const ROUTINE_SUGGESTIONS_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/routine-suggestions/config.yaml';
+export const ROUTINE_SUGGESTIONS_GENERATE_PROMPT_CONFIG_PATH =
+  'apps/api-server/test/prompt-testing/routine-suggestions-generate/config.yaml';
 export const HABIT_IMPORT_IMAGE_PROMPT_CONFIG_PATH =
   'apps/api-server/test/prompt-testing/habit-import-image/config.yaml';
 export const HABIT_IMPORT_TRANSCRIPT_PROMPT_CONFIG_PATH =

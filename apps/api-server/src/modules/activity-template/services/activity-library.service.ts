@@ -612,7 +612,7 @@ export class ActivityLibraryService {
       goals.map(async ({ goal, isCustom }) => {
         const generationOptions = {
           limit: RAG_RETRIEVAL_LIMIT,
-          routineType: request.routine || ActivityType.morning,
+          routineType: request.routine,
           routineDurationSeconds,
         };
         try {
@@ -893,7 +893,7 @@ export class ActivityLibraryService {
             {
               limit: RAG_RETRIEVAL_LIMIT,
               routineDurationSeconds,
-              routineType: request.routine || ActivityType.morning,
+              routineType: request.routine,
             },
             telemetry,
           ),

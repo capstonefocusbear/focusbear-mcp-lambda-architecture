@@ -40,7 +40,7 @@ export class SubscriptionEmailService {
       return;
     }
 
-    let user: { id?: string; auth0_id: string; username?: string; email_frequency?: EmailFrequency } | null;
+    let user: { id?: string; auth0_id?: string; username?: string; email_frequency?: EmailFrequency } | null;
     try {
       user = await this.userRepository.orm.findOne({
         where: { id: userId },
@@ -53,6 +53,11 @@ export class SubscriptionEmailService {
 
     if (!user) {
       this.logger.log(`sendThankYouEmail: user ${userId} not found, skipping`);
+      return;
+    }
+
+    if (!user.auth0_id) {
+      this.logger.log(`sendThankYouEmail: user ${userId} has no auth0_id, skipping`);
       return;
     }
 

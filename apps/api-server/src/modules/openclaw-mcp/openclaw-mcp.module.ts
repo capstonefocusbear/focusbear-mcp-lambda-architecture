@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { CryptoModule } from '@app/crypto';
 import { OpenclawMcpAuthController } from './controllers/openclaw-mcp-auth.controller';
 import { OpenclawMcpTasksController } from './controllers/openclaw-mcp-tasks.controller';
@@ -9,7 +9,7 @@ import { OpenclawTokenGuard } from './guards/openclaw-token.guard';
 import { ToDoModule } from '../to-do/to-do.module';
 
 @Module({
-  imports: [CryptoModule, ToDoModule],
+  imports: [CryptoModule, forwardRef(() => ToDoModule)],
   controllers: [OpenclawMcpAuthController, OpenclawMcpTasksController],
   providers: [OpenclawMcpAuthService, OpenclawMcpTasksService, OpenclawTokenRepository, OpenclawTokenGuard],
   exports: [OpenclawMcpAuthService, OpenclawTokenRepository],

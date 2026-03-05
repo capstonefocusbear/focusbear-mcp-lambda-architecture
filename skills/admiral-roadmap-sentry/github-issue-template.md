@@ -1,23 +1,23 @@
 ## Sentry Error Report
 
-**Platform:** {platform}
-**Priority:** {priority}
-**Error:** {title}
-**First Seen:** {firstSeen}
-**Last Seen:** {lastSeen}
-**Event Count (24h):** {count}
-**Affected Users (24h):** {userCount}
-**Sentry Link:** {permalink}
+**Platform:** ${PLATFORM}
+**Priority:** ${PRIORITY}
+**Error:** ${TITLE}
+**First Seen:** ${FIRST_SEEN}
+**Last Seen:** ${LAST_SEEN}
+**Event Count (24h):** ${COUNT}
+**Affected Users (24h):** ${USER_COUNT}
+**Sentry Link:** ${PERMALINK}
 
 ### Stack Trace / Culprit
 
 ```
-{culprit}
+${CULPRIT}
 ```
 
 ### Triage Notes
 
-{triage_notes}
+${TRIAGE_NOTES}
 
 ---
 
@@ -30,4 +30,4 @@
 ---
 
 *Filed automatically by Admiral Roadmap (AI triage agent) — not human-authored*
-*Sentry Issue ID: {sentry_id}*
+*Sentry Issue ID: ${SENTRY_ID}*

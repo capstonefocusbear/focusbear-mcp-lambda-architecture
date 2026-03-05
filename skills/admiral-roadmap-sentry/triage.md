@@ -75,7 +75,7 @@ For each Sentry issue:
    - error:
      - userCount > 5% active users → P0
      - userCount > 1% active users → P1
-     - count > 10 in 24h → P1
+     - userCount > 10 in 24h → P1
      - userCount > 3 → P2
      - else → P3
    - warning → P2 (if userCount > 3), else P3

@@ -37,11 +37,12 @@ See **Sentry Access Setup** section below for jeznag's setup steps.
       - **P3:** Skip (batch digest is a future enhancement).
    c. Create the GitHub issue using:
       ```bash
+      export PLATFORM PRIORITY TITLE FIRST_SEEN LAST_SEEN COUNT USER_COUNT PERMALINK CULPRIT TRIAGE_NOTES SENTRY_ID
       gh issue create \
         --repo Focus-Bear/backend \
-        --title "[P{N}][{PLATFORM}] {sentry_title}" \
-        --body "$(cat github-issue-template.md | envsubst)" \
-        --label "bug,openclaw,P{N}"
+        --title "[${PRIORITY}][${PLATFORM}] ${TITLE}" \
+        --body "$(envsubst < github-issue-template.md)" \
+        --label "bug,openclaw,${PRIORITY}"
       ```
    d. Record the mapping in `~/.openclaw/admiral-roadmap-sentry/filed-issues.json`:
       ```json

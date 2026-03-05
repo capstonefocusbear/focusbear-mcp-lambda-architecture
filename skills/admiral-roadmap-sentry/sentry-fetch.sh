@@ -47,16 +47,15 @@ ENDPOINT="${SENTRY_API_BASE}/projects/${SENTRY_ORG_SLUG}/${PROJECT_SLUG}/issues/
 # Build query parameters
 QUERY_PARAMS="query=is%3Aunresolved&sort=date&limit=${LIMIT}&statsPeriod=${STATS_PERIOD}"
 
-# Make the API call
-HTTP_RESPONSE=$(curl --silent --write-out "HTTPSTATUS:%{http_code}" \
+# Make the API call using a tmpfile to safely capture body and status separately
+TMPFILE=$(mktemp)
+HTTP_STATUS=$(curl --silent --output "$TMPFILE" --write-out "%{http_code}" \
   --request GET \
   --header "Authorization: Bearer ${SENTRY_AUTH_TOKEN}" \
   --header "Content-Type: application/json" \
   "${ENDPOINT}?${QUERY_PARAMS}")
-
-# Split body and status
-HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed 's/HTTPSTATUS:[0-9]*$//')
-HTTP_STATUS=$(echo "$HTTP_RESPONSE" | grep -o 'HTTPSTATUS:[0-9]*' | cut -d: -f2)
+HTTP_BODY=$(<"$TMPFILE")
+rm -f "$TMPFILE"
 
 if [[ "$HTTP_STATUS" -ne 200 ]]; then
   echo "ERROR: Sentry API returned HTTP ${HTTP_STATUS} for project '${PROJECT_SLUG}'" >&2
@@ -71,8 +70,8 @@ if command -v jq &>/dev/null; then
     id: .id,
     title: .title,
     culprit: .culprit,
-    count: .count,
-    userCount: .userCount,
+    count: (.count | tonumber),
+    userCount: (.userCount | tonumber),
     firstSeen: .firstSeen,
     lastSeen: .lastSeen,
     permalink: .permalink,

@@ -744,6 +744,7 @@ describe('ActivityLibraryService', () => {
       RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([
         {
           name: 'AI Buff Builder',
+          emoji: '💪',
           description: 'Strength routine generated for the user goal.',
           routineType: ActivityType.morning,
           durationMinutes: 18,
@@ -770,6 +771,39 @@ describe('ActivityLibraryService', () => {
       expect(response[0].ai_generated).toBe(true);
       expect(response[0].description).toBe('Strength routine generated for the user goal.');
       expect(response[0].ai_justification).toBe('Aligns with muscle gain objective.');
+      expect(response[0].habit_icon).toBe('💪');
+    });
+
+    it('drops invalid generated emoji values from AI habits', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockResolvedValueOnce([]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [],
+        rejectedCount: 0,
+        parsedCount: 0,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockResolvedValueOnce([
+        {
+          name: 'AI Buff Builder',
+          emoji: '3',
+          description: 'Strength routine generated for the user goal.',
+          routineType: ActivityType.morning,
+          durationMinutes: 18,
+          justification: 'Aligns with muscle gain objective.',
+        },
+      ]);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: ['Get buffed'],
+      };
+
+      const response = await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id);
+
+      expect(response).toHaveLength(1);
+      expect(response[0].habit_icon).toBeUndefined();
     });
 
     it('falls back to generated habits when all suggested match scores are below threshold', async () => {

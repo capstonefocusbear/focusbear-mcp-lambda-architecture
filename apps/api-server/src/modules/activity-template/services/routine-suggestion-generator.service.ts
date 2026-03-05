@@ -5,6 +5,7 @@ import { OpenAIService, PromptCacheService } from '@app/openai';
 import { createHash } from 'crypto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { normalizeSingleEmoji } from '../../../shared/utils/emoji';
 
 const MAX_CONTEXT_CANDIDATES = 5;
 const DEFAULT_GENERATED_LIMIT = 3;
@@ -66,8 +67,9 @@ const ROUTINE_SUGGESTIONS_GENERATION_RESPONSE_FORMAT = {
               routineType: { type: 'string', enum: ['morning', 'evening', 'break'] },
               durationMinutes: { type: 'integer', minimum: 1, maximum: 120 },
               justification: { type: 'string' },
+              emoji: { type: 'string' },
             },
-            required: ['name', 'description', 'routineType', 'durationMinutes', 'justification'],
+            required: ['name', 'description', 'routineType', 'durationMinutes', 'justification', 'emoji'],
             additionalProperties: false,
           },
         },
@@ -94,6 +96,7 @@ export interface RoutineSuggestionResult {
 
 export interface GeneratedHabitSuggestion {
   name: string;
+  emoji?: string;
   description?: string;
   routineType?: ActivityType | string;
   durationMinutes?: number;
@@ -672,7 +675,8 @@ Return ONLY a JSON object with a "habits" array. Each habit must include:
 - routineType ("morning", "evening", or "break"; when the preferred routine type is "any", assign "morning" for habits best done at the start of the day and "evening" for wind-down or end-of-day habits)
 - durationMinutes (integer, >= 1)
 - justification (<=120 characters summarising why it helps)
-Example: { "habits": [{ "name": "...", "description": "...", "routineType": "morning", "durationMinutes": 10, "justification": "..." }] }
+- emoji (a single emoji character that represents the habit; optional but strongly preferred)
+Example: { "habits": [{ "name": "...", "description": "...", "routineType": "morning", "durationMinutes": 10, "justification": "...", "emoji": "🏋️" }] }
 Guidance:
 - Tailor the habit to the goal: reference domain language, necessary drills, study plans, or lifestyle adjustments that fit the goal.
 - Include a mix of training, learning, strategy, or recovery actions as appropriate for the outcome.
@@ -711,6 +715,7 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
         }
         results.push({
           name: item.name,
+          emoji: normalizeSingleEmoji(item.emoji),
           description: typeof item.description === 'string' ? item.description : undefined,
           routineType: typeof item.routineType === 'string' ? item.routineType : undefined,
           durationMinutes:

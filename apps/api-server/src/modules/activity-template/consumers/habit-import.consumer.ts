@@ -19,6 +19,7 @@ import {
 } from '../services/habit-import-extraction.service';
 import { ExtractedHabit, HabitImportJobData, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
 import { BullQueues, BullWorkers, S3_BUCKET_HABIT_IMPORTS } from '../../../shared/utils/constants';
+import { normalizeSingleEmoji } from '../../../shared/utils/emoji';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { MetricsConfig } from '../../../config/metrics.config';
@@ -462,6 +463,10 @@ export class HabitImportConsumer {
           activityType = String(fallbackActivityType);
         }
 
+        const sourceEmoji = normalizeSingleEmoji(sourceHabit.emoji);
+        const templateEmoji = normalizeSingleEmoji(template?.habitIcon);
+        const validEmoji = sourceEmoji ?? templateEmoji;
+
         const habit: UpdateActivityDto = {
           id: resolvedId,
           name,
@@ -471,6 +476,7 @@ export class HabitImportConsumer {
           activity_type: activityType,
           category: sourceHabit.category,
           text_instructions: description,
+          habit_icon: validEmoji,
         };
         return habit;
       })

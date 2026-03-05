@@ -14,6 +14,7 @@ import { GetRoutineSuggestionsDto, GetRoutineSuggestionsInput } from '../dto/get
 import { UserGoalDto, UserGoalInput } from '../dto/user-goal.dto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ONE_MINUTE_SECONDS } from '../../../shared/utils/constants';
+import { normalizeSingleEmoji } from '../../../shared/utils/emoji';
 import { OpenAIService } from '../../../../../../libs/openai/src/openai.service';
 import { PromptCacheService } from '../../../../../../libs/openai/src/prompt-cache.service';
 import { INPUT_WRAPPER } from '../../../../../../libs/openai/src/openai.constants';
@@ -1302,6 +1303,7 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
           ai_justification: habit.justification ?? '',
           ai_match_score: null,
           ai_goals: [goal],
+          habit_icon: normalizeSingleEmoji(habit.emoji),
         };
 
         byGoal[goal].push(generatedActivity);

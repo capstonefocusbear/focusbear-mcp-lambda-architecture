@@ -38,7 +38,8 @@ prompts:
             "name": "string (clear, action-oriented habit name)",
             "description": "string (brief description of what the habit involves)",
             "estimatedDurationMinutes": number (1-120, best estimate),
-            "category": "string (exercise|meditation|journaling|reading|learning|health|productivity|other)"
+            "category": "string (exercise|meditation|journaling|reading|learning|health|productivity|other)",
+            "emoji": "string (a single emoji that represents this habit)"
           }
         ]
       }

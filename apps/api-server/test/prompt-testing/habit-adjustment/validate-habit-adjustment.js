@@ -16,6 +16,9 @@ function isGroupedHabitsArray(arr) {
   );
 }
 
+const SINGLE_EMOJI_REGEX =
+  /^(?:\p{Regional_Indicator}{2}|[0-9#*]\uFE0F?\u20E3|\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)$/u;
+
 function validateSingleHabit(habit) {
   if (!habit.id || typeof habit.id !== 'string') {
     return {
@@ -42,14 +45,21 @@ function validateSingleHabit(habit) {
       reason: 'Invalid or missing duration_seconds in habit entry (must be integer)',
     };
   }
-  // Check for extra fields (should only have id, name, duration_seconds)
-  const allowedFields = ['id', 'name', 'duration_seconds'];
+  if (typeof habit.emoji !== 'string' || !SINGLE_EMOJI_REGEX.test(habit.emoji.trim())) {
+    return {
+      pass: false,
+      score: 0.0,
+      reason: 'Invalid or missing emoji in habit entry (must be a single valid emoji)',
+    };
+  }
+  // Check for extra fields (should only have id, name, duration_seconds, emoji)
+  const allowedFields = ['id', 'name', 'duration_seconds', 'emoji'];
   const extraFields = Object.keys(habit).filter((key) => !allowedFields.includes(key));
   if (extraFields.length > 0) {
     return {
       pass: false,
       score: 0.0,
-      reason: `Extra fields found: ${extraFields.join(', ')}. Only id, name, and duration_seconds are allowed.`,
+      reason: `Extra fields found: ${extraFields.join(', ')}. Only id, name, duration_seconds, and emoji are allowed.`,
     };
   }
   // Validate duration is reasonable (between 1 second and 24 hours)

@@ -1902,8 +1902,8 @@ describe('OpenAIService', () => {
         { id: 'h2', name: 'Read', duration_seconds: 1200, activity_type: 'mental', tags: ['learning'] },
       ];
       const aiGroupedResponse = [
-        { goal: 'fitness', habits: [{ id: 'h1', name: 'Exercise', duration_seconds: 1800 }] },
-        { goal: 'learning', habits: [{ id: 'h2', name: 'Read', duration_seconds: 1200 }] },
+        { goal: 'fitness', habits: [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, emoji: '🏋️' }] },
+        { goal: 'learning', habits: [{ id: 'h2', name: 'Read', duration_seconds: 1200, emoji: '📚' }] },
       ];
       const mockResponse = {
         choices: [
@@ -1918,8 +1918,34 @@ describe('OpenAIService', () => {
       const userGoals = ['fitness', 'learning'];
       const result = await service.adjustHabitsWithAi(habits, 'Group by goals', userGoals, undefined, true);
       expect(result).toEqual({
-        fitness: [expect.objectContaining({ id: 'h1', name: 'Exercise', duration_seconds: 1800 })],
-        learning: [expect.objectContaining({ id: 'h2', name: 'Read', duration_seconds: 1200 })],
+        fitness: [expect.objectContaining({ id: 'h1', name: 'Exercise', duration_seconds: 1800, habit_icon: '🏋️' })],
+        learning: [expect.objectContaining({ id: 'h2', name: 'Read', duration_seconds: 1200, habit_icon: '📚' })],
+      });
+    });
+
+    it('should discard invalid emoji values from grouped AI response', async () => {
+      const habits = [
+        {
+          id: 'h1',
+          name: 'Exercise',
+          duration_seconds: 1800,
+          activity_type: 'physical',
+          tags: ['fitness'],
+          habit_icon: '💪',
+        },
+      ];
+      const aiGroupedResponse = [
+        { goal: 'fitness', habits: [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, emoji: '3' }] },
+      ];
+      const mockResponse = {
+        choices: [{ message: { content: JSON.stringify(aiGroupedResponse) } }],
+      };
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(habits, 'Group by goals', ['fitness'], undefined, true);
+
+      expect(result).toEqual({
+        fitness: [expect.objectContaining({ id: 'h1', habit_icon: '💪' })],
       });
     });
 
@@ -1951,6 +1977,41 @@ describe('OpenAIService', () => {
         learning: [expect.objectContaining({ id: 'h2', name: 'Read' })],
         wellness: [expect.objectContaining({ id: 'h3', name: 'Meditate' })],
       });
+    });
+
+    it('should extract emoji from AI response and set habit_icon on flat output', async () => {
+      const habits = [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical' }];
+      const aiResponse = [{ id: 'h1', name: 'Cardio Training', duration_seconds: 1800, emoji: '🏃' }];
+      const mockResponse = {
+        choices: [{ message: { content: JSON.stringify(aiResponse) } }],
+      };
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(habits, 'Rename exercise');
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          id: 'h1',
+          name: 'Cardio Training',
+          habit_icon: '🏃',
+        }),
+      );
+    });
+
+    it('should discard invalid emoji strings from AI response', async () => {
+      const habits = [
+        { id: 'h1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical', habit_icon: '💪' },
+      ];
+      const aiResponse = [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, emoji: '3' }];
+      const mockResponse = {
+        choices: [{ message: { content: JSON.stringify(aiResponse) } }],
+      };
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(habits, 'Test');
+
+      expect(result[0].habit_icon).toBe('💪'); // Falls back to original
     });
   });
 

@@ -23,6 +23,7 @@ export class HabitImportUploadedDto {
 
 export interface ExtractedHabit {
   name: string;
+  emoji?: string;
   description?: string;
   estimatedDurationMinutes?: number;
   category?: string;
@@ -39,6 +40,7 @@ export interface HabitSuggestionResult {
     durationSeconds: number;
     matchScore: number;
     justification: string;
+    habitIcon?: string;
   };
   suggestedHabit?: ExtractedHabit;
 }

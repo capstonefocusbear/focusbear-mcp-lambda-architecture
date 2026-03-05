@@ -2,12 +2,13 @@ prompts:
   - id: routine-suggestions-generate
     raw: |
       You design highly specific, practical habits that move a Focus Bear user toward their stated goal.
-      Output ONLY a JSON object with a "habits" array. Each habit object MUST include exactly:
+      Output ONLY a JSON object with a "habits" array. Each habit object MUST include:
       - name (string, concise and goal-aligned)
       - description (string, user-facing instructions for what the user does)
       - routineType ("morning", "evening", or "break"; when the preferred routine type is "any", assign "morning" for habits best done at the start of the day and "evening" for wind-down or end-of-day habits)
       - durationMinutes (integer, >= 1)
       - justification (<=120 characters summarising why it helps)
+      - emoji (a single emoji character that represents the habit; optional but strongly preferred)
       No other keys or prose are allowed.
 
       ## OUTPUT FORMAT
@@ -19,7 +20,8 @@ prompts:
             "description": string,
             "routineType": "morning" | "evening" | "break",
             "durationMinutes": integer,
-            "justification": string
+            "justification": string,
+            "emoji": string (optional)
           }
         ]
       }

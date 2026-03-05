@@ -114,8 +114,14 @@ describe('HabitImportConsumer', () => {
 
   describe('processHabitImport - Image flow', () => {
     const mockExtractedHabits: ExtractedHabit[] = [
-      { name: 'Morning meditation', description: 'Meditate', estimatedDurationMinutes: 10, category: 'meditation' },
-      { name: 'Exercise', description: 'Workout', estimatedDurationMinutes: 30, category: 'exercise' },
+      {
+        name: 'Morning meditation',
+        emoji: '🧘',
+        description: 'Meditate',
+        estimatedDurationMinutes: 10,
+        category: 'meditation',
+      },
+      { name: 'Exercise', emoji: '🏃', description: 'Workout', estimatedDurationMinutes: 30, category: 'exercise' },
     ];
 
     const mockResults: HabitSuggestionResult[] = [
@@ -130,6 +136,7 @@ describe('HabitImportConsumer', () => {
           durationSeconds: 600,
           matchScore: 0.9,
           justification: 'Similar meditation activity',
+          habitIcon: '🧘‍♂️',
         },
       },
       {
@@ -226,6 +233,7 @@ describe('HabitImportConsumer', () => {
           activity_type: 'morning',
           category: 'meditation',
           text_instructions: 'Guided meditation',
+          habit_icon: '🧘',
         }),
       );
       expect(result[1]).toEqual(
@@ -236,8 +244,61 @@ describe('HabitImportConsumer', () => {
           activity_type: 'morning',
           category: 'exercise',
           text_instructions: 'Workout',
+          habit_icon: '🏃',
         }),
       );
+    });
+
+    it('falls back to template habitIcon when extracted emoji is invalid (e.g. plain digit)', async () => {
+      const job = buildJob({ mediaType: 'image' });
+      const extractedWithInvalidEmoji: ExtractedHabit[] = [
+        {
+          name: 'Morning meditation',
+          emoji: '3',
+          description: 'Meditate',
+          estimatedDurationMinutes: 10,
+          category: 'meditation',
+        },
+      ];
+      const resultsWithTemplateEmoji: HabitSuggestionResult[] = [
+        {
+          extractedHabit: extractedWithInvalidEmoji[0],
+          matched: true,
+          matchedTemplate: {
+            id: '11111111-1111-4111-8111-111111111111',
+            name: 'Mindfulness Meditation',
+            description: 'Guided meditation',
+            activityType: 'morning',
+            durationSeconds: 600,
+            matchScore: 0.9,
+            justification: 'Similar meditation activity',
+            habitIcon: '🧘‍♂️',
+          },
+        },
+      ];
+
+      r2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/image.png');
+      mockedAxios.get.mockResolvedValueOnce({
+        data: Buffer.from('fake-image-data'),
+      });
+      habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce(extractedWithInvalidEmoji);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValueOnce({
+        results: resultsWithTemplateEmoji,
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 10,
+          ragTemplateFetchMs: 5,
+          ragRerankMs: 8,
+          rerankLlmCalls: 1,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
+      habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
+
+      const result = await consumer.processHabitImport(job);
+
+      expect(result[0]).toEqual(expect.objectContaining({ habit_icon: '🧘‍♂️' }));
     });
 
     it('uses deterministic IDs for unmatched habits across retries', async () => {

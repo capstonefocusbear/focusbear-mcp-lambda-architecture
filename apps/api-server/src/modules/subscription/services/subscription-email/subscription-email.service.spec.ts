@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
+import { Auth0ManagementService } from '@app/auth0';
 import { SubscriptionEmailService } from './subscription-email.service';
 import { UserRepository } from '../../../user/repositories/user.repository';
 import { EmailTemplateCompilerService } from '../../../email/services/email-template-compiler/email-template-compiler.service';
@@ -45,18 +46,13 @@ describe('SubscriptionEmailService', () => {
           useValue: mockEmailTemplateCompilerService,
         },
         {
-          provide: 'Auth0ManagementService',
+          provide: Auth0ManagementService,
           useValue: mockAuth0ManagementService,
         },
       ],
-    })
-      .overrideProvider('Auth0ManagementService')
-      .useValue(mockAuth0ManagementService)
-      .compile();
+    }).compile();
 
     service = module.get<SubscriptionEmailService>(SubscriptionEmailService);
-    // Inject auth0 service directly since it uses a custom provider key
-    (service as any).auth0ManagementService = mockAuth0ManagementService;
   });
 
   describe('sendThankYouEmail', () => {
@@ -141,7 +137,7 @@ describe('SubscriptionEmailService', () => {
 
     it('should skip internal test email accounts', async () => {
       mockUserRepository.orm.findOne.mockResolvedValue(mockUser);
-      mockAuth0ManagementService.getAuth0User.mockResolvedValue({ email: 'test@focusbear.io' });
+      mockAuth0ManagementService.getAuth0User.mockResolvedValue({ email: 'internaltest@focusbear.io' });
 
       await service.sendThankYouEmail(userId);
 

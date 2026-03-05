@@ -40,7 +40,7 @@ export class SubscriptionEmailService {
       return;
     }
 
-    let user: { id: string; auth0_id: string; username?: string; email_frequency?: EmailFrequency } | null;
+    let user: { id?: string; auth0_id: string; username?: string; email_frequency?: EmailFrequency } | null;
     try {
       user = await this.userRepository.orm.findOne({
         where: { id: userId },

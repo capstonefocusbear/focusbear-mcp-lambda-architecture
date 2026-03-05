@@ -42,13 +42,31 @@ When a user successfully pays for a Focus Bear subscription (either via Stripe o
 
 - Update `EmailTemplateCompilerService.getTemplate()` to accept a full relative path (e.g., `'subscription/thank-you'`) and not hardcode `progress/`.
 - Ensure existing callers are updated to call `getTemplate('progress/weekly-progress', data)` or the new path format.
+- The full MJML pipeline must be run: `loadPartials → getTemplate → getBaseLayout → inject content → validateMjmlStructure → mjml2html → generateTextVersion`. Ensure the updated `getTemplate()` runs this full pipeline and returns `{ subject: string, html: string, text: string }` — not just the raw template string.
 
 Suggested signature:
 ```ts
-getTemplate(relativePath: string, data: Record<string, any>, options?: { withDeleted?: boolean })
+getTemplate(relativePath: string, data: Record<string, any>, options?: { withDeleted?: boolean }): Promise<{ subject: string; html: string; text: string }>
 ```
 
-3) Compose the thank-you email using compiler and enqueue
+3) **[PREREQUISITE]** Verify and update `email.processor.ts` to support HTML payloads — **REQUIRED**
+
+- **This step must be completed before Step 4.** Without it, enqueued jobs with `{ html }` payloads will be silently ignored because the processor currently destructures only `text`.
+- Verify `email.processor.ts` — it currently destructures only `{ to, from, replyTo, subject, text }` and passes only `text` to SendGrid. The `html` field is missing.
+- Update the processor to also accept and forward `html`:
+
+```typescript
+@Process('sendEmail')
+public async handleSendEmail(job: Job) {
+  const { to, from, replyTo, subject, text, html } = job.data;
+  await this.sendGridService.sendEmail({ to, from, replyTo, subject, text, html });
+}
+```
+
+- Ensure `sendGridService.sendEmail()` accepts and forwards the `html` field to SendGrid. If it doesn't, update that interface too.
+- Without this fix, users will receive plain-text-only emails or empty emails depending on SendGrid's fallback behavior.
+
+4) Compose the thank-you email using compiler and enqueue
 
 - Create `SubscriptionEmailService` (or update existing) to:
   - Look up the user by RevenueCat `app_user_id`
@@ -66,13 +84,13 @@ await emailQueue.add('SEND_EMAIL', {
 });
 ```
 
-4) Single webhook trigger — RevenueCat `INITIAL_PURCHASE` only
+5) Single webhook trigger — RevenueCat `INITIAL_PURCHASE` only
 
 - Update the plan to use **only** the RevenueCat `INITIAL_PURCHASE` webhook as the canonical trigger for thank-you emails.
 - Remove any plan to send from Stripe webhook handler. Rationale: Stripe-driven purchases also trigger RevenueCat `INITIAL_PURCHASE`, so sending from both causes double-send.
 - If there are non-RevenueCat purchase flows in future, centralize dispatch into a single canonical path (e.g., an idempotent `SubscriptionEventProcessor`) that ensures one send per subscription.
 
-5) Test plan
+6) Test plan
 
 Minimum tests to add:
 - `SubscriptionEmailService.sendThankYouEmail()`
@@ -87,16 +105,16 @@ Minimum tests to add:
 - Template compilation
   - `EmailTemplateCompilerService.getTemplate('subscription/thank-you', data)` compiles the MJML fragment into valid HTML and returns subject/html/text
 
-6) Use BullMQ async dispatch (no direct SendGrid calls here)
-
-- Ensure `email.processor.ts` already supports sending arbitrary compiled HTML templates. If not, update the processor to accept payloads of the form { to, from, subject, html, text } and call SendGrid/Brevo as usual.
-- SubscriptionEmailService should only enqueue jobs.
-
 7) Module registration
 
 - Register `SubscriptionEmailService` in `subscription.module.ts` and import `EmailModule` / queue providers.
 
-8) Edge cases and notes
+8) BullMQ dispatch — SubscriptionEmailService enqueues, processor delivers
+
+- SubscriptionEmailService must only enqueue jobs onto the email BullMQ queue. Do NOT call `sendGridService.sendEmail()` directly from the webhook handler or service.
+- Ensure the job shape matches what the (now-updated) `email.processor.ts` expects: `{ to, from, replyTo, subject, html, text }`.
+
+9) Edge cases and notes
 
 - Double-send: avoided by using only RevenueCat `INITIAL_PURCHASE` as the trigger.
 - Free trials: Consider whether `INITIAL_PURCHASE` should exclude trials; check RevenueCat event payload to detect trial vs paid.
@@ -111,7 +129,7 @@ Minimum tests to add:
 - New: `subscription/services/subscription-email/subscription-email.service.ts` — compiles template and enqueues job onto email queue
 - Modify: `subscription/services/webhook-handler/webhook-handler.strategy.ts` — call `subscriptionEmailService.sendThankYouEmail()` from `INITIAL_PURCHASE()` only
 - Modify: `subscription/subscription.module.ts` — register service and queue providers
-- (Optional) `email.processor.ts` — ensure it accepts compiled HTML jobs and calls SendGrid; if missing, add support
+- **Modify (Required):** `email/services/email-processor/email.processor.ts` — update to destructure and forward `html` field to SendGrid (currently only forwards `text`; without this fix the HTML body is silently dropped)
 
 ## Estimated Effort (revised)
 

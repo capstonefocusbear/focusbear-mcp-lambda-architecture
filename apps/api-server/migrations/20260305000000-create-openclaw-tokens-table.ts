@@ -7,7 +7,7 @@ export class CreateOpenclawTokensTable20260305000000 implements MigrationInterfa
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "user_id" uuid NOT NULL,
         "token_hash" varchar NOT NULL,
-        "token_prefix" varchar(8) NOT NULL,
+        "token_prefix" varchar(16) NOT NULL,
         "scopes" varchar[] NOT NULL DEFAULT '{}',
         "label" varchar,
         "last_used_at" timestamptz,

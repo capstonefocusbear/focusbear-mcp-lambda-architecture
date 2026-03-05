@@ -17,7 +17,7 @@ export class OpenclawToken extends BaseEntity {
   token_hash: string;
 
   @Index()
-  @Column({ type: 'varchar', length: 8, nullable: false })
+  @Column({ type: 'varchar', length: 16, nullable: false })
   token_prefix: string;
 
   @Column({ type: 'varchar', array: true, nullable: false, default: '{}' })

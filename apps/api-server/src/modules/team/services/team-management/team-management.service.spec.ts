@@ -867,6 +867,52 @@ describe('TeamManagementService', () => {
       // Team size synced to members.length - 0 = 2 (no actual removals)
       expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 2 });
     });
+
+    it('positive: should remove members matched by email', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValue([TeamWithMembersDummy]);
+
+      await teamManagementService.bulkRemoveMembers(
+        { member_ids: [], emails: [TeamMemberDummy.email], team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
+
+      expect(TeamRepositoryMock.orm.delete).toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        member_id: TeamMemberDummy.member_id,
+      });
+      // 2 members - 1 removed = 1 remaining
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
+    });
+
+    it('positive: admin self-removal via email should be prevented', async () => {
+      const adminAsMember: TeamToMember = {
+        ...TeamMemberDummy,
+        member_id: adminId,
+        email: 'admin@email.com',
+      } as TeamToMember;
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [adminAsMember, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValue([TeamWithMembersDummy]);
+
+      // Pass the admin's email — should be silently skipped
+      await teamManagementService.bulkRemoveMembers(
+        { member_ids: [], emails: ['admin@email.com'], team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
+
+      // Admin should NOT be deleted
+      expect(TeamRepositoryMock.orm.delete).not.toHaveBeenCalled();
+      // No actual removals — size stays at 2
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 2 });
+    });
   });
 
   describe('registerTeam', () => {

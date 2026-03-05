@@ -76,7 +76,8 @@ export class TeamManagementService {
       const { members } = await this.teamRepository.getTeamIncludingUnregistered(team);
 
       const membersToDelete = members.filter(
-        ({ member_id, email }) => (member_ids.includes(member_id) && member_id !== adminId) || emails?.includes(email),
+        ({ member_id, email }) =>
+          member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
       );
 
       await Promise.allSettled([
@@ -193,7 +194,7 @@ export class TeamManagementService {
     }
   }
 
-  async bulkRemoveMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<any> {
+  async bulkRemoveMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<void> {
     try {
       const { member_ids = [], emails = [], team_id } = bulkDeleteDto;
       const team = await this.validateTeam(team_id);
@@ -202,7 +203,8 @@ export class TeamManagementService {
       this.validateMemberAction(admins, adminId);
 
       const membersToRemove = members.filter(
-        ({ member_id, email }) => (member_ids.includes(member_id) && member_id !== adminId) || emails?.includes(email),
+        ({ member_id, email }) =>
+          member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
       );
 
       await Promise.allSettled([

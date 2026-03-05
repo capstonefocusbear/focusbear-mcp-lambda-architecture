@@ -54,7 +54,7 @@ export class TeamManagementController {
   bulkRemoveMembers(
     @Body() bulkDeleteDto: BulkDeleteDto,
     @AuthContext() { user: { id: adminId } }: Passport,
-  ): Promise<any> {
+  ): Promise<void> {
     return this.teamManagementService.bulkRemoveMembers(bulkDeleteDto, adminId);
   }
 

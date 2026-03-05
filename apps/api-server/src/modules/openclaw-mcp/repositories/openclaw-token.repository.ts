@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import * as crypto from 'crypto';
 import { ScryptService } from '@app/crypto';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { OpenclawToken } from '../entities/openclaw-token.entity';
@@ -30,7 +31,8 @@ export class OpenclawTokenRepository extends BaseRepository<OpenclawToken> {
    * then scrypt verify to validate the full token hash.
    */
   async findByRawToken(rawToken: string): Promise<OpenclawToken | null> {
-    const prefix = rawToken.substring(0, 8);
+    // Derive the same SHA-256-based prefix used at issuance for efficient index lookup
+    const prefix = crypto.createHash('sha256').update(rawToken).digest('hex').substring(0, 16);
     const candidates = await this.orm.find({ where: { token_prefix: prefix } });
 
     for (const candidate of candidates) {

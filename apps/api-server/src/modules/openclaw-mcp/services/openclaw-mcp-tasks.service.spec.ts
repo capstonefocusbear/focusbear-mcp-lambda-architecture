@@ -50,15 +50,17 @@ describe('OpenclawMcpTasksService', () => {
   // ── listTasks ────────────────────────────────────────────────────────────────
 
   describe('listTasks', () => {
-    const query = { page: 1, limit: 10 } as any;
+    const query = { page: 1, take: 10, skip: 0, order: 'ASC' } as any;
 
-    it('should return tasks when scope is present', async () => {
+    it('should return PaginationDto when scope is present', async () => {
       const mockTasks = [{ id: mockTaskId, title: 'Test task' }];
       mockToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTasks, 1]);
 
       const result = await service.listTasks(mockUserId, [OpenclawScope.TASKS_READ], query);
 
-      expect(result).toEqual([mockTasks, 1]);
+      expect(result).toHaveProperty('data', mockTasks);
+      expect(result).toHaveProperty('meta');
+      expect(result.meta).toHaveProperty('itemCount', 1);
       expect(mockToDoRepositoryMock.getUserToDos).toHaveBeenCalledWith(mockUserId, query);
     });
 

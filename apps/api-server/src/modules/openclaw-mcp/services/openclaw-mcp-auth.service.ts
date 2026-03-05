@@ -16,7 +16,8 @@ export class OpenclawMcpAuthService {
   async issueToken(userId: string, dto: CreateOpenclawTokenDto): Promise<OpenclawTokenIssuedResponseDto> {
     // Generate a cryptographically random 64-char hex token
     const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenPrefix = rawToken.substring(0, 8);
+    // Use SHA-256 hash of the token (not the raw prefix) to avoid leaking actual token bytes
+    const tokenPrefix = crypto.createHash('sha256').update(rawToken).digest('hex').substring(0, 16);
     const tokenHash = await this.scryptService.hash(rawToken);
 
     const entity = new OpenclawToken(

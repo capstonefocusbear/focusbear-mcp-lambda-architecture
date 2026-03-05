@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, Max, Min } from 'class-validator';
 import { StreakTypes } from '../domain/StreakTypes.enum';
 
 export class GetLeaderBoardQuery {
@@ -17,6 +17,11 @@ export class GetLeaderBoardQuery {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @ApiPropertyOptional({ description: 'Only include users active within this many days (e.g. 30)', minimum: 1 })
+  @Max(365)
+  @ApiPropertyOptional({
+    description: 'Only include users active within this many days (e.g. 30)',
+    minimum: 1,
+    maximum: 365,
+  })
   active_within_days?: number;
 }

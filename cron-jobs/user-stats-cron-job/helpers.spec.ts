@@ -498,6 +498,37 @@ describe('helpers', () => {
       runTest(userDailyStats, expected, userSignupDaysAgo);
     });
 
+    it('should clamp streak to at least days completed when user completed every day in window', () => {
+      const userSignupDaysAgo = 7;
+      const userCreatedAt = DateTime.local().minus({ days: userSignupDaysAgo }).toJSDate();
+      const userDailyStats = Array.from({ length: 7 }, (_, i) => ({
+        date_completed: new Date(DateTime.local().minus({ days: 6 - i }).toISODate()),
+        focus_modes_completed: 1,
+        morning_routine_completion_percentage: 100,
+        evening_routine_completion_percentage: 100,
+        micro_breaks_routine_completion_percentage: 0,
+        seconds_spent_doing_breaks: 100,
+        created_at: new Date(DateTime.local().minus({ days: 6 - i }).toISODate()).toISOString(),
+        updated_at: new Date(DateTime.local().minus({ days: 6 - i }).toISODate()).toISOString(),
+      }));
+
+      const result = calculateStreaks(userDailyStats, timeZone, {
+        morningRoutineDailyDurations,
+        eveningRoutineDailyDurations,
+        microBreaksDailyDurations,
+      }, userCreatedAt);
+
+      expect(result.morning_number_days_completed).toBe(7);
+      expect(result.evening_number_days_completed).toBe(7);
+      expect(result.focus_modes_number_days_completed).toBe(7);
+      expect(result.micro_breaks_number_days_completed).toBe(7);
+      expect(result.num_days_of_stats).toBe(7);
+      expect(result.morning_routines_streak).toBeGreaterThanOrEqual(result.morning_number_days_completed);
+      expect(result.evening_routines_streak).toBeGreaterThanOrEqual(result.evening_number_days_completed);
+      expect(result.focus_modes_streak).toBeGreaterThanOrEqual(result.focus_modes_number_days_completed);
+      expect(result.micro_breaks_streak).toBeGreaterThanOrEqual(result.micro_breaks_number_days_completed);
+    });
+
     describe('Timezone Edge Cases', () => {
       it('should handle UTC-10 user with activities at different times', () => {
         const userTimezone = 'Pacific/Honolulu'; // UTC-10

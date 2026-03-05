@@ -1923,6 +1923,32 @@ describe('OpenAIService', () => {
       });
     });
 
+    it('should discard invalid emoji values from grouped AI response', async () => {
+      const habits = [
+        {
+          id: 'h1',
+          name: 'Exercise',
+          duration_seconds: 1800,
+          activity_type: 'physical',
+          tags: ['fitness'],
+          habit_icon: '💪',
+        },
+      ];
+      const aiGroupedResponse = [
+        { goal: 'fitness', habits: [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, emoji: '3' }] },
+      ];
+      const mockResponse = {
+        choices: [{ message: { content: JSON.stringify(aiGroupedResponse) } }],
+      };
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(habits, 'Group by goals', ['fitness'], undefined, true);
+
+      expect(result).toEqual({
+        fitness: [expect.objectContaining({ id: 'h1', habit_icon: '💪' })],
+      });
+    });
+
     it('should handle groupByGoals=true when AI returns flat array and service groups by userGoals', async () => {
       const habits = [
         { id: 'h1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical', tags: ['fitness'] },
@@ -1977,7 +2003,7 @@ describe('OpenAIService', () => {
       const habits = [
         { id: 'h1', name: 'Exercise', duration_seconds: 1800, activity_type: 'physical', habit_icon: '💪' },
       ];
-      const aiResponse = [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, emoji: 'not-an-emoji' }];
+      const aiResponse = [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, emoji: '3' }];
       const mockResponse = {
         choices: [{ message: { content: JSON.stringify(aiResponse) } }],
       };

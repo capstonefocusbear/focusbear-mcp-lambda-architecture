@@ -12,7 +12,7 @@ prompts:
       - Do NOT include any other fields.
 
       SCOPE:
-      - Modify only name and duration_seconds based on the user's feedback and context.
+      - Modify only name, duration_seconds, and emoji based on the user's feedback and context.
       - You may adjust duration_seconds to better fit the feedback, keeping values realistic.
       - emoji: a single emoji character representing the habit. Preserve the input emoji if the habit name has not changed significantly; otherwise generate a new appropriate one.
       - If grouping by goals is requested, organize the adjusted habits into groups by goal.

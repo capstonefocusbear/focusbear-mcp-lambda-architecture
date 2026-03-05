@@ -456,4 +456,44 @@ describe(RoutineSuggestionGeneratorService.name, () => {
       },
     ]);
   });
+
+  it('discards invalid generated emoji values (e.g. plain digits)', async () => {
+    OpenAIServiceMock.createChatCompletion.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              habits: [
+                {
+                  name: 'Buff Morning Circuit',
+                  emoji: '3',
+                  description: 'Strength routine tailored to building muscle.',
+                  routineType: ActivityType.morning,
+                  durationMinutes: 20,
+                  justification: 'Directly builds strength for the goal.',
+                },
+              ],
+            }),
+          },
+        },
+      ],
+    });
+
+    const result = await service.generateNewHabits('Get buffed', {
+      limit: 1,
+      routineType: ActivityType.morning,
+      routineDurationSeconds: 1200,
+    });
+
+    expect(result).toEqual([
+      {
+        name: 'Buff Morning Circuit',
+        emoji: undefined,
+        description: 'Strength routine tailored to building muscle.',
+        routineType: ActivityType.morning,
+        durationMinutes: 20,
+        justification: 'Directly builds strength for the goal.',
+      },
+    ]);
+  });
 });

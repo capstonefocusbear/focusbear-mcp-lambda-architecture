@@ -5,6 +5,7 @@ import { OpenAIService, PromptCacheService } from '@app/openai';
 import { createHash } from 'crypto';
 import { ActivityTemplate } from '../entity/activity-template.entity';
 import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { normalizeSingleEmoji } from '../../../shared/utils/emoji';
 
 const MAX_CONTEXT_CANDIDATES = 5;
 const DEFAULT_GENERATED_LIMIT = 3;
@@ -714,10 +715,7 @@ Target routine duration (minutes): ${preferredDurationMinutes}`,
         }
         results.push({
           name: item.name,
-          emoji:
-            typeof item.emoji === 'string' && /\p{Emoji}/u.test(item.emoji) && item.emoji.length <= 10
-              ? item.emoji
-              : undefined,
+          emoji: normalizeSingleEmoji(item.emoji),
           description: typeof item.description === 'string' ? item.description : undefined,
           routineType: typeof item.routineType === 'string' ? item.routineType : undefined,
           durationMinutes:

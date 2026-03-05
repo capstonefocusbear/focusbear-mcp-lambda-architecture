@@ -249,12 +249,12 @@ describe('HabitImportConsumer', () => {
       );
     });
 
-    it('falls back to template habitIcon when extracted emoji is invalid', async () => {
+    it('falls back to template habitIcon when extracted emoji is invalid (e.g. plain digit)', async () => {
       const job = buildJob({ mediaType: 'image' });
       const extractedWithInvalidEmoji: ExtractedHabit[] = [
         {
           name: 'Morning meditation',
-          emoji: 'not-an-emoji',
+          emoji: '3',
           description: 'Meditate',
           estimatedDurationMinutes: 10,
           category: 'meditation',

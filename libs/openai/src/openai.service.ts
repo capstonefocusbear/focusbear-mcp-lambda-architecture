@@ -19,6 +19,7 @@ import { sanitizeUrl } from '@braintree/sanitize-url';
 import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
 import { ActivityTemplate } from '@api-server/modules/activity-template/entity/activity-template.entity';
 import { isUUID } from '../../../apps/api-server/src/shared/utils/helpers';
+import { normalizeSingleEmoji } from '../../../apps/api-server/src/shared/utils/emoji';
 import { GenerateSubtasksDto } from '../../../apps/api-server/src/modules/to-do/dto/generate-subtasks.dto';
 import { MotivationalSummaryQueryDto } from '../../../apps/api-server/src/modules/user/dto/get-motivational-summary-query.dto';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
@@ -1372,7 +1373,7 @@ export class OpenAIService {
         name: habit.name,
         duration_seconds: habit.duration_seconds,
         activity_type: habit.activity_type,
-        emoji: habit.habit_icon || habit.emoji || undefined,
+        emoji: normalizeSingleEmoji(habit.habit_icon) ?? normalizeSingleEmoji(habit.emoji),
       }));
 
       const filledPromptContent = this.buildAdjustHabitsPrompt(
@@ -1409,8 +1410,7 @@ export class OpenAIService {
           for (const { goal, habits } of parsed) {
             validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
               const rest = currentHabits.find((incomingHabit) => incomingHabit.id === habit?.id) ?? {};
-              const rawEmoji = typeof habit?.emoji === 'string' ? habit.emoji : undefined;
-              const emoji = rawEmoji && /\p{Emoji}/u.test(rawEmoji) && rawEmoji.length <= 10 ? rawEmoji : undefined;
+              const emoji = normalizeSingleEmoji(habit?.emoji);
               return {
                 ...rest,
                 id: String(habit?.id ?? ''),
@@ -1439,9 +1439,7 @@ export class OpenAIService {
             const rest = currentHabits.find((incomingHabit) => incomingHabit.id === adjustedHabit.id) || {};
             const generatedId = isUUID(rawId) ? rawId : randomUUID();
             const resolvedName = name || rest?.name || '';
-            const rawEmoji =
-              typeof (adjustedHabit as any)?.emoji === 'string' ? (adjustedHabit as any).emoji : undefined;
-            const emoji = rawEmoji && /\p{Emoji}/u.test(rawEmoji) && rawEmoji.length <= 10 ? rawEmoji : undefined;
+            const emoji = normalizeSingleEmoji((adjustedHabit as { emoji?: unknown })?.emoji);
             return {
               ...rest,
               id: rest.id || generatedId,

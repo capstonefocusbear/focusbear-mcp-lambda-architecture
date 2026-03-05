@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateOpenclawTokensTable20260305000000 implements MigrationInterface {
+export class CreateOpenclawTokensTable20260305120000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "openclaw_tokens" (

@@ -193,6 +193,28 @@ export class TeamManagementService {
     }
   }
 
+  async bulkRemoveMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<any> {
+    try {
+      const { member_ids = [], emails = [], team_id } = bulkDeleteDto;
+      const team = await this.validateTeam(team_id);
+      const { members, admins } = await this.teamRepository.getTeamIncludingUnregistered(team);
+
+      this.validateMemberAction(admins, adminId);
+
+      const membersToRemove = members.filter(
+        ({ member_id, email }) => (member_ids.includes(member_id) && member_id !== adminId) || emails?.includes(email),
+      );
+
+      await Promise.allSettled([
+        ...membersToRemove.map((member) => this.disassociateMemberFromTheTeam(member, team_id)),
+        this.syncTeamSizeWithSubscription(team, members.length - membersToRemove.length),
+      ]);
+    } catch (error) {
+      this.sentryService.instance().captureException(error, { level: 'error' });
+      throw error;
+    }
+  }
+
   async assignExistingMemberAsAdmin(addTeamMemberDto: AddTeamMemberDto, adminId: string) {
     const { team_id, member_id, email } = addTeamMemberDto;
 

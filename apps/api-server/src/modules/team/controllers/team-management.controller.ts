@@ -43,6 +43,21 @@ export class TeamManagementController {
     return this.teamManagementService.bulkDeleteTeamMembers(bulkDeleteDto, owner_id);
   }
 
+  @Post('/bulk-remove-members')
+  @HttpCode(204)
+  @UseGuards(HasSubscription)
+  @RequireEntitlements([Entitlement.team_admin])
+  @ApiOperation({ summary: 'Remove multiple team members by IDs or emails (team admin)' })
+  @ApiResponse({ status: 204, description: 'Members removed successfully' })
+  @ApiResponse({ status: 401, description: 'Caller is not a team admin' })
+  @ApiResponse({ status: 404, description: 'Team not found' })
+  bulkRemoveMembers(
+    @Body() bulkDeleteDto: BulkDeleteDto,
+    @AuthContext() { user: { id: adminId } }: Passport,
+  ): Promise<any> {
+    return this.teamManagementService.bulkRemoveMembers(bulkDeleteDto, adminId);
+  }
+
   @Post('/remove-member')
   @UseGuards(HasSubscription)
   @RequireEntitlements([Entitlement.team_admin])

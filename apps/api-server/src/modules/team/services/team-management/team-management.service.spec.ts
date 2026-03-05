@@ -747,6 +747,128 @@ describe('TeamManagementService', () => {
     });
   });
 
+  describe('bulkRemoveMembers', () => {
+    it('negative: if team does not exist in DB, throw the NotFoundException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(null);
+      let exception: any;
+      try {
+        await teamManagementService.bulkRemoveMembers(
+          { member_ids: [newUser.id], emails: [], team_id: TeamWithMembersDummy.id },
+          adminId,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `Team with id: ${TeamWithMembersDummy.id} doesn't exist!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('negative: if user is not admin member of team, throw the UnauthorizedException', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      const nonAdminId = newUser.id;
+      let exception: any;
+
+      try {
+        await teamManagementService.bulkRemoveMembers(
+          { member_ids: [TeamMemberDummy.member_id], emails: [], team_id: TeamWithMembersDummy.id },
+          nonAdminId,
+        );
+      } catch (error) {
+        exception = error;
+      }
+
+      const errorMessage = `User with id: ${nonAdminId} is not an admin member of this team!`;
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(UnauthorizedException);
+      expect(exception.message).toEqual(errorMessage);
+    });
+
+    it('positive: should bulk remove members from the team and sync team size based on actual removed count', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValue([TeamWithMembersDummy]);
+
+      await teamManagementService.bulkRemoveMembers(
+        { member_ids: [TeamMemberDummy.member_id], emails: [], team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
+
+      expect(TeamRepositoryMock.orm.delete).toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        member_id: TeamMemberDummy.member_id,
+      });
+      // 2 members - 1 removed = 1 remaining (actual count, not input count)
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
+    });
+
+    it('positive: admin self-removal should be prevented — own ID is silently skipped', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      // Admin is listed as both admin and as a member
+      const adminAsMember: TeamToMember = {
+        ...TeamMemberDummy,
+        member_id: adminId,
+      } as TeamToMember;
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [adminAsMember, TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValue([TeamWithMembersDummy]);
+
+      // Pass both the admin's own ID and another member's ID
+      await teamManagementService.bulkRemoveMembers(
+        { member_ids: [adminId, TeamMemberDummy.member_id], emails: [], team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
+
+      // Only TeamMemberDummy should be deleted (not the admin)
+      expect(TeamRepositoryMock.orm.delete).toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        member_id: TeamMemberDummy.member_id,
+      });
+      expect(TeamRepositoryMock.orm.delete).not.toHaveBeenCalledWith({
+        team_id: TeamWithMembersDummy.id,
+        member_id: adminId,
+      });
+      // 2 members - 1 actually removed = 1 remaining
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 1 });
+    });
+
+    it('positive: empty member_ids and emails results in no-op with no delete calls', async () => {
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+
+      jest.clearAllMocks();
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue({ ...TeamWithMembersDummy, team_size: 2, team_size_limit: 5 });
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy, TeamMemberFake],
+        admins: [teamToAdminDummy],
+      });
+
+      await teamManagementService.bulkRemoveMembers(
+        { member_ids: [], emails: [], team_id: TeamWithMembersDummy.id },
+        adminId,
+      );
+
+      expect(TeamRepositoryMock.orm.delete).not.toHaveBeenCalled();
+      // Team size synced to members.length - 0 = 2 (no actual removals)
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(TeamWithMembersDummy.id, { team_size: 2 });
+    });
+  });
+
   describe('registerTeam', () => {
     it('negative: should throw not found exception is user is not found in DB', async () => {
       const createSubscriptionPayloadDummy = {

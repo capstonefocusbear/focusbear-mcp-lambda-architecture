@@ -6,20 +6,12 @@ import { OpenclawMcpAuthService } from './services/openclaw-mcp-auth.service';
 import { OpenclawMcpTasksService } from './services/openclaw-mcp-tasks.service';
 import { OpenclawTokenRepository } from './repositories/openclaw-token.repository';
 import { OpenclawTokenGuard } from './guards/openclaw-token.guard';
-import { ToDoRepository } from '../to-do/repositories/to-do.repository';
-import { TaskCommentRepository } from '../to-do/repositories/task-comment.repository';
+import { ToDoModule } from '../to-do/to-do.module';
 
 @Module({
-  imports: [CryptoModule],
+  imports: [CryptoModule, ToDoModule],
   controllers: [OpenclawMcpAuthController, OpenclawMcpTasksController],
-  providers: [
-    OpenclawMcpAuthService,
-    OpenclawMcpTasksService,
-    OpenclawTokenRepository,
-    OpenclawTokenGuard,
-    ToDoRepository,
-    TaskCommentRepository,
-  ],
+  providers: [OpenclawMcpAuthService, OpenclawMcpTasksService, OpenclawTokenRepository, OpenclawTokenGuard],
   exports: [OpenclawMcpAuthService, OpenclawTokenRepository],
 })
 export class OpenclawMcpModule {}

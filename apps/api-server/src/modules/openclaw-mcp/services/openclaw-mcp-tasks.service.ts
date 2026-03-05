@@ -4,7 +4,6 @@ import { TaskCommentRepository } from '../../to-do/repositories/task-comment.rep
 import { GetToDosQueryDto } from '../../to-do/dto/get-to-dos-query.dto';
 import { ToDoResponse } from '../../to-do/dto/to-do-response.dto';
 import { TaskComment } from '../../to-do/entities/task-comment.entity';
-import { ToDo } from '../../to-do/entities/to-do.entity';
 import { UpdateTaskStatusDto } from '../dto/update-task-status.dto';
 import { AddTaskNoteDto } from '../dto/add-task-note.dto';
 import { OpenclawScope } from '../domain/openclaw-scopes.enum';
@@ -32,7 +31,7 @@ export class OpenclawMcpTasksService {
     scopes: string[],
     taskId: string,
     dto: UpdateTaskStatusDto,
-  ): Promise<ToDo> {
+  ): Promise<ToDoResponse> {
     this.requireScope(scopes, OpenclawScope.TASKS_WRITE);
 
     const task = await this.toDoRepository.orm.findOne({ where: { id: taskId, user_id: userId } });
@@ -40,7 +39,7 @@ export class OpenclawMcpTasksService {
       throw new NotFoundException(`Task with id ${taskId} not found`);
     }
 
-    return this.toDoRepository.update(taskId, { status: dto.status });
+    return this.toDoRepository.update(taskId, { status: dto.status }) as Promise<ToDoResponse>;
   }
 
   async addNote(

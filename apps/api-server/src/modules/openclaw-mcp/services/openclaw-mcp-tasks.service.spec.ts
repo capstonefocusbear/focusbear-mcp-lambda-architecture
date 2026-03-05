@@ -86,7 +86,7 @@ describe('OpenclawMcpTasksService', () => {
 
     it('should update task status when scope and task are valid', async () => {
       mockToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(mockTask);
-      mockToDoRepositoryMock.update.mockResolvedValueOnce({ ...mockTask, status: 'completed' });
+      mockToDoRepositoryMock.update.mockResolvedValueOnce({ ...mockTask, status: 'completed' } as any);
 
       const result = await service.updateTaskStatus(mockUserId, [OpenclawScope.TASKS_WRITE], mockTaskId, dto);
 

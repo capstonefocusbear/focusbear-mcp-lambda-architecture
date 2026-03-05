@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { OpenclawMcpTasksService } from '../services/openclaw-mcp-tasks.service';
 import { OpenclawTokenGuard, OpenclawUser, OpenclawScopes } from '../guards/openclaw-token.guard';
 import { GetToDosQueryDto } from '../../to-do/dto/get-to-dos-query.dto';
 import { ToDoResponse } from '../../to-do/dto/to-do-response.dto';
 import { TaskComment } from '../../to-do/entities/task-comment.entity';
-import { ToDo } from '../../to-do/entities/to-do.entity';
 import { UpdateTaskStatusDto } from '../dto/update-task-status.dto';
 import { AddTaskNoteDto } from '../dto/add-task-note.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
@@ -14,6 +14,7 @@ import { PaginationDto } from '../../../shared/pagination/index.dto';
 @ApiTags('openclaw-mcp-tasks')
 @UseGuards(OpenclawTokenGuard)
 @ApiSecurity('OpenclawBearerToken')
+@Throttle({ default: { limit: 60, ttl: 60000 } })
 export class OpenclawMcpTasksController {
   constructor(private readonly openclawMcpTasksService: OpenclawMcpTasksService) {}
 
@@ -38,9 +39,9 @@ export class OpenclawMcpTasksController {
   async updateTaskStatus(
     @OpenclawUser() userId: string,
     @OpenclawScopes() scopes: string[],
-    @Param('id') taskId: string,
+    @Param('id', ParseUUIDPipe) taskId: string,
     @Body() dto: UpdateTaskStatusDto,
-  ): Promise<ToDo> {
+  ): Promise<ToDoResponse> {
     return this.openclawMcpTasksService.updateTaskStatus(userId, scopes, taskId, dto);
   }
 
@@ -52,7 +53,7 @@ export class OpenclawMcpTasksController {
   async addNote(
     @OpenclawUser() userId: string,
     @OpenclawScopes() scopes: string[],
-    @Param('id') taskId: string,
+    @Param('id', ParseUUIDPipe) taskId: string,
     @Body() dto: AddTaskNoteDto,
   ): Promise<TaskComment> {
     return this.openclawMcpTasksService.addNote(userId, scopes, taskId, dto);

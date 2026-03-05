@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { IsAuth } from '../../auth/guards/is-auth/is-auth.guard';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
@@ -43,7 +43,7 @@ export class OpenclawMcpAuthController {
     summary: 'Revoke an OpenClaw access token',
     description: 'Immediately invalidates the specified token. OpenClaw will no longer be able to access data.',
   })
-  async revokeToken(@Param('id') id: string, @AuthContext() { user }: Passport): Promise<void> {
+  async revokeToken(@Param('id', ParseUUIDPipe) id: string, @AuthContext() { user }: Passport): Promise<void> {
     return this.openclawMcpAuthService.revokeToken(user.id, id);
   }
 }

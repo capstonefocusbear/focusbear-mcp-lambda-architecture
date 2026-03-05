@@ -97,6 +97,9 @@ export class SubscriptionEmailService {
           unsubscribeText: 'Unsubscribe',
           apiUrl: process.env.API_URL || 'https://api.focusbear.io',
           manageEmailPreferencesLink: `${this.DASHBOARD_URL}/settings/email-preferences`,
+          // Transactional email — no unsubscribe token needed.
+          // The base layout renders the unsubscribe link only when this is truthy (non-empty string),
+          // so passing '' safely omits the link while remaining CAN-SPAM compliant for transactional emails.
           unsubscribeToken: '',
         },
         {

@@ -3,6 +3,11 @@ import { getQueueToken } from '@nestjs/bull';
 import { QueueMock, userDummy } from '../../../../../test/dummies';
 import { WebhookHandlerStrategy } from './webhook-handler.strategy';
 import { BullQueues } from '../../../../shared/utils/constants';
+import { SubscriptionEmailService } from '../subscription-email/subscription-email.service';
+
+const mockSubscriptionEmailService = {
+  sendThankYouEmail: jest.fn().mockResolvedValue(undefined),
+};
 
 describe('WebhookHandlerStrategy', () => {
   let webhookHandlerStrategy: WebhookHandlerStrategy;
@@ -14,6 +19,10 @@ describe('WebhookHandlerStrategy', () => {
         {
           provide: getQueueToken(BullQueues.REVENUE_CAT_STATUS),
           useValue: QueueMock,
+        },
+        {
+          provide: SubscriptionEmailService,
+          useValue: mockSubscriptionEmailService,
         },
       ],
     }).compile();
@@ -39,6 +48,12 @@ describe('WebhookHandlerStrategy', () => {
       const result = await webhookHandlerStrategy.INITIAL_PURCHASE(testEventWithPersonalEntitlement);
 
       expect(result).toBeNull();
+    });
+
+    it('positive: should call sendThankYouEmail with the app_user_id', async () => {
+      await webhookHandlerStrategy.INITIAL_PURCHASE(testEventWithTeamEntitlement);
+
+      expect(mockSubscriptionEmailService.sendThankYouEmail).toHaveBeenCalledWith(userDummy.id);
     });
   });
 

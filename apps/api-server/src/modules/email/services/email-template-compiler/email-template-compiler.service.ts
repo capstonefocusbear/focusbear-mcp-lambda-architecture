@@ -39,6 +39,76 @@ export class EmailTemplateCompilerService {
     this.registerHandlebarsHelpers();
   }
 
+  /**
+   * Compiles a template by relative path (e.g. 'subscription/thank-you') and returns
+   * { subject, html, text }.  The template file is a raw MJML content fragment that
+   * gets injected into layouts/base.mjml via {{{content}}}.
+   */
+  async compileEmailByPath(
+    relativePath: string,
+    data: Record<string, any>,
+    meta: { subject: string; title?: string; preview?: string },
+  ): Promise<CompiledTemplate> {
+    try {
+      await this.loadPartials();
+
+      const templatePath = path.join(this.templatesPath, `${relativePath}.hbs`);
+      const cacheKey = `path:${relativePath}`;
+
+      let template: Handlebars.TemplateDelegate;
+      if (this.templateCache.has(cacheKey)) {
+        template = this.templateCache.get(cacheKey);
+      } else {
+        const templateContent = await fs.readFile(templatePath, 'utf8');
+        template = Handlebars.compile(templateContent);
+        this.templateCache.set(cacheKey, template);
+      }
+
+      const baseLayout = await this.getBaseLayout();
+      const contentHtml = template(data);
+
+      const layoutData = {
+        ...data,
+        title: meta.title || meta.subject,
+        preview: meta.preview || meta.subject,
+        content: contentHtml,
+      };
+
+      const fullHtml = baseLayout(layoutData);
+
+      let mjmlResult;
+      try {
+        mjmlResult = mjml2html(fullHtml, {
+          validationLevel: 'soft',
+          keepComments: false,
+          minify: false,
+        });
+      } catch (mjmlError) {
+        this.logger.error({ error: mjmlError.message, relativePath }, 'MJML conversion failed');
+        throw mjmlError;
+      }
+
+      if (mjmlResult.errors && mjmlResult.errors.length > 0) {
+        throw new Error(`MJML validation failed: ${JSON.stringify(mjmlResult.errors)}`);
+      }
+
+      const textVersion = contentHtml
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      return {
+        subject: meta.subject,
+        html: mjmlResult.html,
+        text: textVersion,
+      };
+    } catch (error) {
+      this.logger.error({ relativePath, error: error.message }, 'Failed to compile email by path');
+      throw new Error(`Email compilation failed for ${relativePath}: ${error.message}`);
+    }
+  }
+
   async compileProgressEmail(
     templateType: 'weekly-progress' | 'monthly-progress' | 'no-progress',
     data: TemplateData,

@@ -190,9 +190,15 @@
     "hono": "^4.11.10",
     "fast-xml-parser": "^5.3.6",
     "node-emoji": "^2.0.0",
-    "@sentry/node": { "minimatch": "10.2.2" },
-    "mjml-cli": { "minimatch": "10.2.2" },
-    "editorconfig": { "minimatch": "10.2.2" }
+    "@sentry/node": {
+      "minimatch": "10.2.2"
+    },
+    "mjml-cli": {
+      "minimatch": "10.2.2"
+    },
+    "editorconfig": {
+      "minimatch": "10.2.2"
+    }
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",
@@ -223,9 +229,15 @@
     "hono": "^4.11.10",
     "fast-xml-parser": "^5.3.6",
     "node-emoji": "^2.0.0",
-    "@sentry/node": { "minimatch": "10.2.2" },
-    "mjml-cli": { "minimatch": "10.2.2" },
-    "editorconfig": { "minimatch": "10.2.2" }
+    "@sentry/node": {
+      "minimatch": "10.2.2"
+    },
+    "mjml-cli": {
+      "minimatch": "10.2.2"
+    },
+    "editorconfig": {
+      "minimatch": "10.2.2"
+    }
   },
   "husky": {
     "hooks": {

@@ -257,7 +257,8 @@ export class UserController {
     return this.userService.checkIsAppSafe(isAppSafeDto, user.id);
   }
 
-  @UseGuards(IsAuth)
+  @UseGuards(IsAuth, UserThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiSecurity('Auth0AccessToken')
   @Post('/generate-occupation-specific-relevant-sites')
   @ApiOperation({ summary: 'Generate occupation-specific relevant sites and typical distractions using AI' })

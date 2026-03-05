@@ -15,6 +15,7 @@ import OpenAI from 'openai';
 import { createHash, randomUUID } from 'crypto';
 import { I18nService } from 'nestjs-i18n';
 import { plainToClass } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import { UpdateActivityDto } from '@api-server/modules/activity/dto/update-activity.dto';
 import { ActivityTemplate } from '@api-server/modules/activity-template/entity/activity-template.entity';
@@ -1032,8 +1033,15 @@ export class OpenAIService {
 
     const occupationMessage = completions.choices[0].message;
     const occupationContent = occupationMessage.content;
-    const parsedOccupationResponse = JSON.parse(occupationContent);
-    return plainToClass(OccupationSitesResponseDto, parsedOccupationResponse);
+    let parsedOccupationResponse: unknown;
+    try {
+      parsedOccupationResponse = JSON.parse(occupationContent);
+    } catch (parseError) {
+      throw new Error(`Failed to parse OpenAI occupation-sites response as JSON: ${parseError.message}`);
+    }
+    const occupationSitesDto = plainToClass(OccupationSitesResponseDto, parsedOccupationResponse);
+    await validateOrReject(occupationSitesDto);
+    return occupationSitesDto;
   }
 
   async convertBrainDumpToTasks(brainDumpContents: string): Promise<BraindumpTaskDto[]> {

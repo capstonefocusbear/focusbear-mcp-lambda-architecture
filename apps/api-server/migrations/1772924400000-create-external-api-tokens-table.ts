@@ -1,0 +1,37 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class CreateExternalApiTokensTable1772924400000 implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
+      CREATE TABLE "external_api_tokens" (
+        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "user_id" uuid NOT NULL,
+        "token_hash" varchar NOT NULL,
+        "token_prefix" varchar(16) NOT NULL,
+        "scopes" varchar[] NOT NULL DEFAULT '{}',
+        "label" varchar,
+        "last_used_at" timestamptz,
+        "expires_at" timestamptz,
+        "created_at" timestamptz NOT NULL DEFAULT NOW(),
+        "updated_at" timestamptz NOT NULL DEFAULT NOW(),
+        CONSTRAINT "PK_external_api_tokens" PRIMARY KEY ("id"),
+        CONSTRAINT "FK_external_api_tokens_user" FOREIGN KEY ("user_id")
+          REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX "IDX_external_api_tokens_user_id" ON "external_api_tokens" ("user_id")
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX "IDX_external_api_tokens_prefix" ON "external_api_tokens" ("token_prefix")
+    `);
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('DROP INDEX IF EXISTS "IDX_external_api_tokens_prefix"');
+    await queryRunner.query('DROP INDEX IF EXISTS "IDX_external_api_tokens_user_id"');
+    await queryRunner.query('DROP TABLE "external_api_tokens"');
+  }
+}

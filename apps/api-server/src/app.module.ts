@@ -53,6 +53,7 @@ import { AnnouncementsModule } from './modules/announcements/announcements.modul
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
 import { NoteModule } from './modules/note/note.module';
 import { GeofenceModule } from './modules/geofence/geofence.module';
+import { ExternalMcpModule } from './modules/external-mcp/external-mcp.module';
 
 @Module({
   imports: [
@@ -129,6 +130,7 @@ import { GeofenceModule } from './modules/geofence/geofence.module';
     AppVersionsModule,
     NoteModule,
     GeofenceModule,
+    ExternalMcpModule,
   ],
   controllers: [AppController],
   providers: [

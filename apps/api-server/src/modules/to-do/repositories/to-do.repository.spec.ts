@@ -17,6 +17,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
     mockQueryBuilder = {
       createQueryBuilder: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
       addSelect: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
@@ -91,6 +92,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
       // Verify the base query structure
       expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith('to_do');
       expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('to_do.tags', 'tags');
+      expect(mockQueryBuilder.leftJoin).toHaveBeenCalledWith('to_do.assignee', 'assignee');
       expect(mockQueryBuilder.select).toHaveBeenCalledWith([
         'to_do.id',
         'to_do.title',
@@ -110,6 +112,9 @@ describe('ToDoRepository - SQL Query Testing', () => {
         'to_do.icon',
         'to_do.perspiration_level',
         'to_do.outcome',
+        'assignee.id',
+        'assignee.username',
+        'assignee.metadata',
       ]);
 
       // Verify the scoring formula is added

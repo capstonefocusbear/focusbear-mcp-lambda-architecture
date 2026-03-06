@@ -83,6 +83,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     const query = this.orm
       .createQueryBuilder('to_do')
       .leftJoinAndSelect('to_do.tags', 'tags')
+      .leftJoin('to_do.assignee', 'assignee')
       .select([
         'to_do.id',
         'to_do.title',
@@ -102,6 +103,9 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.icon',
         'to_do.perspiration_level',
         'to_do.outcome',
+        'assignee.id',
+        'assignee.username',
+        'assignee.metadata',
       ])
       .addSelect(`(${ToDoRepository.TOP_SCORE_SQL})`, 'top_score')
       .take(take)
@@ -175,6 +179,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     const result = await this.orm
       .createQueryBuilder('to_do')
       .leftJoinAndSelect('to_do.tags', 'tags')
+      .leftJoin('to_do.assignee', 'assignee')
       .select([
         'to_do.id',
         'to_do.title',
@@ -192,6 +197,9 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'tags.text',
         'to_do.duration',
         'to_do.icon',
+        'assignee.id',
+        'assignee.username',
+        'assignee.metadata',
       ])
       .where('to_do.user_id = :user_id', { user_id: userId })
       .getMany();
@@ -203,6 +211,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
     const query = this.orm
       .createQueryBuilder('to_do')
       .leftJoinAndSelect('to_do.tags', 'tags')
+      .leftJoin('to_do.assignee', 'assignee')
       .select([
         'to_do.id',
         'to_do.title',
@@ -221,6 +230,9 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.duration',
         'to_do.icon',
         'to_do.updated_at',
+        'assignee.id',
+        'assignee.username',
+        'assignee.metadata',
       ])
       .where('to_do.user_id = :user_id', {
         user_id,

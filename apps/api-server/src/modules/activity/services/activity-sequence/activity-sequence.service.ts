@@ -79,13 +79,13 @@ export class ActivitySequenceService {
     microBreaksDailyDurations: DailySequenceDurations;
   }> {
     const morningActivities = await this.activityRepository.orm.find({
-      where: { user_id, type: ActivityType.morning },
+      where: { user_id, type: ActivityType.morning, is_deleted: false },
     });
     const eveningActivities = await this.activityRepository.orm.find({
-      where: { user_id, type: ActivityType.evening },
+      where: { user_id, type: ActivityType.evening, is_deleted: false },
     });
     const microBreakActivities = await this.activityRepository.orm.find({
-      where: { user_id, type: ActivityType.break },
+      where: { user_id, type: ActivityType.break, is_deleted: false },
     });
     const morningRoutineDailyDurations = this.calculateSequenceDurationForWeek(morningActivities);
     const eveningRoutineDailyDurations = this.calculateSequenceDurationForWeek(eveningActivities);

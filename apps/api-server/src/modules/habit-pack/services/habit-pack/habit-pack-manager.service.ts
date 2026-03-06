@@ -523,10 +523,13 @@ export class HabitPackManagerService {
   async getUserInstalledStandalonePacks(user_id: string): Promise<InstalledStandalonePackResponse[]> {
     const user = await this.userRepository.orm.findOneBy({ id: user_id });
     if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-    const sequences = await this.activitySequenceRepository.orm.find({
-      where: { user_id, type: ActivityType.standalone },
-      relations: ['activities', 'activities.choices'],
-    });
+    const sequences = await this.activitySequenceRepository.orm
+      .createQueryBuilder('activity_sequences')
+      .leftJoinAndSelect('activity_sequences.activities', 'activities', 'activities.is_deleted = false')
+      .leftJoinAndSelect('activities.choices', 'choices', 'choices.is_deleted = false')
+      .where('activity_sequences.user_id = :user_id', { user_id })
+      .andWhere('activity_sequences.type = :type', { type: ActivityType.standalone })
+      .getMany();
     return sequences.map((sequence) => {
       const serializedStandaloneActivities = this.activityParserService.serialize([sequence]).standalone_activities;
       return {

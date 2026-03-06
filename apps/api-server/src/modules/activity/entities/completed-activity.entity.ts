@@ -80,7 +80,7 @@ export class CompletedActivity extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user?: User;
 
-  @ManyToOne(() => Activity, (activity) => activity.completed_activities, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
+  @ManyToOne(() => Activity, (activity) => activity.completed_activities, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'activity_id' })
   activity?: Activity;
 

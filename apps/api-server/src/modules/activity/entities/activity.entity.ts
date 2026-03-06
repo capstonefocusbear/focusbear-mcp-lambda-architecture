@@ -145,6 +145,12 @@ export class Activity extends BaseEntity {
   })
   geofence_id?: string;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  is_deleted?: boolean;
+
   @ManyToOne(() => Geofence, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'geofence_id' })
   geofence?: Geofence;

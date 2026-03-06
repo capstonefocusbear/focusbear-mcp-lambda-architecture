@@ -38,7 +38,7 @@ export class UserFeedback extends BaseEntity {
   })
   metadata?: any;
 
-  @ManyToOne(() => User, (user) => user.feedback, { onDelete: 'SET NULL', onUpdate: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.feedback, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 }

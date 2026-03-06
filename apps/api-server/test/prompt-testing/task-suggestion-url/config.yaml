@@ -232,3 +232,26 @@ tests:
     assert:
       - type: javascript
         value: file://../validate-task-suggestion.js
+
+  # Test 12: Should NOT suggest duplicate-named task (Issue #1661)
+  - description: "Zoho ticket with duplicate openclaw setup tasks - should not suggest same-named task"
+    vars:
+      url: "https://desk.zoho.com/agent/ethicaltechnology/all/tickets/details/67909000110982490"
+      tab_title: "#114364 - the crm carpenters"
+      meta_description: "Support ticket"
+      current_task_in_todo_player: "openclaw setup"
+      current_tasks_list: |
+        - task_name: "Team Communication Setup"
+          task_id: "task-comms-123"
+        - task_name: "openclaw setup"
+          task_id: "task-openclaw-456"
+        - task_name: "code BearlyMail"
+          task_id: "task-bearlymail-789"
+        - task_name: "openclaw setup"
+          task_id: "task-openclaw-999"
+      input_wrapper: "```"
+      should_suggest_new: true
+      existing_task_ids: ["task-comms-123", "task-openclaw-456", "task-bearlymail-789", "task-openclaw-999"]
+    assert:
+      - type: javascript
+        value: file://../validate-task-suggestion.js

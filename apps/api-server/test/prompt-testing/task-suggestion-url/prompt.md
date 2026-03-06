@@ -21,6 +21,7 @@ Guidelines for matching:
 - If the website is generic/multi-purpose (e.g., Google homepage, Gmail inbox, Twitter feed, Reddit), only match an existing task if the task is CLEARLY related to what the website is commonly used for. For example: GitHub CAN match a task like "Coding" or "Development work" since GitHub is commonly used for coding. But a generic search engine should NOT match "documentation for voice call system" just because you could theoretically search for docs there.
 - When in doubt, suggest a NEW task rather than forcing a poor match
 - Do NOT suggest the current task unless the website is CLEARLY and DIRECTLY related to it
+- IMPORTANT: NEVER suggest a task that has the same name as `current_task_in_todo_player` (case-insensitive), even if it has a different task_id. The system already determined the current task isn't aligned — suggesting a task with the same name is contradictory and confusing to the user.
 
 Decision process:
 1. Determine if the website is specialized or generic/multi-purpose

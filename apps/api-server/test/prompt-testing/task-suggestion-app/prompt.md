@@ -20,6 +20,7 @@ Guidelines for matching:
 - If the app is generic/multi-purpose (e.g., Terminal, VS Code, Finder, Notes, Safari), only match an existing task if the task is CLEARLY related to what the app is commonly used for. For example: Terminal CAN match a task like "Coding" or "Development work" since Terminal is commonly used for coding. But Terminal should NOT match "documentation for voice call system" just because you could theoretically write docs in Terminal.
 - When in doubt, suggest a NEW task rather than forcing a poor match
 - Do NOT suggest the current task unless the app is CLEARLY and DIRECTLY related to it
+- IMPORTANT: NEVER suggest a task that has the same name as `current_task_in_todo_player` (case-insensitive), even if it has a different task_id. The system already determined the current task isn't aligned — suggesting a task with the same name is contradictory and confusing to the user.
 
 Decision process:
 1. Determine if the app is specialized or generic/multi-purpose

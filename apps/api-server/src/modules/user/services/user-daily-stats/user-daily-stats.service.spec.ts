@@ -605,6 +605,29 @@ describe('UserDailyStatsService', () => {
     });
   });
 
+  describe('getLeaderBoardRankings', () => {
+    it('positive: should pass active_within_days through to repository calls', async () => {
+      const activeWithinDays = 30;
+      const userId = userDummy.id;
+      const query: any = { active_within_days: activeWithinDays };
+
+      UserRepositoryMock.getLeaderboardRankingsByStreakType.mockResolvedValueOnce([]);
+      UserRepositoryMock.getUserLeaderboardRank.mockResolvedValueOnce(null);
+
+      const result = await service.getLeaderBoardRankings(userId, query);
+
+      expect(UserRepositoryMock.getLeaderboardRankingsByStreakType).toHaveBeenCalledWith(
+        expect.objectContaining({ active_within_days: activeWithinDays }),
+      );
+      expect(UserRepositoryMock.getUserLeaderboardRank).toHaveBeenCalledWith(
+        userId,
+        expect.anything(),
+        activeWithinDays,
+      );
+      expect(result).toEqual({ user_rank: null, users_rankings: [] });
+    });
+  });
+
   describe('getUserStatsForAdminDashboard', () => {
     beforeEach(() => {
       jest.resetAllMocks();

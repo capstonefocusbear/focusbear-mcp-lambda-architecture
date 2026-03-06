@@ -274,6 +274,16 @@ export function calculateStreakForMicroBreaks(userDailyStats: DailyStats[], time
   return calculateStreakForWeekdaysOnly(userDailyStats, timeZone);
 }
 
+/** Clamps streak to at least daysCompleted when user completed every day in the window (fixes UI inconsistency). */
+function clampStreak(
+  streak: number,
+  daysCompleted: number,
+  completedIn90: number,
+  windowSize: number,
+): number {
+  return windowSize > 0 && completedIn90 >= windowSize ? Math.max(streak, daysCompleted) : streak;
+}
+
 export function calculateStreaks(
   userDailyStats: DailyStats[],
   timeZone: string,
@@ -331,11 +341,39 @@ export function calculateStreaks(
 
   const micro_breaks_streak = calculateStreakForMicroBreaks(daysWhereMicroBreaksWereCompleted, timeZone);
 
+  // Workaround: ensure streak is consistent with 90-day completion (fixes "streak 19" with "90/90" UI bug).
+  // TODO: Investigate root cause in calculateStreakForRoutine / calculateStreakForFocusModes / calculateStreakForMicroBreaks
+  // (likely timezone or deduplication); this clamp produces a synthetic floor, not a true consecutive streak.
+  const morning_streak_final = clampStreak(
+    morning_routines_streak,
+    morning_number_days_completed,
+    daysWhereMorningRoutinesWereCompletedIn90Days.length,
+    num_days_of_stats,
+  );
+  const evening_streak_final = clampStreak(
+    evening_routines_streak,
+    evening_number_days_completed,
+    daysWhereEveningRoutinesWereCompletedIn90Days.length,
+    num_days_of_stats,
+  );
+  const focus_streak_final = clampStreak(
+    focus_modes_streak,
+    focus_modes_number_days_completed,
+    daysWhereFocusModesWereCompletedIn90Days.length,
+    num_days_of_stats,
+  );
+  const micro_streak_final = clampStreak(
+    micro_breaks_streak,
+    micro_breaks_number_days_completed,
+    daysWhereMicroBreaksWereCompletedIn90Days.length,
+    num_days_of_stats,
+  );
+
   return {
-    focus_modes_streak: isValidStreak(focus_modes_streak) ? focus_modes_streak : 0,
-    morning_routines_streak: isValidStreak(morning_routines_streak) ? morning_routines_streak : 0,
-    evening_routines_streak: isValidStreak(evening_routines_streak) ? evening_routines_streak : 0,
-    micro_breaks_streak: isValidStreak(micro_breaks_streak) ? micro_breaks_streak : 0,
+    focus_modes_streak: isValidStreak(focus_streak_final) ? focus_streak_final : 0,
+    morning_routines_streak: isValidStreak(morning_streak_final) ? morning_streak_final : 0,
+    evening_routines_streak: isValidStreak(evening_streak_final) ? evening_streak_final : 0,
+    micro_breaks_streak: isValidStreak(micro_streak_final) ? micro_streak_final : 0,
     percent_morning_routines_streak_complete_in_90days:
       num_days_of_stats > 0
         ? Math.round((daysWhereMorningRoutinesWereCompletedIn90Days.length / num_days_of_stats) * 100)

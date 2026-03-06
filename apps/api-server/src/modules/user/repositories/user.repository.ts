@@ -14,6 +14,70 @@ import { GetLeaderBoardQuery } from '../dto/get-leader-board-query.dto';
 import { Tutorial } from '../../activity/entities/tutorial.entity';
 import { CustomRoutine } from '../entities/custom-routine';
 
+const ACTIVE_WITHIN_FILTER = `
+          AND (($3::int IS NULL) OR (users.last_time_stats_updated >= NOW() - (INTERVAL '1 day' * $3::int)))
+`;
+
+const LEADERBOARD_USER_AGGREGATE_SUBQUERY = `
+        SELECT 
+        users.id, 
+        users.username, 
+        users.morning_routines_streak,
+        users.evening_routines_streak,
+        users.focus_modes_streak,
+        users.micro_breaks_streak,
+        users.morning_percent_number_day_of_stats_completed,
+        users.evening_percent_number_day_of_stats_completed,
+        users.micro_percent_number_day_of_stats_completed,
+        users.morning_number_days_completed,
+        users.morning_num_days_of_stats,
+        users.evening_number_days_completed,
+        users.evening_num_days_of_stats,
+        users.micro_breaks_number_days_completed,
+        users.micro_breaks_num_days_of_stats,
+        users.focus_modes_number_days_completed,
+        users.focus_modes_num_days_of_stats,
+        users.num_days_of_stats,
+        users.number_days_completed,
+        COUNT(daily_stats.id) AS item_count
+        FROM users
+        LEFT JOIN daily_stats ON daily_stats.user_id = users.id 
+          AND daily_stats.date_completed >= NOW() - INTERVAL '90 days'
+        WHERE users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
+${ACTIVE_WITHIN_FILTER}
+        GROUP BY users.id
+`;
+
+const LEADERBOARD_ROW_NUMBER_ORDERING = `
+        ORDER BY
+          -- Primary sort: days completed in the last 90 days
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN focus_modes_number_days_completed
+            WHEN $1 = 'morning_routines_streak' THEN morning_number_days_completed
+            WHEN $1 = 'evening_routines_streak' THEN evening_number_days_completed
+            ELSE micro_breaks_number_days_completed
+          END DESC,
+          -- Secondary: completion percentage in the last 90 days
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN (
+              CASE WHEN focus_modes_num_days_of_stats > 0
+                   THEN (focus_modes_number_days_completed::decimal / focus_modes_num_days_of_stats)
+                   ELSE 0 END
+            )
+            WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
+            WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
+            ELSE micro_percent_number_day_of_stats_completed
+          END DESC,
+          -- Tertiary: current streak value
+          CASE
+            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
+            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
+            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
+            ELSE micro_breaks_streak
+          END DESC,
+          username
+`;
+
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
   private static readonly EMAIL_USER_SELECT_FIELDS = [
@@ -350,6 +414,7 @@ export class UserRepository extends BaseRepository<User> {
   async getLeaderboardRankingsByStreakType({
     streak_type = StreakTypes.MORNING_ROUTINES_STREAK,
     limit = 50,
+    active_within_days,
   }: GetLeaderBoardQuery) {
     return this.orm.query(
       `
@@ -375,70 +440,20 @@ export class UserRepository extends BaseRepository<User> {
       number_days_completed,
       item_count,
       ROW_NUMBER() OVER (
-        ORDER BY
-          -- Primary sort: days completed in the last 90 days
-          CASE
-            WHEN $1 = 'focus_modes_streak' THEN focus_modes_number_days_completed
-            WHEN $1 = 'morning_routines_streak' THEN morning_number_days_completed
-            WHEN $1 = 'evening_routines_streak' THEN evening_number_days_completed
-            ELSE micro_breaks_number_days_completed
-          END DESC,
-          -- Secondary: completion percentage in the last 90 days
-          CASE
-            WHEN $1 = 'focus_modes_streak' THEN (
-              CASE WHEN focus_modes_num_days_of_stats > 0
-                   THEN (focus_modes_number_days_completed::decimal / focus_modes_num_days_of_stats)
-                   ELSE 0 END
-            )
-            WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
-            WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
-            ELSE micro_percent_number_day_of_stats_completed
-          END DESC,
-          -- Tertiary: current streak value
-          CASE
-            WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-            WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-            WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
-            ELSE micro_breaks_streak
-          END DESC,
-          username
-      ) AS rank
+${LEADERBOARD_ROW_NUMBER_ORDERING}
+        ) AS rank
       FROM
       (
-        SELECT 
-        users.id, 
-        users.username, 
-        users.morning_routines_streak,
-        users.evening_routines_streak,
-        users.focus_modes_streak,
-        users.micro_breaks_streak,
-        users.morning_percent_number_day_of_stats_completed,
-        users.evening_percent_number_day_of_stats_completed,
-        users.micro_percent_number_day_of_stats_completed,
-        users.morning_number_days_completed,
-        users.morning_num_days_of_stats,
-        users.evening_number_days_completed,
-        users.evening_num_days_of_stats,
-        users.micro_breaks_number_days_completed,
-        users.micro_breaks_num_days_of_stats,
-        users.focus_modes_number_days_completed,
-        users.focus_modes_num_days_of_stats,
-        users.num_days_of_stats,
-        users.number_days_completed,
-        COUNT(daily_stats.id) AS item_count
-        FROM users
-        LEFT JOIN daily_stats ON daily_stats.user_id = users.id 
-          AND daily_stats.date_completed >= NOW() - INTERVAL '90 days'
-        WHERE users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
-        GROUP BY users.id
+${LEADERBOARD_USER_AGGREGATE_SUBQUERY}
         ) as result
-        LIMIT $2
+      ORDER BY rank
+      LIMIT $2
     `,
-      [streak_type, limit],
+      [streak_type, limit, active_within_days ?? null],
     );
   }
 
-  async getUserLeaderboardRank(userId: string, streakType: StreakTypes): Promise<any> {
+  async getUserLeaderboardRank(userId: string, streakType: StreakTypes, activeWithinDays?: number): Promise<any> {
     const result = await this.orm.query(
       `
         WITH leaderBoard AS
@@ -465,64 +480,11 @@ export class UserRepository extends BaseRepository<User> {
           number_days_completed,
           item_count,
           ROW_NUMBER() OVER (
-            ORDER BY
-              -- Primary sort: days completed in the last 90 days
-              CASE
-                WHEN $1 = 'focus_modes_streak' THEN focus_modes_number_days_completed
-                WHEN $1 = 'morning_routines_streak' THEN morning_number_days_completed
-                WHEN $1 = 'evening_routines_streak' THEN evening_number_days_completed
-                ELSE micro_breaks_number_days_completed
-              END DESC,
-              -- Secondary: completion percentage in the last 90 days
-              CASE
-                WHEN $1 = 'focus_modes_streak' THEN (
-                  CASE WHEN focus_modes_num_days_of_stats > 0
-                       THEN (focus_modes_number_days_completed::decimal / focus_modes_num_days_of_stats)
-                       ELSE 0 END
-                )
-                WHEN $1 = 'morning_routines_streak' THEN morning_percent_number_day_of_stats_completed
-                WHEN $1 = 'evening_routines_streak' THEN evening_percent_number_day_of_stats_completed
-                ELSE micro_percent_number_day_of_stats_completed
-              END DESC,
-              -- Tertiary: current streak value
-              CASE
-                WHEN $1 = 'focus_modes_streak' THEN focus_modes_streak
-                WHEN $1 = 'morning_routines_streak' THEN morning_routines_streak
-                WHEN $1 = 'evening_routines_streak' THEN evening_routines_streak
-                ELSE micro_breaks_streak
-              END DESC,
-              username
+${LEADERBOARD_ROW_NUMBER_ORDERING}
           ) AS rank
           FROM
           (
-            SELECT 
-            users.id, 
-            users.username, 
-            users.morning_routines_streak,
-            users.evening_routines_streak,
-            users.focus_modes_streak,
-            users.micro_breaks_streak,
-            users.morning_percent_number_day_of_stats_completed,
-            users.evening_percent_number_day_of_stats_completed,
-            users.micro_percent_number_day_of_stats_completed,
-            users.morning_number_days_completed,
-            users.morning_num_days_of_stats,
-            users.evening_number_days_completed,
-            users.evening_num_days_of_stats,
-            users.micro_breaks_number_days_completed,
-            users.micro_breaks_num_days_of_stats,
-            users.focus_modes_number_days_completed,
-            users.focus_modes_num_days_of_stats,
-            users.num_days_of_stats,
-            users.number_days_completed,
-            COUNT(daily_stats.id) AS item_count
-            FROM 
-                users
-            LEFT JOIN daily_stats ON daily_stats.user_id = users.id 
-              AND daily_stats.date_completed >= NOW() - INTERVAL '90 days'
-            WHERE 
-              users.created_at <= NOW() - INTERVAL '7 days' AND users.num_days_of_stats >= 7
-            GROUP BY users.id
+${LEADERBOARD_USER_AGGREGATE_SUBQUERY}
           ) as result 
         )
 
@@ -550,7 +512,7 @@ export class UserRepository extends BaseRepository<User> {
       FROM leaderBoard
       WHERE id = $2
     `,
-      [streakType, userId],
+      [streakType, userId, activeWithinDays ?? null],
     );
     return result[0] || null;
   }

@@ -177,6 +177,23 @@ describe('EmailProcessor', () => {
     expect(sendGridMock.sendEmail).toHaveBeenCalledWith(mockJobData);
   });
 
+  it('should pass html to sendEmail when provided in job data', async () => {
+    const mockJobData = {
+      to: 'user@example.com',
+      from: 'support@focusbear.io',
+      replyTo: 'support@focusbear.io',
+      subject: 'Thank you for subscribing!',
+      text: 'Thank you for subscribing!',
+      html: '<html><body><p>Thank you for subscribing!</p></body></html>',
+    };
+
+    const mockJob = { data: mockJobData } as Job;
+
+    await processor.handleSendEmail(mockJob);
+
+    expect(sendGridMock.sendEmail).toHaveBeenCalledWith(mockJobData);
+  });
+
   it('should handle progress email jobs correctly', async () => {
     const mockJobData = {
       user: { ...mockUser, email: 'test@example.com' },

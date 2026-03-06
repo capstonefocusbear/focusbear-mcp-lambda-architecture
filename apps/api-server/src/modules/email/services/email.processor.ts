@@ -22,7 +22,7 @@ export class EmailProcessor {
 
   @Process('sendEmail')
   public async handleSendEmail(job: Job) {
-    const { to, from, replyTo, subject, text } = job.data;
+    const { to, from, replyTo, subject, text, html } = job.data;
 
     await this.sendGridService.sendEmail({
       to,
@@ -30,6 +30,7 @@ export class EmailProcessor {
       replyTo,
       subject,
       text,
+      ...(html ? { html } : {}),
     });
   }
 

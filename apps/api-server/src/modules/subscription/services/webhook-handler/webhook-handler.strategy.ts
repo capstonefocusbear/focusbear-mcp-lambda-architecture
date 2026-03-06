@@ -3,10 +3,14 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { isUUID } from '../../../../shared/utils/helpers';
 import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
+import { SubscriptionEmailService } from '../subscription-email/subscription-email.service';
 
 @Injectable()
 export class WebhookHandlerStrategy {
-  constructor(@InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue) {}
+  constructor(
+    @InjectQueue(BullQueues.REVENUE_CAT_STATUS) private revenueCatQueue: Queue,
+    private readonly subscriptionEmailService: SubscriptionEmailService,
+  ) {}
 
   async updateUserRevenueCatCache(user_id: string) {
     if (!isUUID(user_id)) return;
@@ -15,6 +19,7 @@ export class WebhookHandlerStrategy {
 
   async INITIAL_PURCHASE(event) {
     await this.updateUserRevenueCatCache(event.app_user_id);
+    await this.subscriptionEmailService.sendThankYouEmail(event.app_user_id);
     return null;
   }
 

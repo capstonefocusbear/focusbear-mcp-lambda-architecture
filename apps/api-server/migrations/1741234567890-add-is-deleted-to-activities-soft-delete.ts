@@ -47,17 +47,24 @@ export class AddIsDeletedToActivitiesSoftDelete1741234567890 implements Migratio
       DROP CONSTRAINT IF EXISTS "FK_completed_activities_activity_id"
     `);
 
+    // Clean up any NULL activity_id rows that resulted from SET NULL cascade.
+    // Without this, restoring NOT NULL below would fail with a constraint violation.
     await queryRunner.query(`
-      ALTER TABLE "completed_activities"
-      ADD CONSTRAINT "FK_completed_activities_activity_id"
-      FOREIGN KEY ("activity_id") REFERENCES "activities"("id")
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      DELETE FROM "completed_activities" WHERE "activity_id" IS NULL
     `);
 
     // Restore NOT NULL on activity_id
     await queryRunner.query(`
       ALTER TABLE "completed_activities"
       ALTER COLUMN "activity_id" SET NOT NULL
+    `);
+
+    // Restore FK with original constraint name and CASCADE semantics
+    await queryRunner.query(`
+      ALTER TABLE "completed_activities"
+      ADD CONSTRAINT "FK_0140c854ae5304f6546171332b6"
+      FOREIGN KEY ("activity_id") REFERENCES "activities"("id")
+      ON DELETE CASCADE ON UPDATE NO ACTION
     `);
 
     // Drop index

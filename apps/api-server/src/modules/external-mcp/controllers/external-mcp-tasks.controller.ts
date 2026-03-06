@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { OpenclawMcpTasksService } from '../services/openclaw-mcp-tasks.service';
-import { OpenclawTokenGuard, OpenclawUser, OpenclawScopes } from '../guards/openclaw-token.guard';
+import { ExternalMcpTasksService } from '../services/external-mcp-tasks.service';
+import { ExternalApiTokenGuard, McpUser, McpScopes } from '../guards/external-api-token.guard';
 import { GetToDosQueryDto } from '../../to-do/dto/get-to-dos-query.dto';
 import { ToDoResponse } from '../../to-do/dto/to-do-response.dto';
 import { TaskComment } from '../../to-do/entities/task-comment.entity';
@@ -10,13 +10,13 @@ import { UpdateTaskStatusDto } from '../dto/update-task-status.dto';
 import { AddTaskNoteDto } from '../dto/add-task-note.dto';
 import { PaginationDto } from '../../../shared/pagination/index.dto';
 
-@Controller('openclaw-mcp/tasks')
-@ApiTags('openclaw-mcp-tasks')
-@UseGuards(OpenclawTokenGuard)
-@ApiSecurity('OpenclawBearerToken')
+@Controller('mcp/tasks')
+@ApiTags('mcp-tasks')
+@UseGuards(ExternalApiTokenGuard)
+@ApiSecurity('McpBearerToken')
 @Throttle({ default: { limit: 60, ttl: 60000 } })
-export class OpenclawMcpTasksController {
-  constructor(private readonly openclawMcpTasksService: OpenclawMcpTasksService) {}
+export class ExternalMcpTasksController {
+  constructor(private readonly externalMcpTasksService: ExternalMcpTasksService) {}
 
   @Get()
   @ApiOperation({
@@ -24,11 +24,11 @@ export class OpenclawMcpTasksController {
     description: 'Returns tasks for the user associated with the bearer token. Requires scope: tasks:read.',
   })
   async listTasks(
-    @OpenclawUser() userId: string,
-    @OpenclawScopes() scopes: string[],
+    @McpUser() userId: string,
+    @McpScopes() scopes: string[],
     @Query() query: GetToDosQueryDto,
   ): Promise<PaginationDto<ToDoResponse>> {
-    return this.openclawMcpTasksService.listTasks(userId, scopes, query);
+    return this.externalMcpTasksService.listTasks(userId, scopes, query);
   }
 
   @Put(':id/status')
@@ -37,12 +37,12 @@ export class OpenclawMcpTasksController {
     description: 'Updates the status of the specified task. Requires scope: tasks:write.',
   })
   async updateTaskStatus(
-    @OpenclawUser() userId: string,
-    @OpenclawScopes() scopes: string[],
+    @McpUser() userId: string,
+    @McpScopes() scopes: string[],
     @Param('id', ParseUUIDPipe) taskId: string,
     @Body() dto: UpdateTaskStatusDto,
   ): Promise<ToDoResponse> {
-    return this.openclawMcpTasksService.updateTaskStatus(userId, scopes, taskId, dto);
+    return this.externalMcpTasksService.updateTaskStatus(userId, scopes, taskId, dto);
   }
 
   @Post(':id/notes')
@@ -51,11 +51,11 @@ export class OpenclawMcpTasksController {
     description: 'Adds a comment/note to the specified task. Requires scope: tasks:write.',
   })
   async addNote(
-    @OpenclawUser() userId: string,
-    @OpenclawScopes() scopes: string[],
+    @McpUser() userId: string,
+    @McpScopes() scopes: string[],
     @Param('id', ParseUUIDPipe) taskId: string,
     @Body() dto: AddTaskNoteDto,
   ): Promise<TaskComment> {
-    return this.openclawMcpTasksService.addNote(userId, scopes, taskId, dto);
+    return this.externalMcpTasksService.addNote(userId, scopes, taskId, dto);
   }
 }

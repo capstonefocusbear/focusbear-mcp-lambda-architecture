@@ -1,26 +1,26 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { ScryptService } from '@app/crypto';
-import { OpenclawTokenRepository } from '../repositories/openclaw-token.repository';
-import { OpenclawToken } from '../entities/openclaw-token.entity';
-import { CreateOpenclawTokenDto } from '../dto/create-openclaw-token.dto';
-import { OpenclawTokenIssuedResponseDto, OpenclawTokenResponseDto } from '../dto/openclaw-token-response.dto';
+import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
+import { ExternalApiToken } from '../entities/external-api-token.entity';
+import { CreateExternalApiTokenDto } from '../dto/create-external-api-token.dto';
+import { ExternalApiTokenIssuedResponseDto, ExternalApiTokenResponseDto } from '../dto/external-api-token-response.dto';
 
 @Injectable()
-export class OpenclawMcpAuthService {
+export class ExternalMcpAuthService {
   constructor(
-    private readonly openclawTokenRepository: OpenclawTokenRepository,
+    private readonly externalApiTokenRepository: ExternalApiTokenRepository,
     private readonly scryptService: ScryptService,
   ) {}
 
-  async issueToken(userId: string, dto: CreateOpenclawTokenDto): Promise<OpenclawTokenIssuedResponseDto> {
+  async issueToken(userId: string, dto: CreateExternalApiTokenDto): Promise<ExternalApiTokenIssuedResponseDto> {
     // Generate a cryptographically random 64-char hex token
     const rawToken = crypto.randomBytes(32).toString('hex');
     // Use SHA-256 hash of the token (not the raw prefix) to avoid leaking actual token bytes
     const tokenPrefix = crypto.createHash('sha256').update(rawToken).digest('hex').substring(0, 16);
     const tokenHash = await this.scryptService.hash(rawToken);
 
-    const entity = new OpenclawToken(
+    const entity = new ExternalApiToken(
       {
         user_id: userId,
         token_hash: tokenHash,
@@ -33,7 +33,7 @@ export class OpenclawMcpAuthService {
       { generateId: true },
     );
 
-    const saved = await this.openclawTokenRepository.create(entity);
+    const saved = await this.externalApiTokenRepository.create(entity);
 
     return {
       id: saved.id,
@@ -46,8 +46,8 @@ export class OpenclawMcpAuthService {
     };
   }
 
-  async listTokens(userId: string): Promise<OpenclawTokenResponseDto[]> {
-    const tokens = await this.openclawTokenRepository.findByUserId(userId);
+  async listTokens(userId: string): Promise<ExternalApiTokenResponseDto[]> {
+    const tokens = await this.externalApiTokenRepository.findByUserId(userId);
     return tokens.map((t) => ({
       id: t.id,
       label: t.label,
@@ -59,10 +59,10 @@ export class OpenclawMcpAuthService {
   }
 
   async revokeToken(userId: string, tokenId: string): Promise<void> {
-    const existing = await this.openclawTokenRepository.findByUserIdAndId(userId, tokenId);
+    const existing = await this.externalApiTokenRepository.findByUserIdAndId(userId, tokenId);
     if (!existing) {
-      throw new NotFoundException(`Token not found`);
+      throw new NotFoundException('Token not found');
     }
-    await this.openclawTokenRepository.deleteByUserIdAndId(userId, tokenId);
+    await this.externalApiTokenRepository.deleteByUserIdAndId(userId, tokenId);
   }
 }

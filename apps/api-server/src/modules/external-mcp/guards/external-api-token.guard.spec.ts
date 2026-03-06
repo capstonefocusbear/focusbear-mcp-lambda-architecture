@@ -1,18 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { OpenclawTokenGuard, OPENCLAW_SCOPE_KEY } from './openclaw-token.guard';
-import { OpenclawTokenRepository } from '../repositories/openclaw-token.repository';
+import { ExternalApiTokenGuard, MCP_SCOPE_KEY } from './external-api-token.guard';
+import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
 
-describe('OpenclawTokenGuard', () => {
-  let guard: OpenclawTokenGuard;
+describe('ExternalApiTokenGuard', () => {
+  let guard: ExternalApiTokenGuard;
   let reflector: Reflector;
 
   const mockUserId = 'user-uuid-1234';
   const mockTokenId = 'token-uuid-5678';
   const rawToken = 'deadbeef'.repeat(8); // 64-char hex token
 
-  const openclawTokenRepositoryMock = {
+  const externalApiTokenRepositoryMock = {
     findByRawToken: jest.fn(),
     updateLastUsed: jest.fn(),
   };
@@ -41,13 +41,13 @@ describe('OpenclawTokenGuard', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OpenclawTokenGuard,
-        { provide: OpenclawTokenRepository, useValue: openclawTokenRepositoryMock },
+        ExternalApiTokenGuard,
+        { provide: ExternalApiTokenRepository, useValue: externalApiTokenRepositoryMock },
         Reflector,
       ],
     }).compile();
 
-    guard = module.get<OpenclawTokenGuard>(OpenclawTokenGuard);
+    guard = module.get<ExternalApiTokenGuard>(ExternalApiTokenGuard);
     reflector = module.get<Reflector>(Reflector);
   });
 
@@ -60,8 +60,8 @@ describe('OpenclawTokenGuard', () => {
   describe('valid token', () => {
     it('should return true and attach userId and scopes to the request', async () => {
       const token = buildToken();
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
-      openclawTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
 
       const ctx = buildContext(`Bearer ${rawToken}`);
       const result = await guard.canActivate(ctx);
@@ -69,19 +69,19 @@ describe('OpenclawTokenGuard', () => {
       expect(result).toBe(true);
 
       const request = ctx.switchToHttp().getRequest();
-      expect(request.openclawUserId).toBe(mockUserId);
-      expect(request.openclawScopes).toEqual(token.scopes);
+      expect(request.mcpUserId).toBe(mockUserId);
+      expect(request.mcpScopes).toEqual(token.scopes);
     });
 
     it('should fire-and-forget updateLastUsed without blocking the response', async () => {
       const token = buildToken();
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
-      openclawTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
 
       const ctx = buildContext(`Bearer ${rawToken}`);
       await guard.canActivate(ctx);
 
-      expect(openclawTokenRepositoryMock.updateLastUsed).toHaveBeenCalledWith(mockTokenId);
+      expect(externalApiTokenRepositoryMock.updateLastUsed).toHaveBeenCalledWith(mockTokenId);
     });
   });
 
@@ -92,14 +92,14 @@ describe('OpenclawTokenGuard', () => {
       const ctx = buildContext(undefined);
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
-      expect(openclawTokenRepositoryMock.findByRawToken).not.toHaveBeenCalled();
+      expect(externalApiTokenRepositoryMock.findByRawToken).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException when header has no Bearer prefix', async () => {
       const ctx = buildContext(`Token ${rawToken}`);
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
-      expect(openclawTokenRepositoryMock.findByRawToken).not.toHaveBeenCalled();
+      expect(externalApiTokenRepositoryMock.findByRawToken).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException with descriptive message for missing header', async () => {
@@ -115,7 +115,7 @@ describe('OpenclawTokenGuard', () => {
 
   describe('unknown token', () => {
     it('should throw UnauthorizedException when findByRawToken returns null', async () => {
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(null);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(null);
 
       const ctx = buildContext(`Bearer ${rawToken}`);
 
@@ -123,7 +123,7 @@ describe('OpenclawTokenGuard', () => {
     });
 
     it('should throw UnauthorizedException with "Invalid or revoked token" message', async () => {
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(null);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(null);
 
       const ctx = buildContext(`Bearer ${rawToken}`);
 
@@ -137,7 +137,7 @@ describe('OpenclawTokenGuard', () => {
     it('should throw UnauthorizedException when token has expired', async () => {
       const pastDate = new Date(Date.now() - 1000 * 60 * 60); // 1 hour ago
       const token = buildToken({ expires_at: pastDate });
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
 
       const ctx = buildContext(`Bearer ${rawToken}`);
 
@@ -147,7 +147,7 @@ describe('OpenclawTokenGuard', () => {
     it('should throw UnauthorizedException with "Token has expired" message', async () => {
       const pastDate = new Date(Date.now() - 1000 * 60 * 60);
       const token = buildToken({ expires_at: pastDate });
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
 
       const ctx = buildContext(`Bearer ${rawToken}`);
 
@@ -157,8 +157,8 @@ describe('OpenclawTokenGuard', () => {
     it('should accept a token that has not yet expired', async () => {
       const futureDate = new Date(Date.now() + 1000 * 60 * 60); // 1 hour from now
       const token = buildToken({ expires_at: futureDate });
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
-      openclawTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
 
       const ctx = buildContext(`Bearer ${rawToken}`);
       const result = await guard.canActivate(ctx);
@@ -172,11 +172,11 @@ describe('OpenclawTokenGuard', () => {
   describe('scope enforcement', () => {
     it('should throw UnauthorizedException when required scope is missing from token', async () => {
       const token = buildToken({ scopes: ['tasks:read'] });
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
-      openclawTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
 
       // Simulate handler decorated with @RequireScope('tasks:write')
-      const handler = { [OPENCLAW_SCOPE_KEY]: 'tasks:write' };
+      const handler = { [MCP_SCOPE_KEY]: 'tasks:write' };
       jest.spyOn(reflector, 'get').mockReturnValue('tasks:write');
 
       const ctx = buildContext(`Bearer ${rawToken}`, handler);
@@ -186,8 +186,8 @@ describe('OpenclawTokenGuard', () => {
 
     it('should return true when token has the required scope', async () => {
       const token = buildToken({ scopes: ['tasks:read', 'tasks:write'] });
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
-      openclawTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
 
       jest.spyOn(reflector, 'get').mockReturnValue('tasks:write');
 
@@ -199,8 +199,8 @@ describe('OpenclawTokenGuard', () => {
 
     it('should return true when no scope metadata is set on the handler', async () => {
       const token = buildToken();
-      openclawTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
-      openclawTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
+      externalApiTokenRepositoryMock.findByRawToken.mockResolvedValueOnce(token);
+      externalApiTokenRepositoryMock.updateLastUsed.mockResolvedValueOnce(undefined);
 
       jest.spyOn(reflector, 'get').mockReturnValue(undefined);
 

@@ -20,7 +20,7 @@ import { ActivityTemplate } from '../modules/activity-template/entity/activity-t
 import { ActivityTemplateEmbedding } from '../modules/activity-template/entity/activity-template-embedding.entity';
 import { Notification } from '../modules/notification/entities/notification.entity';
 import { VideoMetadata } from '../modules/video-metadata/entities/video-metadata.entity';
-import { OpenclawToken } from '../modules/openclaw-mcp/entities/openclaw-token.entity';
+import { ExternalApiToken } from '../modules/external-mcp/entities/external-api-token.entity';
 import { Track } from '../modules/tracks/entities/track.entity';
 import { FocusModeTemplate } from '../modules/focus-mode-template/entities/focus-mode-template.entity';
 import { InstalledFocusModeTemplate } from '../modules/focus-mode-template/entities/installed-focus-mode_templates.entity';
@@ -97,7 +97,7 @@ export const allEntities: Function[] = [
   HabitLibraryRequest,
   Notification,
   VideoMetadata,
-  OpenclawToken,
+  ExternalApiToken,
   Track,
   FocusModeTemplate,
   InstalledFocusModeTemplate,

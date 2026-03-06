@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { OpenclawMcpAuthService } from './openclaw-mcp-auth.service';
-import { OpenclawTokenRepository } from '../repositories/openclaw-token.repository';
+import { ExternalMcpAuthService } from './external-mcp-auth.service';
+import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
 import { ScryptService } from '@app/crypto';
 
-describe('OpenclawMcpAuthService', () => {
-  let service: OpenclawMcpAuthService;
+describe('ExternalMcpAuthService', () => {
+  let service: ExternalMcpAuthService;
 
   const mockUserId = 'user-uuid-1234';
   const mockTokenId = 'token-uuid-5678';
 
-  const openclawTokenRepositoryMock = {
+  const externalApiTokenRepositoryMock = {
     create: jest.fn(),
     findByUserId: jest.fn(),
     findByUserIdAndId: jest.fn(),
@@ -24,13 +24,13 @@ describe('OpenclawMcpAuthService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OpenclawMcpAuthService,
-        { provide: OpenclawTokenRepository, useValue: openclawTokenRepositoryMock },
+        ExternalMcpAuthService,
+        { provide: ExternalApiTokenRepository, useValue: externalApiTokenRepositoryMock },
         { provide: ScryptService, useValue: scryptServiceMock },
       ],
     }).compile();
 
-    service = module.get<OpenclawMcpAuthService>(OpenclawMcpAuthService);
+    service = module.get<ExternalMcpAuthService>(ExternalMcpAuthService);
   });
 
   afterEach(() => {
@@ -52,7 +52,7 @@ describe('OpenclawMcpAuthService', () => {
         created_at: new Date().toISOString(),
       };
 
-      openclawTokenRepositoryMock.create.mockResolvedValueOnce(savedEntity);
+      externalApiTokenRepositoryMock.create.mockResolvedValueOnce(savedEntity);
 
       // Call
       const result = await service.issueToken(mockUserId, dto);
@@ -61,7 +61,7 @@ describe('OpenclawMcpAuthService', () => {
       expect(result).toHaveProperty('id', mockTokenId);
       expect(result).toHaveProperty('token');
       expect(result.token).toHaveLength(64);
-      expect(openclawTokenRepositoryMock.create).toHaveBeenCalled();
+      expect(externalApiTokenRepositoryMock.create).toHaveBeenCalled();
       expect(scryptServiceMock.hash).toHaveBeenCalled();
     });
   });
@@ -79,32 +79,32 @@ describe('OpenclawMcpAuthService', () => {
         },
       ];
 
-      openclawTokenRepositoryMock.findByUserId.mockResolvedValueOnce(repoTokens);
+      externalApiTokenRepositoryMock.findByUserId.mockResolvedValueOnce(repoTokens);
 
       const result = await service.listTokens(mockUserId);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty('id', mockTokenId);
-      expect(openclawTokenRepositoryMock.findByUserId).toHaveBeenCalledWith(mockUserId);
+      expect(externalApiTokenRepositoryMock.findByUserId).toHaveBeenCalledWith(mockUserId);
     });
   });
 
   describe('revokeToken', () => {
     it('should delete token when it exists', async () => {
-      openclawTokenRepositoryMock.findByUserIdAndId.mockResolvedValueOnce({ id: mockTokenId });
-      openclawTokenRepositoryMock.deleteByUserIdAndId.mockResolvedValueOnce(undefined);
+      externalApiTokenRepositoryMock.findByUserIdAndId.mockResolvedValueOnce({ id: mockTokenId });
+      externalApiTokenRepositoryMock.deleteByUserIdAndId.mockResolvedValueOnce(undefined);
 
       await expect(service.revokeToken(mockUserId, mockTokenId)).resolves.toBeUndefined();
 
-      expect(openclawTokenRepositoryMock.findByUserIdAndId).toHaveBeenCalledWith(mockUserId, mockTokenId);
-      expect(openclawTokenRepositoryMock.deleteByUserIdAndId).toHaveBeenCalledWith(mockUserId, mockTokenId);
+      expect(externalApiTokenRepositoryMock.findByUserIdAndId).toHaveBeenCalledWith(mockUserId, mockTokenId);
+      expect(externalApiTokenRepositoryMock.deleteByUserIdAndId).toHaveBeenCalledWith(mockUserId, mockTokenId);
     });
 
     it('should throw NotFoundException when token missing', async () => {
-      openclawTokenRepositoryMock.findByUserIdAndId.mockResolvedValueOnce(null);
+      externalApiTokenRepositoryMock.findByUserIdAndId.mockResolvedValueOnce(null);
 
       await expect(service.revokeToken(mockUserId, mockTokenId)).rejects.toThrow(NotFoundException);
-      expect(openclawTokenRepositoryMock.deleteByUserIdAndId).not.toHaveBeenCalled();
+      expect(externalApiTokenRepositoryMock.deleteByUserIdAndId).not.toHaveBeenCalled();
     });
   });
 });

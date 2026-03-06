@@ -1,22 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
-import { OpenclawScope } from '../domain/openclaw-scopes.enum';
+import { McpScope } from '../domain/mcp-scopes.enum';
 
-export class CreateOpenclawTokenDto {
+export class CreateExternalApiTokenDto {
   @ApiProperty({
     description: 'Scopes granted to this token',
-    enum: OpenclawScope,
+    enum: McpScope,
     isArray: true,
     example: ['tasks:read', 'tasks:write'],
   })
   @IsArray()
-  @IsEnum(OpenclawScope, { each: true })
-  scopes: OpenclawScope[];
+  @IsEnum(McpScope, { each: true })
+  scopes: McpScope[];
 
   @ApiProperty({
-    description: 'Human-readable label for this token (e.g. "My OpenClaw")',
+    description: 'Human-readable label for this token (e.g. "My MCP Client")',
     required: false,
-    example: 'My OpenClaw',
+    example: 'My MCP Client',
   })
   @IsOptional()
   @IsString()

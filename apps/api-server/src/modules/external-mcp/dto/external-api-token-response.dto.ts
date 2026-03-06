@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class OpenclawTokenResponseDto {
+export class ExternalApiTokenResponseDto {
   @ApiProperty({ description: 'Token UUID' })
   id: string;
 
@@ -20,9 +20,9 @@ export class OpenclawTokenResponseDto {
   created_at: string;
 }
 
-export class OpenclawTokenIssuedResponseDto extends OpenclawTokenResponseDto {
+export class ExternalApiTokenIssuedResponseDto extends ExternalApiTokenResponseDto {
   @ApiProperty({
-    description: 'The raw token — shown ONCE at issuance, never retrievable again. Store it in OpenClaw settings.',
+    description: 'The raw token — shown ONCE at issuance, never retrievable again. Store it securely.',
   })
   token: string;
 }

@@ -3,25 +3,22 @@ import { DataSource } from 'typeorm';
 import * as crypto from 'crypto';
 import { ScryptService } from '@app/crypto';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
-import { OpenclawToken } from '../entities/openclaw-token.entity';
+import { ExternalApiToken } from '../entities/external-api-token.entity';
 
 @Injectable()
-export class OpenclawTokenRepository extends BaseRepository<OpenclawToken> {
-  constructor(
-    dataSource: DataSource,
-    private readonly scryptService: ScryptService,
-  ) {
-    super(dataSource, OpenclawToken);
+export class ExternalApiTokenRepository extends BaseRepository<ExternalApiToken> {
+  constructor(dataSource: DataSource, private readonly scryptService: ScryptService) {
+    super(dataSource, ExternalApiToken);
   }
 
-  async findByUserId(userId: string): Promise<OpenclawToken[]> {
+  async findByUserId(userId: string): Promise<ExternalApiToken[]> {
     return this.orm.find({
       where: { user_id: userId },
       order: { created_at: 'DESC' },
     });
   }
 
-  async findByUserIdAndId(userId: string, id: string): Promise<OpenclawToken | null> {
+  async findByUserIdAndId(userId: string, id: string): Promise<ExternalApiToken | null> {
     return this.orm.findOne({ where: { user_id: userId, id } });
   }
 
@@ -30,7 +27,7 @@ export class OpenclawTokenRepository extends BaseRepository<OpenclawToken> {
    * Uses the token_prefix index for efficient candidate selection,
    * then scrypt verify to validate the full token hash.
    */
-  async findByRawToken(rawToken: string): Promise<OpenclawToken | null> {
+  async findByRawToken(rawToken: string): Promise<ExternalApiToken | null> {
     // Derive the same SHA-256-based prefix used at issuance for efficient index lookup
     const prefix = crypto.createHash('sha256').update(rawToken).digest('hex').substring(0, 16);
     const candidates = await this.orm.find({ where: { token_prefix: prefix } });

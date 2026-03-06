@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { OpenclawMcpTasksService } from './openclaw-mcp-tasks.service';
+import { ExternalMcpTasksService } from './external-mcp-tasks.service';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { TaskCommentRepository } from '../../to-do/repositories/task-comment.repository';
-import { OpenclawScope } from '../domain/openclaw-scopes.enum';
+import { McpScope } from '../domain/mcp-scopes.enum';
 
-describe('OpenclawMcpTasksService', () => {
-  let service: OpenclawMcpTasksService;
+describe('ExternalMcpTasksService', () => {
+  let service: ExternalMcpTasksService;
 
   const mockUserId = 'user-uuid-1234';
   const mockTaskId = 'task-uuid-5678';
@@ -28,7 +28,7 @@ describe('OpenclawMcpTasksService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OpenclawMcpTasksService,
+        ExternalMcpTasksService,
         {
           provide: ToDoRepository,
           useValue: mockToDoRepositoryMock,
@@ -40,7 +40,7 @@ describe('OpenclawMcpTasksService', () => {
       ],
     }).compile();
 
-    service = module.get<OpenclawMcpTasksService>(OpenclawMcpTasksService);
+    service = module.get<ExternalMcpTasksService>(ExternalMcpTasksService);
   });
 
   afterEach(() => {
@@ -56,7 +56,7 @@ describe('OpenclawMcpTasksService', () => {
       const mockTasks = [{ id: mockTaskId, title: 'Test task' }];
       mockToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([mockTasks, 1]);
 
-      const result = await service.listTasks(mockUserId, [OpenclawScope.TASKS_READ], query);
+      const result = await service.listTasks(mockUserId, [McpScope.TASKS_READ], query);
 
       expect(result).toHaveProperty('data', mockTasks);
       expect(result).toHaveProperty('meta');
@@ -65,15 +65,13 @@ describe('OpenclawMcpTasksService', () => {
     });
 
     it('should throw UnauthorizedException when tasks:read scope is missing', async () => {
-      await expect(service.listTasks(mockUserId, [OpenclawScope.TASKS_WRITE], query)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.listTasks(mockUserId, [McpScope.TASKS_WRITE], query)).rejects.toThrow(UnauthorizedException);
       expect(mockToDoRepositoryMock.getUserToDos).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException when scopes array is empty', async () => {
       await expect(service.listTasks(mockUserId, [], query)).rejects.toThrow(
-        `Token missing required scope: ${OpenclawScope.TASKS_READ}`,
+        `Token missing required scope: ${McpScope.TASKS_READ}`,
       );
     });
   });
@@ -88,7 +86,7 @@ describe('OpenclawMcpTasksService', () => {
       mockToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(mockTask);
       mockToDoRepositoryMock.update.mockResolvedValueOnce({ ...mockTask, status: 'completed' } as any);
 
-      const result = await service.updateTaskStatus(mockUserId, [OpenclawScope.TASKS_WRITE], mockTaskId, dto);
+      const result = await service.updateTaskStatus(mockUserId, [McpScope.TASKS_WRITE], mockTaskId, dto);
 
       expect(result).toHaveProperty('status', 'completed');
       expect(mockToDoRepositoryMock.orm.findOne).toHaveBeenCalledWith({
@@ -98,7 +96,7 @@ describe('OpenclawMcpTasksService', () => {
     });
 
     it('should throw UnauthorizedException when tasks:write scope is missing', async () => {
-      await expect(service.updateTaskStatus(mockUserId, [OpenclawScope.TASKS_READ], mockTaskId, dto)).rejects.toThrow(
+      await expect(service.updateTaskStatus(mockUserId, [McpScope.TASKS_READ], mockTaskId, dto)).rejects.toThrow(
         UnauthorizedException,
       );
       expect(mockToDoRepositoryMock.orm.findOne).not.toHaveBeenCalled();
@@ -107,7 +105,7 @@ describe('OpenclawMcpTasksService', () => {
     it('should throw NotFoundException when task does not exist for this user', async () => {
       mockToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.updateTaskStatus(mockUserId, [OpenclawScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
+      await expect(service.updateTaskStatus(mockUserId, [McpScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
         NotFoundException,
       );
       expect(mockToDoRepositoryMock.update).not.toHaveBeenCalled();
@@ -116,7 +114,7 @@ describe('OpenclawMcpTasksService', () => {
     it('should throw NotFoundException with the task id in the message', async () => {
       mockToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.updateTaskStatus(mockUserId, [OpenclawScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
+      await expect(service.updateTaskStatus(mockUserId, [McpScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
         `Task with id ${mockTaskId} not found`,
       );
     });
@@ -141,7 +139,7 @@ describe('OpenclawMcpTasksService', () => {
       mockToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(mockTask);
       mockTaskCommentRepositoryMock.orm.save.mockResolvedValueOnce(savedComment);
 
-      const result = await service.addNote(mockUserId, [OpenclawScope.TASKS_WRITE], mockTaskId, dto);
+      const result = await service.addNote(mockUserId, [McpScope.TASKS_WRITE], mockTaskId, dto);
 
       expect(result).toHaveProperty('task_id', mockTaskId);
       expect(result).toHaveProperty('user_id', mockUserId);
@@ -153,7 +151,7 @@ describe('OpenclawMcpTasksService', () => {
     });
 
     it('should throw UnauthorizedException when tasks:write scope is missing', async () => {
-      await expect(service.addNote(mockUserId, [OpenclawScope.TASKS_READ], mockTaskId, dto)).rejects.toThrow(
+      await expect(service.addNote(mockUserId, [McpScope.TASKS_READ], mockTaskId, dto)).rejects.toThrow(
         UnauthorizedException,
       );
       expect(mockToDoRepositoryMock.orm.findOne).not.toHaveBeenCalled();
@@ -162,7 +160,7 @@ describe('OpenclawMcpTasksService', () => {
     it('should throw NotFoundException when task does not exist for this user', async () => {
       mockToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.addNote(mockUserId, [OpenclawScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
+      await expect(service.addNote(mockUserId, [McpScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
         NotFoundException,
       );
       expect(mockTaskCommentRepositoryMock.orm.save).not.toHaveBeenCalled();
@@ -171,7 +169,7 @@ describe('OpenclawMcpTasksService', () => {
     it('should throw NotFoundException with the task id in the message', async () => {
       mockToDoRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
 
-      await expect(service.addNote(mockUserId, [OpenclawScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
+      await expect(service.addNote(mockUserId, [McpScope.TASKS_WRITE], mockTaskId, dto)).rejects.toThrow(
         `Task with id ${mockTaskId} not found`,
       );
     });

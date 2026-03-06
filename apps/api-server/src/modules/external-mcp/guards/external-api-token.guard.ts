@@ -1,31 +1,31 @@
 import { CanActivate, createParamDecorator, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { OpenclawTokenRepository } from '../repositories/openclaw-token.repository';
+import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
 
-export const OPENCLAW_SCOPE_KEY = 'openclaw_scope';
+export const MCP_SCOPE_KEY = 'mcp_scope';
 
 /**
- * Decorator to extract the OpenClaw user ID from the request.
- * Use in controllers protected by OpenclawTokenGuard.
+ * Decorator to extract the MCP user ID from the request.
+ * Use in controllers protected by ExternalApiTokenGuard.
  */
-export const OpenclawUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): string => {
+export const McpUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): string => {
   const request = ctx.switchToHttp().getRequest();
-  return request.openclawUserId;
+  return request.mcpUserId;
 });
 
 /**
- * Decorator to extract the OpenClaw scopes from the request.
- * Use in controllers protected by OpenclawTokenGuard.
+ * Decorator to extract the MCP scopes from the request.
+ * Use in controllers protected by ExternalApiTokenGuard.
  */
-export const OpenclawScopes = createParamDecorator((_data: unknown, ctx: ExecutionContext): string[] => {
+export const McpScopes = createParamDecorator((_data: unknown, ctx: ExecutionContext): string[] => {
   const request = ctx.switchToHttp().getRequest();
-  return request.openclawScopes;
+  return request.mcpScopes;
 });
 
 @Injectable()
-export class OpenclawTokenGuard implements CanActivate {
+export class ExternalApiTokenGuard implements CanActivate {
   constructor(
-    private readonly openclawTokenRepository: OpenclawTokenRepository,
+    private readonly externalApiTokenRepository: ExternalApiTokenRepository,
     private readonly reflector: Reflector,
   ) {}
 
@@ -43,7 +43,7 @@ export class OpenclawTokenGuard implements CanActivate {
       throw new UnauthorizedException('Missing bearer token');
     }
 
-    const token = await this.openclawTokenRepository.findByRawToken(rawToken);
+    const token = await this.externalApiTokenRepository.findByRawToken(rawToken);
 
     if (!token) {
       throw new UnauthorizedException('Invalid or revoked token');
@@ -54,17 +54,17 @@ export class OpenclawTokenGuard implements CanActivate {
     }
 
     // Check required scope if specified via metadata (future: @RequireScope decorator)
-    const requiredScope = this.reflector.get<string>(OPENCLAW_SCOPE_KEY, context.getHandler());
+    const requiredScope = this.reflector.get<string>(MCP_SCOPE_KEY, context.getHandler());
     if (requiredScope && !token.scopes.includes(requiredScope)) {
       throw new UnauthorizedException(`Token missing required scope: ${requiredScope}`);
     }
 
     // Attach context to request for use in controllers
-    request.openclawUserId = token.user_id;
-    request.openclawScopes = token.scopes;
+    request.mcpUserId = token.user_id;
+    request.mcpScopes = token.scopes;
 
     // Update last_used_at asynchronously — fire-and-forget, must not block the response
-    this.openclawTokenRepository.updateLastUsed(token.id).catch(() => {
+    this.externalApiTokenRepository.updateLastUsed(token.id).catch(() => {
       // Non-critical update — silently ignore failures
     });
 

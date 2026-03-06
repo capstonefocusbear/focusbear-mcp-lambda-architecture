@@ -2,9 +2,9 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../shared/entities/base-entity.entity';
 import { User } from '../../user/entities/user.entity';
 
-@Entity('openclaw_tokens')
-export class OpenclawToken extends BaseEntity {
-  constructor({ id, ...data }: Partial<OpenclawToken> = {}, options = { generateId: false }) {
+@Entity('external_api_tokens')
+export class ExternalApiToken extends BaseEntity {
+  constructor({ id, ...data }: Partial<ExternalApiToken> = {}, options = { generateId: false }) {
     super(id, options);
     Object.assign(this, { ...data });
   }

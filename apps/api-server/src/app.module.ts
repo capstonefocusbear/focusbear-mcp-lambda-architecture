@@ -53,7 +53,7 @@ import { AnnouncementsModule } from './modules/announcements/announcements.modul
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
 import { NoteModule } from './modules/note/note.module';
 import { GeofenceModule } from './modules/geofence/geofence.module';
-import { OpenclawMcpModule } from './modules/openclaw-mcp/openclaw-mcp.module';
+import { ExternalMcpModule } from './modules/external-mcp/external-mcp.module';
 
 @Module({
   imports: [
@@ -130,7 +130,7 @@ import { OpenclawMcpModule } from './modules/openclaw-mcp/openclaw-mcp.module';
     AppVersionsModule,
     NoteModule,
     GeofenceModule,
-    OpenclawMcpModule,
+    ExternalMcpModule,
   ],
   controllers: [AppController],
   providers: [

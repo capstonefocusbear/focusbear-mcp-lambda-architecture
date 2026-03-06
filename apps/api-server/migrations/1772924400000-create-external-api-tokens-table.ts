@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateOpenclawTokensTable1772924400000 implements MigrationInterface {
+export class CreateExternalApiTokensTable1772924400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "openclaw_tokens" (
+      CREATE TABLE "external_api_tokens" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "user_id" uuid NOT NULL,
         "token_hash" varchar NOT NULL,
@@ -14,24 +14,24 @@ export class CreateOpenclawTokensTable1772924400000 implements MigrationInterfac
         "expires_at" timestamptz,
         "created_at" timestamptz NOT NULL DEFAULT NOW(),
         "updated_at" timestamptz NOT NULL DEFAULT NOW(),
-        CONSTRAINT "PK_openclaw_tokens" PRIMARY KEY ("id"),
-        CONSTRAINT "FK_openclaw_tokens_user" FOREIGN KEY ("user_id")
+        CONSTRAINT "PK_external_api_tokens" PRIMARY KEY ("id"),
+        CONSTRAINT "FK_external_api_tokens_user" FOREIGN KEY ("user_id")
           REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
       )
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_openclaw_tokens_user_id" ON "openclaw_tokens" ("user_id")
+      CREATE INDEX "IDX_external_api_tokens_user_id" ON "external_api_tokens" ("user_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_openclaw_tokens_prefix" ON "openclaw_tokens" ("token_prefix")
+      CREATE INDEX "IDX_external_api_tokens_prefix" ON "external_api_tokens" ("token_prefix")
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP INDEX IF EXISTS "IDX_openclaw_tokens_prefix"');
-    await queryRunner.query('DROP INDEX IF EXISTS "IDX_openclaw_tokens_user_id"');
-    await queryRunner.query('DROP TABLE "openclaw_tokens"');
+    await queryRunner.query('DROP INDEX IF EXISTS "IDX_external_api_tokens_prefix"');
+    await queryRunner.query('DROP INDEX IF EXISTS "IDX_external_api_tokens_user_id"');
+    await queryRunner.query('DROP TABLE "external_api_tokens"');
   }
 }

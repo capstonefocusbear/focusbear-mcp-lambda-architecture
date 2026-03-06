@@ -74,6 +74,7 @@ import { PlatformIntegrationsService } from '../../../platform-integrations/serv
 import { DeviceRepository } from '../../../device/repositories/device.repository';
 import { IsUrlSafeDto } from '../../dto/is-url-safe.dto';
 import { IsAppSafeDto } from '../../dto/is-app-safe.dto';
+import { GenerateOccupationSitesDto } from '../../dto/generate-occupation-sites.dto';
 import { DeviceService } from '../../../device/services/device/device.service';
 import { Streak } from '../../intefaces/streak.interface';
 import { UninstallApplicationQueryDto } from '../../dto/uninstall-application-query.dto';
@@ -1028,6 +1029,10 @@ export class UserService {
       jobDetails: user.user_job_details ?? null,
       typicalDistractions: user.user_typical_distractions ?? null,
     });
+  }
+
+  async generateOccupationSites({ user_occupation }: GenerateOccupationSitesDto) {
+    return this.openAIService.generateOccupationSites(user_occupation);
   }
 
   async updateLongTermGoals(user_id: string, { goals }: UpdateLongTermGoalsDto) {

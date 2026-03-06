@@ -1719,6 +1719,35 @@ describe('UserService', () => {
     });
   });
 
+  describe('generateOccupationSites', () => {
+    const mockOccupationSitesResponse = {
+      user_relevant_sites: 'github.com\nstackoverflow.com\nvscode.dev',
+      user_typical_distractions: 'facebook.com\ntwitter.com\nyoutube.com',
+    };
+
+    it('positive: should call openAIService.generateOccupationSites with the occupation', async () => {
+      OpenAIServiceMock.generateOccupationSites.mockResolvedValueOnce(mockOccupationSitesResponse);
+
+      const result = await userService.generateOccupationSites({ user_occupation: 'Software Engineer' });
+
+      expect(OpenAIServiceMock.generateOccupationSites).toHaveBeenCalledWith('Software Engineer');
+      expect(result).toEqual(mockOccupationSitesResponse);
+    });
+
+    it('negative: should propagate error when openAIService fails', async () => {
+      OpenAIServiceMock.generateOccupationSites.mockRejectedValueOnce(new Error('Invalid Input'));
+
+      let exception: Error;
+      try {
+        await userService.generateOccupationSites({ user_occupation: '' });
+      } catch (error) {
+        exception = error;
+      }
+      expect(exception).toBeDefined();
+      expect(exception.message).toBe('Invalid Input');
+    });
+  });
+
   describe('uninstallApplication', () => {
     it('positive: should send uninstall feedback and make the correct API calls', async () => {
       const stringifiedDummyUninstallApplicationQueryDtoWithMaskedEmail = JSON.stringify({

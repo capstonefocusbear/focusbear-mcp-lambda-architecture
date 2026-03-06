@@ -235,6 +235,7 @@ export const OpenAIServiceMock = {
   transcribeAudioToText: jest.fn(),
   createDraftTodosFromTranscript: jest.fn(),
   extractTodosFromImage: jest.fn(),
+  generateOccupationSites: jest.fn(),
 };
 
 export const ZohoAuthServiceMock = {

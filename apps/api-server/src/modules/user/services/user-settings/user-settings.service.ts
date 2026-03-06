@@ -687,10 +687,11 @@ export class UserSettingsService {
             current_activity_id,
           },
         });
-        const sequence = await this.activitySequenceRepository.orm.findOne({
-          where: { id: user?.current_activity_sequence_id },
-          relations: ['activities'],
-        });
+        const sequence = await this.activitySequenceRepository.orm
+          .createQueryBuilder('activity_sequences')
+          .leftJoinAndSelect('activity_sequences.activities', 'activities', 'activities.is_deleted = false')
+          .where('activity_sequences.id = :id', { id: user?.current_activity_sequence_id })
+          .getOne();
         if (sequence) {
           const { id: activity_sequence_id } = sequence;
           const nextId = this.getNextActivityId(sequence, current_activity_id, cutOffTime, timezone, activityIds);

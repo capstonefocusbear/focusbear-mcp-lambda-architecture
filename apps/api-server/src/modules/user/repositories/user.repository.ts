@@ -184,10 +184,16 @@ export class UserRepository extends BaseRepository<User> {
 
       await queryRunner.manager.upsert(ActivitySequence, sequencesToUpsert, ['id']);
 
-      await queryRunner.manager.delete(Activity, {
-        user_id: id,
-        id: Not(In(Array.from(allActivityIdsToKeep))),
-      });
+      // Soft-delete activities that are no longer referenced (instead of hard delete)
+      // This preserves completed_activities history — activity_id remains valid (SET NULL on hard delete path)
+      await queryRunner.manager.update(
+        Activity,
+        {
+          user_id: id,
+          id: Not(In(Array.from(allActivityIdsToKeep))),
+        },
+        { is_deleted: true },
+      );
 
       const activitiesArray = activitiesData.flatMap((sequence) => sequence.activities);
       const parentsWithoutLinks = activitiesArray.filter(
@@ -250,8 +256,8 @@ export class UserRepository extends BaseRepository<User> {
     return this.orm
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.activity_sequences', 'activity_sequences')
-      .leftJoinAndSelect('activity_sequences.activities', 'activities')
-      .leftJoinAndSelect('activities.choices', 'choices')
+      .leftJoinAndSelect('activity_sequences.activities', 'activities', 'activities.is_deleted = false')
+      .leftJoinAndSelect('activities.choices', 'choices', 'choices.is_deleted = false')
       .leftJoinAndSelect('activities.log_quantity_questions', 'log_quantity_questions')
       .leftJoinAndSelect('choices.log_quantity_questions', 'choices_log_quantity_questions')
       .leftJoinAndSelect('activities.tutorial', 'tutorial')

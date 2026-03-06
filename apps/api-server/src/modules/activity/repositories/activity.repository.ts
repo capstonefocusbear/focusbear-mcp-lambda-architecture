@@ -17,7 +17,8 @@ export class ActivityRepository extends BaseRepository<Activity> {
       .createQueryBuilder('activities')
       .take(take)
       .skip(skip)
-      .where('activities.user_id = :user_id', { user_id });
+      .where('activities.user_id = :user_id', { user_id })
+      .andWhere('activities.is_deleted = false');
     if (routine) {
       query.andWhere('activities.type = :activity_type', { activity_type: routine });
     }

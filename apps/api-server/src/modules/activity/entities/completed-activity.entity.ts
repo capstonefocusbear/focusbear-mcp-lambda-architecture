@@ -28,6 +28,7 @@ export class CompletedActivity extends BaseEntity {
   @Index()
   @Column({
     type: 'uuid',
+    nullable: true,
   })
   activity_id?: string;
 

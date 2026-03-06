@@ -124,19 +124,19 @@ export class GeofenceService {
     nextAssociatedRoutineId?: string | null,
   ): Promise<void> {
     if (previousAssociatedRoutineId && previousAssociatedRoutineId !== nextAssociatedRoutineId) {
-      await manager.update(Activity, { user_id, geofence_id }, { geofence_id: null });
+      await manager.update(Activity, { user_id, geofence_id, is_deleted: false }, { geofence_id: null });
     }
 
     if (nextAssociatedRoutineId) {
-      await manager.update(Activity, { user_id, activity_sequence_id: nextAssociatedRoutineId }, { geofence_id });
+      await manager.update(Activity, { user_id, activity_sequence_id: nextAssociatedRoutineId, is_deleted: false }, { geofence_id });
 
       const parentActivities = await manager.find(Activity, {
-        where: { user_id, activity_sequence_id: nextAssociatedRoutineId },
+        where: { user_id, activity_sequence_id: nextAssociatedRoutineId, is_deleted: false },
         select: ['id'],
       });
       const parentActivityIds = parentActivities.map(({ id }) => id);
       if (parentActivityIds.length > 0) {
-        await manager.update(Activity, { user_id, parent_id: In(parentActivityIds) }, { geofence_id });
+        await manager.update(Activity, { user_id, parent_id: In(parentActivityIds), is_deleted: false }, { geofence_id });
       }
     }
   }

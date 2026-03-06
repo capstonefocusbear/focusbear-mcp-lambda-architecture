@@ -54,13 +54,13 @@ async function getUserRoutineDailyDurations(user_id: string): Promise<{
   microBreaksDailyDurations: DailySequenceDurations;
 }> {
   const morningActivities = await CronJobDataSource.manager.find(Activity, {
-    where: { user_id, type: ActivityType.morning },
+    where: { user_id, type: ActivityType.morning, is_deleted: false },
   });
   const eveningActivities = await CronJobDataSource.manager.find(Activity, {
-    where: { user_id, type: ActivityType.evening },
+    where: { user_id, type: ActivityType.evening, is_deleted: false },
   });
   const breakActivities = await CronJobDataSource.manager.find(Activity, {
-    where: { user_id, type: ActivityType.break },
+    where: { user_id, type: ActivityType.break, is_deleted: false },
   });
   const morningRoutineDailyDurations = calculateSequenceDurationForWeek(morningActivities);
   const eveningRoutineDailyDurations = calculateSequenceDurationForWeek(eveningActivities);

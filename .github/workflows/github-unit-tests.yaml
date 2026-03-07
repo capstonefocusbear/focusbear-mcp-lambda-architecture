@@ -41,6 +41,8 @@ jobs:
         run: npm run lint
 
       - name: Run unit tests and check coverage (should be > 80%)
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run test:cov
 
   smoke:

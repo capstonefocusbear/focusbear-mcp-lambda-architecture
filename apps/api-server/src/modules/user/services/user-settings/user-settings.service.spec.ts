@@ -273,11 +273,12 @@ describe('UserSettingsService', () => {
         isVerboseLoggingAllowed: true,
         user: userWithCurrentActivity,
       });
-      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce({
+      const qbMock = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getOne: jest.fn().mockResolvedValueOnce(null),
-      });
+      };
+      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce(qbMock);
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: logQuantityQuestionsDummy,
@@ -560,7 +561,7 @@ describe('UserSettingsService', () => {
         completing_sequence_log: UncompletedSequenceLogDummy,
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
       };
-      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce({
+      const qbMock1 = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getOne: jest.fn().mockResolvedValueOnce({
@@ -571,7 +572,8 @@ describe('UserSettingsService', () => {
             { id: deletedActivityId, days_of_week: [DaysOfWeek.ALL] },
           ],
         }),
-      });
+      };
+      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce(qbMock1);
       ActivitySequenceServiceMock.sortActivityIdsByExecutionSequence.mockReturnValueOnce([]);
       ActivitySequenceServiceMock.filterActivitiesForCurrentDay.mockReturnValueOnce([
         { id: randomUUID(), days_of_week: [DaysOfWeek.ALL] },
@@ -608,7 +610,7 @@ describe('UserSettingsService', () => {
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
       };
 
-      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce({
+      const qbMock2 = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getOne: jest.fn().mockResolvedValueOnce({
@@ -620,7 +622,8 @@ describe('UserSettingsService', () => {
             { id: lastActivityId, days_of_week: [DaysOfWeek.ALL] },
           ],
         }),
-      });
+      };
+      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce(qbMock2);
       ActivitySequenceServiceMock.sortActivityIdsByExecutionSequence.mockReturnValueOnce([lastActivityId]);
       ActivitySequenceServiceMock.filterActivitiesForCurrentDay.mockReturnValueOnce([
         { id: randomUUID(), days_of_week: [DaysOfWeek.ALL] },

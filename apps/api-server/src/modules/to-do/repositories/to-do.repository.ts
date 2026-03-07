@@ -105,7 +105,6 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.outcome',
         'assignee.id',
         'assignee.username',
-        'assignee.metadata',
       ])
       .addSelect(`(${ToDoRepository.TOP_SCORE_SQL})`, 'top_score')
       .take(take)
@@ -199,7 +198,6 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.icon',
         'assignee.id',
         'assignee.username',
-        'assignee.metadata',
       ])
       .where('to_do.user_id = :user_id', { user_id: userId })
       .getMany();
@@ -232,7 +230,6 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.updated_at',
         'assignee.id',
         'assignee.username',
-        'assignee.metadata',
       ])
       .where('to_do.user_id = :user_id', {
         user_id,

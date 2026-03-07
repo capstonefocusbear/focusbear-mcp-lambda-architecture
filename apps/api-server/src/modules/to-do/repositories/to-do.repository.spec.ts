@@ -114,8 +114,11 @@ describe('ToDoRepository - SQL Query Testing', () => {
         'to_do.outcome',
         'assignee.id',
         'assignee.username',
-        'assignee.metadata',
       ]);
+
+      // Verify assignee.metadata (PII) is NOT selected — security hotfix for #1709
+      const selectCall = mockQueryBuilder.select.mock.calls[0][0] as string[];
+      expect(selectCall).not.toContain('assignee.metadata');
 
       // Verify the scoring formula is added
       expect(mockQueryBuilder.addSelect).toHaveBeenCalledWith(expect.stringContaining('CASE'), 'top_score');

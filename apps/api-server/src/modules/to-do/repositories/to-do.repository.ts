@@ -248,4 +248,118 @@ export class ToDoRepository extends BaseRepository<ToDo> {
 
     return query.getMany();
   }
+
+  /**
+   * Returns tasks assigned to a specific MCP agent token.
+   * Used by the MCP tasks endpoint so agents only see their own assigned work.
+   */
+  async getAgentAssignedToDos(
+    userId: string,
+    tokenId: string,
+    {
+      order,
+      take,
+      skip,
+      status,
+      eisenhower_quadrant,
+      tag_id,
+      perspiration_gte,
+      perspiration_lte,
+      synced_project_id,
+      sort_mode,
+    }: GetToDosQueryDto,
+  ): Promise<[ToDo[], number]> {
+    const query = this.orm
+      .createQueryBuilder('to_do')
+      .leftJoinAndSelect('to_do.tags', 'tags')
+      .leftJoin('to_do.assignee', 'assignee')
+      .select([
+        'to_do.id',
+        'to_do.title',
+        'to_do.details',
+        'to_do.due_date',
+        'to_do.eisenhower_quadrant',
+        'to_do.status',
+        'to_do.focus_type',
+        'to_do.external_task_id',
+        'to_do.external_task_metadata',
+        'to_do.created_at',
+        'to_do.objective',
+        'to_do.subtasks',
+        'to_do.assigned_mcp_token_id',
+        'to_do.custom_status_id',
+        'to_do.project_id',
+        'tags.id',
+        'tags.text',
+        'to_do.duration',
+        'to_do.icon',
+        'to_do.perspiration_level',
+        'to_do.outcome',
+        'assignee.id',
+        'assignee.username',
+        'assignee.metadata',
+      ])
+      .addSelect(`(${ToDoRepository.TOP_SCORE_SQL})`, 'top_score')
+      .take(take)
+      .skip(skip)
+      .where('to_do.assigned_mcp_token_id = :token_id', { token_id: tokenId })
+      .andWhere('to_do.user_id = :user_id', { user_id: userId });
+
+    const orderBy = order === PageOrder.ASC ? 'ASC' : 'DESC';
+    if (sort_mode === ToDoSortMode.CHRONOLOGICAL) {
+      query.orderBy('to_do.created_at', orderBy);
+    } else {
+      query.orderBy('top_score', orderBy);
+    }
+
+    if (status) {
+      query.andWhere('to_do.status = :status', { status });
+    } else {
+      query.andWhere("to_do.status != 'COMPLETED'");
+    }
+    if (eisenhower_quadrant) {
+      query.andWhere('to_do.eisenhower_quadrant = :eisenhower_quadrant', { eisenhower_quadrant });
+    }
+    if (tag_id) {
+      query.andWhere('tags.id = :tag_id', { tag_id });
+    }
+    if (perspiration_gte) {
+      query.andWhere('to_do.perspiration_level >= :perspiration_gte', { perspiration_gte });
+    }
+    if (perspiration_lte) {
+      query.andWhere('to_do.perspiration_level <= :perspiration_lte', { perspiration_lte });
+    }
+    if (synced_project_id) {
+      query.andWhere('to_do.synced_project_id = :synced_project_id', { synced_project_id });
+    }
+
+    const { entities: todos, raw: rows } = await query.getRawAndEntities();
+
+    const ALIAS_TODO_ID = 'to_do_id';
+    const ALIAS_TOP_SCORE = 'top_score';
+
+    const topScoreByTodoId = new Map<string, number>();
+    for (const row of rows as any[]) {
+      const id = String(row[ALIAS_TODO_ID]);
+      const score = row[ALIAS_TOP_SCORE];
+      if (id && score != null && !topScoreByTodoId.has(id)) {
+        topScoreByTodoId.set(id, Number(score));
+      }
+    }
+
+    const resultsWithTopScore = todos.map((todo) => ({
+      ...todo,
+      top_score: topScoreByTodoId.get(String((todo as any).id)) ?? null,
+    }));
+
+    const totalCount = await query
+      .select('to_do.id')
+      .distinct(true)
+      .orderBy()
+      .skip(undefined)
+      .take(undefined)
+      .getCount();
+
+    return [resultsWithTopScore, totalCount];
+  }
 }

@@ -22,6 +22,15 @@ export const McpScopes = createParamDecorator((_data: unknown, ctx: ExecutionCon
   return request.mcpScopes;
 });
 
+/**
+ * Decorator to extract the authenticated MCP token ID from the request.
+ * Use in controllers protected by ExternalApiTokenGuard to identify which agent made the request.
+ */
+export const McpTokenId = createParamDecorator((_data: unknown, ctx: ExecutionContext): string => {
+  const request = ctx.switchToHttp().getRequest();
+  return request.mcpTokenId;
+});
+
 @Injectable()
 export class ExternalApiTokenGuard implements CanActivate {
   constructor(
@@ -62,6 +71,7 @@ export class ExternalApiTokenGuard implements CanActivate {
     // Attach context to request for use in controllers
     request.mcpUserId = token.user_id;
     request.mcpScopes = token.scopes;
+    request.mcpTokenId = token.id;
 
     // Update last_used_at asynchronously — fire-and-forget, must not block the response
     this.externalApiTokenRepository.updateLastUsed(token.id).catch(() => {

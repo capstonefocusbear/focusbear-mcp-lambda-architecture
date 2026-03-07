@@ -26,6 +26,9 @@ export class ExternalApiToken extends BaseEntity {
   @Column({ type: 'varchar', nullable: true })
   label?: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  agent_name?: string;
+
   @Column({ type: 'timestamptz', nullable: true })
   last_used_at?: Date;
 

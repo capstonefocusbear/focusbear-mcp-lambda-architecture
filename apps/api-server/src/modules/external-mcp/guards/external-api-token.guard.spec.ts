@@ -71,6 +71,7 @@ describe('ExternalApiTokenGuard', () => {
       const request = ctx.switchToHttp().getRequest();
       expect(request.mcpUserId).toBe(mockUserId);
       expect(request.mcpScopes).toEqual(token.scopes);
+      expect(request.mcpTokenId).toBe(mockTokenId);
     });
 
     it('should fire-and-forget updateLastUsed without blocking the response', async () => {

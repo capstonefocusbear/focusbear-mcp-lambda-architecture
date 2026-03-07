@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Brackets, DataSource, IsNull } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
 import { Project } from '../entities/project.entity';
 import { GetProjectsQueryDto } from '../dto/get-projects-query.dto';
 import { PageOrder } from '../../../shared/domain/page-order.enum';
 import { ProjectMember } from '../entities/project-member.entity';
 import { ProjectMemberInvitationStatus } from '../domain/project-member-invitation-status.enum';
+import { ProjectStatus } from '../domain/project-status.model';
 
 @Injectable()
 export class ProjectRepository extends BaseRepository<Project> {
@@ -55,6 +57,52 @@ export class ProjectRepository extends BaseRepository<Project> {
       where: { owner_id: userId, deleted_at: IsNull() },
       relations: ['members'],
       order: { created_at: 'DESC' },
+    });
+  }
+
+  /**
+   * Atomically ensures a custom status with the given label exists on a project.
+   * Uses a `FOR UPDATE` pessimistic lock to prevent TOCTOU races under concurrent writes —
+   * two simultaneous calls with the same label will serialize rather than both appending.
+   *
+   * @returns The existing or newly-created status, plus `already_existed` flag.
+   */
+  async ensureCustomStatus(
+    projectId: string,
+    label: string,
+    color: string,
+    shouldCompleteTask: boolean,
+  ): Promise<ProjectStatus & { already_existed: boolean }> {
+    return this.dataSource.transaction(async (manager) => {
+      const project = await manager.findOne(Project, {
+        where: { id: projectId, deleted_at: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!project) {
+        throw new Error(`Project ${projectId} not found`);
+      }
+
+      const existingStatuses: ProjectStatus[] = project.custom_statuses ?? [];
+
+      // Case-insensitive deduplication by label
+      const existing = existingStatuses.find((s) => s.label.toLowerCase() === label.toLowerCase());
+      if (existing) {
+        return { ...existing, already_existed: true };
+      }
+
+      const maxOrder = existingStatuses.reduce((max, s) => Math.max(max, s.order), -1);
+      const newStatus: ProjectStatus = {
+        id: uuidv4(),
+        label,
+        color,
+        order: maxOrder + 1,
+        should_complete_task: shouldCompleteTask,
+      };
+
+      await manager.update(Project, projectId, { custom_statuses: [...existingStatuses, newStatus] });
+
+      return { ...newStatus, already_existed: false };
     });
   }
 

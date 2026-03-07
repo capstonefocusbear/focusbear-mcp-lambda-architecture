@@ -54,6 +54,13 @@ export class ToDo extends BaseEntity {
 
   @Index()
   @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  assigned_mcp_token_id?: string;
+
+  @Index()
+  @Column({
     type: 'varchar',
     length: 100,
     nullable: true,

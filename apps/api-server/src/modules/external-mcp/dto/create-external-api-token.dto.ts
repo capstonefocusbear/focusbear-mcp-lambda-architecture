@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { McpScope } from '../domain/mcp-scopes.enum';
 
 export class CreateExternalApiTokenDto {
@@ -21,4 +21,14 @@ export class CreateExternalApiTokenDto {
   @IsOptional()
   @IsString()
   label?: string;
+
+  @ApiProperty({
+    description: 'Name of the AI agent this token belongs to (e.g. "Captain Codebeard")',
+    required: false,
+    example: 'Captain Codebeard',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  agent_name?: string;
 }

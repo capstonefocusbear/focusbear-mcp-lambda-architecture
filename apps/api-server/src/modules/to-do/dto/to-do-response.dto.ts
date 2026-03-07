@@ -42,4 +42,10 @@ export class ToDoResponse extends ToDo {
 
   @ApiProperty({ type: [TaskReactionResponseDto], required: false })
   reactions?: TaskReactionResponseDto[];
+
+  @ApiProperty({
+    description: 'ID of the MCP agent token assigned to this task',
+    required: false,
+  })
+  assigned_mcp_token_id?: string;
 }

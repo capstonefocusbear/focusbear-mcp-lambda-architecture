@@ -7,6 +7,9 @@ export class ExternalApiTokenResponseDto {
   @ApiProperty({ description: 'Human-readable label', required: false })
   label?: string;
 
+  @ApiProperty({ description: 'Name of the AI agent this token belongs to', required: false })
+  agent_name?: string;
+
   @ApiProperty({ description: 'Scopes granted to this token', type: [String] })
   scopes: string[];
 

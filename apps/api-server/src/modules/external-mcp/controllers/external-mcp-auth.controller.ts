@@ -17,6 +17,7 @@ import { Passport } from '../../auth/domain/passport.model';
 import { ExternalMcpAuthService } from '../services/external-mcp-auth.service';
 import { CreateExternalApiTokenDto } from '../dto/create-external-api-token.dto';
 import { ExternalApiTokenIssuedResponseDto, ExternalApiTokenResponseDto } from '../dto/external-api-token-response.dto';
+import { McpAgentResponseDto } from '../dto/mcp-agent-response.dto';
 
 @Controller('mcp/auth')
 @ApiTags('mcp-auth')
@@ -56,5 +57,16 @@ export class ExternalMcpAuthController {
   })
   async revokeToken(@Param('id', ParseUUIDPipe) id: string, @AuthContext() { user }: Passport): Promise<void> {
     return this.externalMcpAuthService.revokeToken(user.id, id);
+  }
+
+  @Get('agents')
+  @ApiOperation({
+    summary: 'List MCP agents for the current user',
+    description:
+      'Returns all MCP tokens that have an agent_name set. Use the token id as assigned_mcp_token_id ' +
+      'when assigning tasks to an AI agent via the tasks API.',
+  })
+  async listAgents(@AuthContext() { user }: Passport): Promise<McpAgentResponseDto[]> {
+    return this.externalMcpAuthService.listAgents(user.id);
   }
 }

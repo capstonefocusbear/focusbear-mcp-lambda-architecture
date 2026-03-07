@@ -7,9 +7,10 @@ import { ExternalMcpTasksService } from './services/external-mcp-tasks.service';
 import { ExternalApiTokenRepository } from './repositories/external-api-token.repository';
 import { ExternalApiTokenGuard } from './guards/external-api-token.guard';
 import { ToDoModule } from '../to-do/to-do.module';
+import { ProjectModule } from '../project/project.module';
 
 @Module({
-  imports: [CryptoModule, ToDoModule],
+  imports: [CryptoModule, ToDoModule, ProjectModule],
   controllers: [ExternalMcpAuthController, ExternalMcpTasksController],
   providers: [ExternalMcpAuthService, ExternalMcpTasksService, ExternalApiTokenRepository, ExternalApiTokenGuard],
   exports: [ExternalMcpAuthService, ExternalApiTokenRepository],

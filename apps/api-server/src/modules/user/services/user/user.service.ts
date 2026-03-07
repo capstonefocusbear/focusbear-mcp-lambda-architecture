@@ -41,6 +41,9 @@ import { CurrentActivityProps } from '../../../activity/domain/current-activity-
 import { GetUsersQueryDto } from '../../dto/get-users-query.dto';
 import { CompletedActivityRepository } from '../../../activity/repositories/completed-activity.repository';
 import { CompletedFocusBlockRepository } from '../../../focus-mode/repositories/completed-focus-block.repository';
+import { CompletedFocusBlock } from '../../../focus-mode/entities/completed-focus-block.entity';
+import { UpdateFocusBlockDto } from '../../dto/update-focus-block.dto';
+import { CreateFocusBlockDto } from '../../dto/create-focus-block.dto';
 import { UserTypes } from '../../domain/user-types.enum';
 import { HabitPackRepository } from '../../../habit-pack/repositories/habit-pack.repository';
 import { FocusModeTemplatesRepository } from '../../../focus-mode-template/repositories/focus-mode-templates.repository';
@@ -603,6 +606,100 @@ export class UserService {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  async updateFocusBlock(user_id: string, id: string, payload: UpdateFocusBlockDto): Promise<CompletedFocusBlock> {
+    // `as any` is required because TypeORM's FindOptionsWhere doesn't expose inherited BaseEntity columns
+    // (id, user_id) in its generic type parameters for this repository — the query is correct at runtime.
+    //
+    // TOCTOU note: this is a find-then-update pattern. A concurrent delete between the findOneBy and
+    // the update call would result in a no-op update rather than a NotFoundException. Acceptable for
+    // this use case — the window is tiny and focus blocks are user-owned with no concurrent deleters
+    // in normal operation.
+    const block = await this.completedFocusBlock.orm.findOneBy({ id, user_id } as any);
+    if (!block) throw new NotFoundException(`Focus block ${id} not found for user`);
+
+    // Preserve original data in metadata (non-destructive edit — only capture on first edit)
+    const existingMetadata = block.metadata ?? {};
+    const original = existingMetadata.original ?? {
+      intention: block.intention,
+      achievements: block.achievements,
+      distractions: block.distractions,
+      focus_duration_seconds: block.focus_duration_seconds,
+    };
+    const updatedMetadata = { ...existingMetadata, original };
+
+    // `as any` required for same reason as above (metadata partial update shape)
+    return this.completedFocusBlock.update(id, {
+      ...(payload.intention !== undefined && { intention: payload.intention }),
+      ...(payload.achievements !== undefined && { achievements: payload.achievements }),
+      ...(payload.distractions !== undefined && { distractions: payload.distractions }),
+      ...(payload.focus_duration_seconds !== undefined && { focus_duration_seconds: payload.focus_duration_seconds }),
+      metadata: updatedMetadata,
+    } as any);
+  }
+
+  async deleteFocusBlock(user_id: string, id: string): Promise<void> {
+    // `as any` required — see updateFocusBlock comment above
+    const block = await this.completedFocusBlock.orm.findOneBy({ id, user_id } as any);
+    if (!block) throw new NotFoundException(`Focus block ${id} not found for user`);
+    await this.completedFocusBlock.orm.delete({ id, user_id } as any);
+  }
+
+  async createManualFocusBlock(user_id: string, payload: CreateFocusBlockDto): Promise<CompletedFocusBlock> {
+    // Use provided focus_mode_id or resolve the "Manual Entry" focus mode for this user
+    const focus_mode_id = payload.focus_mode_id ?? (await this.resolveManualFocusModeId(user_id));
+
+    // Service-level temporal sanity check (DTO cross-field validator already catches this for HTTP
+    // requests, but we guard here too for programmatic callers).
+    if (new Date(payload.start_time) >= new Date(payload.finish_time)) {
+      throw new BadRequestException('start_time must be earlier than finish_time');
+    }
+
+    const block = new CompletedFocusBlock(
+      {
+        user_id,
+        focus_mode_id,
+        start_time: new Date(payload.start_time),
+        finish_time: new Date(payload.finish_time),
+        scheduled_finish_time: new Date(payload.finish_time),
+        intention: payload.intention,
+        achievements: payload.achievements,
+        distractions: payload.distractions,
+        focus_duration_seconds: payload.focus_duration_seconds,
+        metadata: { is_manual: true },
+      },
+      { generateId: true },
+    );
+
+    return this.completedFocusBlock.create(block);
+  }
+
+  /** Returns the id of a "Manual Entry" focus mode for this user, creating it if needed.
+   *
+   * Note: We fetch all focus modes and filter in memory because the `metadata` column is encrypted,
+   * preventing efficient DB-level JSONB path queries. The number of focus modes per user is small,
+   * so this is acceptable. We match on `metadata.isManualEntry === true` (not name) so renaming
+   * the mode doesn't break the lookup or cause duplicates.
+   */
+  private async resolveManualFocusModeId(user_id: string): Promise<string> {
+    const MANUAL_FOCUS_MODE_NAME = 'Manual Entry';
+
+    // Match by metadata flag (robust to user renaming) rather than name
+    const existing = await this.focusModeService.fetchUserFocusModes(user_id);
+    const manualMode = existing.find((fm) => fm.metadata?.isManualEntry === true);
+    if (manualMode) return manualMode.id;
+
+    // Create one on demand
+    const created = await this.focusModeService.createFocusMode(user_id, {
+      name: MANUAL_FOCUS_MODE_NAME,
+      metadata: { isManualEntry: true },
+      allowed_apps: [],
+      allowed_urls: [],
+      is_ai_enabled: false,
+    } as any);
+
+    return created.id;
   }
 
   async getCompletedActivitySummary(user_id: string) {

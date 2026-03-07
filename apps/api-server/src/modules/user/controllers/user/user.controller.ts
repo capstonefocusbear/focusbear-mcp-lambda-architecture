@@ -1,4 +1,21 @@
-import { Body, Controller, Get, Post, Put, Query, Sse, UseGuards, Res, Patch, Logger } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  Query,
+  Sse,
+  UseGuards,
+  Res,
+  Patch,
+  Logger,
+} from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
 import { InjectSentry, SentryService } from '@app/observability';
@@ -51,6 +68,8 @@ import { UpdateEmailPreferencesWithTokenDto } from '../../dto/update-email-prefe
 import { CreateProfileImageUploadUrlQueryDto } from '../../dto/create-profile-image-upload-url-query.dto';
 import { RequestEmailPreferencesLinkDto } from '../../dto/request-email-preferences-link.dto';
 import { GenerateOccupationSitesDto } from '../../dto/generate-occupation-sites.dto';
+import { UpdateFocusBlockDto } from '../../dto/update-focus-block.dto';
+import { CreateFocusBlockDto } from '../../dto/create-focus-block.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -113,6 +132,38 @@ export class UserController {
   @ApiSecurity('Auth0AccessToken')
   async getUserFocusBlockSummary(@AuthContext() { user }: Passport): Promise<CompletedFocusBlock[]> {
     return this.userService.getFocusBlockSummary(user.id);
+  }
+
+  @Patch('/weekly-focus-block-summary/:id')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @ApiOperation({ summary: 'Edit a focus session (non-destructive — preserves original values in metadata)' })
+  async updateUserFocusBlock(
+    @AuthContext() { user }: Passport,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() payload: UpdateFocusBlockDto,
+  ): Promise<CompletedFocusBlock> {
+    return this.userService.updateFocusBlock(user.id, id, payload);
+  }
+
+  @Delete('/weekly-focus-block-summary/:id')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a focus session' })
+  async deleteUserFocusBlock(@AuthContext() { user }: Passport, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.userService.deleteFocusBlock(user.id, id);
+  }
+
+  @Post('/weekly-focus-block-summary')
+  @UseGuards(IsAuth)
+  @ApiSecurity('Auth0AccessToken')
+  @ApiOperation({ summary: 'Create a manual focus session (uses or creates a "Manual Entry" focus mode)' })
+  async createManualUserFocusBlock(
+    @AuthContext() { user }: Passport,
+    @Body() payload: CreateFocusBlockDto,
+  ): Promise<CompletedFocusBlock> {
+    return this.userService.createManualFocusBlock(user.id, payload);
   }
 
   @Get('/weekly-completed-activity-summary')

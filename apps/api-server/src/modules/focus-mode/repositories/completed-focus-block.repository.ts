@@ -33,6 +33,7 @@ export class CompletedFocusBlockRepository extends BaseRepository<CompletedFocus
   ): Promise<CompletedFocusBlock[]> {
     return this.orm.find({
       select: [
+        'id',
         'finish_time',
         'start_time',
         'focus_duration_seconds',

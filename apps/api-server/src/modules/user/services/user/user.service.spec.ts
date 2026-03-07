@@ -22,6 +22,7 @@ import axios from 'axios';
 import { configsArray } from '../../../../config/index';
 import {
   ActivityDummy,
+  CompletedFocusBlockDummy,
   QueueMock,
   auth0UserDummy,
   dummyAuth0Client,
@@ -56,6 +57,8 @@ import {
   R2ServiceMock,
 } from '../../../../../test/mocks';
 import { SyncUserAccountDto } from '../../dto/sync-user-account.dto';
+import { UpdateFocusBlockDto } from '../../dto/update-focus-block.dto';
+import { CreateFocusBlockDto } from '../../dto/create-focus-block.dto';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserService } from './user.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
@@ -1829,6 +1832,132 @@ describe('UserService', () => {
 
       await expect(userService.getProfileImageUploadUrl(userDummy.id, 'profile.jpg', 'image/jpeg')).rejects.toThrow(
         InternalServerErrorException,
+      );
+    });
+  });
+
+  describe('updateFocusBlock', () => {
+    const payload: UpdateFocusBlockDto = {
+      intention: 'Updated intention',
+      focus_duration_seconds: 3600,
+    };
+
+    it('negative: should throw NotFoundException when block not found for user', async () => {
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await expect(userService.updateFocusBlock(userDummy.id, CompletedFocusBlockDummy.id, payload)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('positive: should update block and preserve original metadata on first edit', async () => {
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      CompletedFocusBlockRepositoryMock.update.mockResolvedValueOnce({
+        ...CompletedFocusBlockDummy,
+        intention: payload.intention,
+      });
+
+      const result = await userService.updateFocusBlock(userDummy.id, CompletedFocusBlockDummy.id, payload);
+
+      expect(CompletedFocusBlockRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({
+        id: CompletedFocusBlockDummy.id,
+        user_id: userDummy.id,
+      });
+      expect(CompletedFocusBlockRepositoryMock.update).toHaveBeenCalledWith(
+        CompletedFocusBlockDummy.id,
+        expect.objectContaining({
+          intention: payload.intention,
+          focus_duration_seconds: 3600,
+          metadata: expect.objectContaining({
+            original: expect.objectContaining({
+              intention: CompletedFocusBlockDummy.intention,
+            }),
+          }),
+        }),
+      );
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('deleteFocusBlock', () => {
+    it('negative: should throw NotFoundException when block not found for user', async () => {
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(null);
+
+      await expect(userService.deleteFocusBlock(userDummy.id, CompletedFocusBlockDummy.id)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('positive: should delete the block when ownership verified', async () => {
+      CompletedFocusBlockRepositoryMock.orm.findOneBy.mockResolvedValueOnce(CompletedFocusBlockDummy);
+      CompletedFocusBlockRepositoryMock.orm.delete.mockResolvedValueOnce({ affected: 1 });
+
+      await userService.deleteFocusBlock(userDummy.id, CompletedFocusBlockDummy.id);
+
+      expect(CompletedFocusBlockRepositoryMock.orm.findOneBy).toHaveBeenCalledWith({
+        id: CompletedFocusBlockDummy.id,
+        user_id: userDummy.id,
+      });
+      expect(CompletedFocusBlockRepositoryMock.orm.delete).toHaveBeenCalledWith({
+        id: CompletedFocusBlockDummy.id,
+        user_id: userDummy.id,
+      });
+    });
+  });
+
+  describe('createManualFocusBlock', () => {
+    const payload: CreateFocusBlockDto = {
+      focus_duration_seconds: 1800,
+      start_time: new Date('2024-01-01T09:00:00Z').toISOString(),
+      finish_time: new Date('2024-01-01T09:30:00Z').toISOString(),
+      intention: 'Manual session',
+      focus_mode_id: FocusModeDummy.id,
+    };
+
+    it('positive: should create a manual block with is_manual metadata and provided focus_mode_id', async () => {
+      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce({
+        ...CompletedFocusBlockDummy,
+        metadata: { is_manual: true },
+      });
+
+      const result = await userService.createManualFocusBlock(userDummy.id, payload);
+
+      expect(CompletedFocusBlockRepositoryMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: userDummy.id,
+          focus_mode_id: FocusModeDummy.id,
+          focus_duration_seconds: 1800,
+          metadata: { is_manual: true },
+        }),
+      );
+      expect(result.metadata).toEqual({ is_manual: true });
+    });
+
+    it('positive: should resolve manual focus mode when focus_mode_id not provided', async () => {
+      const payloadWithoutFocusModeId: CreateFocusBlockDto = { ...payload, focus_mode_id: undefined };
+      FocusModeServiceMock.fetchUserFocusModes.mockResolvedValueOnce([FocusModeDummy]);
+      // FocusModeDummy.name is 'test' not 'Manual Entry', so it won't match and createFocusMode will be called
+      FocusModeServiceMock.createFocusMode.mockResolvedValueOnce({ ...FocusModeDummy, name: 'Manual Entry' });
+      CompletedFocusBlockRepositoryMock.create.mockResolvedValueOnce({
+        ...CompletedFocusBlockDummy,
+        metadata: { is_manual: true },
+      });
+
+      const result = await userService.createManualFocusBlock(userDummy.id, payloadWithoutFocusModeId);
+
+      expect(FocusModeServiceMock.fetchUserFocusModes).toHaveBeenCalledWith(userDummy.id);
+      expect(result).toBeDefined();
+    });
+
+    it('negative: should throw BadRequestException when start_time is not before finish_time', async () => {
+      const invalidPayload: CreateFocusBlockDto = {
+        ...payload,
+        start_time: new Date('2024-01-01T10:00:00Z').toISOString(),
+        finish_time: new Date('2024-01-01T09:00:00Z').toISOString(),
+      };
+
+      await expect(userService.createManualFocusBlock(userDummy.id, invalidPayload)).rejects.toThrow(
+        BadRequestException,
       );
     });
   });

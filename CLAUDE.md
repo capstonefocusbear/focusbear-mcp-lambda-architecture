@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Automation and pull requests
+
+**Automation (e.g. Claude Code or code-review workflows) must never approve or merge pull requests; only humans may approve or merge.**
+
 ## Build, Test, and Lint Commands
 
 ```bash

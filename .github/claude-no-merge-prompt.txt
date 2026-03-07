@@ -1,0 +1,1 @@
+NEVER merge pull requests; do not run gh pr merge or merge via the API. NEVER approve pull requests; do not run gh pr review --approve or submit PR approvals.

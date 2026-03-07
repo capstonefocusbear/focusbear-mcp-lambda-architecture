@@ -92,7 +92,7 @@ describe('GeofenceService', () => {
 
       expect(transactionManagerMock.update).toHaveBeenCalledWith(
         Activity,
-        { user_id: userDummy.id, activity_sequence_id: routineId },
+        { user_id: userDummy.id, activity_sequence_id: routineId, is_deleted: false },
         { geofence_id: geofenceId },
       );
       const parentChoiceUpdateCall = transactionManagerMock.update.mock.calls.find(
@@ -163,7 +163,7 @@ describe('GeofenceService', () => {
       );
       expect(transactionManagerMock.update).toHaveBeenCalledWith(
         Activity,
-        { user_id: userDummy.id, geofence_id: geofenceId },
+        { user_id: userDummy.id, geofence_id: geofenceId, is_deleted: false },
         { geofence_id: null },
       );
       const sequenceUpdateCalls = transactionManagerMock.update.mock.calls.filter(
@@ -201,13 +201,13 @@ describe('GeofenceService', () => {
       expect(transactionManagerMock.update).toHaveBeenNthCalledWith(
         1,
         Activity,
-        { user_id: userDummy.id, geofence_id: geofenceId },
+        { user_id: userDummy.id, geofence_id: geofenceId, is_deleted: false },
         { geofence_id: null },
       );
       expect(transactionManagerMock.update).toHaveBeenNthCalledWith(
         2,
         Activity,
-        { user_id: userDummy.id, activity_sequence_id: routineBId },
+        { user_id: userDummy.id, activity_sequence_id: routineBId, is_deleted: false },
         { geofence_id: geofenceId },
       );
       const choiceUpdateCall = transactionManagerMock.update.mock.calls.find(

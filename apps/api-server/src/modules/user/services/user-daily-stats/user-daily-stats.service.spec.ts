@@ -626,6 +626,38 @@ describe('UserDailyStatsService', () => {
       );
       expect(result).toEqual({ user_rank: null, users_rankings: [] });
     });
+
+    it('positive: should treat active_within_days=0 as no filter (pass null to repository)', async () => {
+      const userId = userDummy.id;
+      const query: any = { active_within_days: 0 };
+
+      UserRepositoryMock.getLeaderboardRankingsByStreakType.mockResolvedValueOnce([]);
+      UserRepositoryMock.getUserLeaderboardRank.mockResolvedValueOnce(null);
+
+      await service.getLeaderBoardRankings(userId, query);
+
+      // active_within_days=0 means "disable filter" — repository receives null so SQL IS NULL check skips the filter
+      expect(UserRepositoryMock.getLeaderboardRankingsByStreakType).toHaveBeenCalledWith(
+        expect.objectContaining({ active_within_days: null }),
+      );
+      expect(UserRepositoryMock.getUserLeaderboardRank).toHaveBeenCalledWith(userId, expect.anything(), null);
+    });
+
+    it('positive: should default to 30-day filter when active_within_days is not provided', async () => {
+      const userId = userDummy.id;
+      // Simulate what the DTO does: active_within_days defaults to 30
+      const query: any = { active_within_days: 30 };
+
+      UserRepositoryMock.getLeaderboardRankingsByStreakType.mockResolvedValueOnce([]);
+      UserRepositoryMock.getUserLeaderboardRank.mockResolvedValueOnce(null);
+
+      await service.getLeaderBoardRankings(userId, query);
+
+      expect(UserRepositoryMock.getLeaderboardRankingsByStreakType).toHaveBeenCalledWith(
+        expect.objectContaining({ active_within_days: 30 }),
+      );
+      expect(UserRepositoryMock.getUserLeaderboardRank).toHaveBeenCalledWith(userId, expect.anything(), 30);
+    });
   });
 
   describe('getUserStatsForAdminDashboard', () => {

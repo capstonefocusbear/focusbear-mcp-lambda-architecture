@@ -273,7 +273,11 @@ describe('UserSettingsService', () => {
         isVerboseLoggingAllowed: true,
         user: userWithCurrentActivity,
       });
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValueOnce(null),
+      });
       ActivityParserServiceMock.deserialize.mockResolvedValue({
         deserializedActivities: deserializedActivitiesDummy,
         logQuantityQuestions: logQuantityQuestionsDummy,
@@ -556,13 +560,17 @@ describe('UserSettingsService', () => {
         completing_sequence_log: UncompletedSequenceLogDummy,
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
       };
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...ActivitySequenceDummy,
-        sequenceActivityIds: [randomUUID(), deletedActivityId],
-        activities: [
-          { id: randomUUID(), days_of_week: [DaysOfWeek.ALL] },
-          { id: deletedActivityId, days_of_week: [DaysOfWeek.ALL] },
-        ],
+      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValueOnce({
+          ...ActivitySequenceDummy,
+          sequenceActivityIds: [randomUUID(), deletedActivityId],
+          activities: [
+            { id: randomUUID(), days_of_week: [DaysOfWeek.ALL] },
+            { id: deletedActivityId, days_of_week: [DaysOfWeek.ALL] },
+          ],
+        }),
       });
       ActivitySequenceServiceMock.sortActivityIdsByExecutionSequence.mockReturnValueOnce([]);
       ActivitySequenceServiceMock.filterActivitiesForCurrentDay.mockReturnValueOnce([
@@ -600,14 +608,18 @@ describe('UserSettingsService', () => {
         current_completing_sequence_log_id: UncompletedSequenceLogDummy.id,
       };
 
-      ActivitySequenceRepositoryMock.orm.findOne.mockResolvedValueOnce({
-        ...ActivitySequenceDummy,
-        sequenceActivityIds: [randomUUID(), deletedActivityId, lastActivityId],
-        activities: [
-          { id: randomUUID(), days_of_week: [DaysOfWeek.ALL] },
-          { id: deletedActivityId, days_of_week: [DaysOfWeek.ALL] },
-          { id: lastActivityId, days_of_week: [DaysOfWeek.ALL] },
-        ],
+      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValueOnce({
+          ...ActivitySequenceDummy,
+          sequenceActivityIds: [randomUUID(), deletedActivityId, lastActivityId],
+          activities: [
+            { id: randomUUID(), days_of_week: [DaysOfWeek.ALL] },
+            { id: deletedActivityId, days_of_week: [DaysOfWeek.ALL] },
+            { id: lastActivityId, days_of_week: [DaysOfWeek.ALL] },
+          ],
+        }),
       });
       ActivitySequenceServiceMock.sortActivityIdsByExecutionSequence.mockReturnValueOnce([lastActivityId]);
       ActivitySequenceServiceMock.filterActivitiesForCurrentDay.mockReturnValueOnce([

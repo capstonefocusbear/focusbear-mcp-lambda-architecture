@@ -418,15 +418,20 @@ describe('HabitPackManagerService', () => {
 
     it('postive: should format installed standalone pack activities from DB format to format usable by frontend', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
-      ActivitySequenceRepositoryMock.orm.find.mockResolvedValueOnce([
-        {
-          ...ActivitySequenceDummy,
-          pack_id: standaloneHabitPackDBResponseDummy.id,
-          habit_pack: standaloneHabitPackDBResponseDummy,
-          activities: standaloneHabitPackDBResponseDummy.activity_templates,
-          type: 'standalone',
-        },
-      ]);
+      ActivitySequenceRepositoryMock.orm.createQueryBuilder.mockReturnValueOnce({
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValueOnce([
+          {
+            ...ActivitySequenceDummy,
+            pack_id: standaloneHabitPackDBResponseDummy.id,
+            habit_pack: standaloneHabitPackDBResponseDummy,
+            activities: standaloneHabitPackDBResponseDummy.activity_templates,
+            type: 'standalone',
+          },
+        ]),
+      });
       ActivityParserServiceMock.serialize.mockReturnValueOnce({
         standalone_activities: standaloneHabitPackDummy.standalone_activities,
       });

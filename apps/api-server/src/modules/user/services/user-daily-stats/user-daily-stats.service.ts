@@ -442,12 +442,16 @@ export class UserDailyStatsService {
     user_id: string,
     { streak_type = StreakTypes.MORNING_ROUTINES_STREAK, limit, active_within_days }: GetLeaderBoardQuery,
   ) {
+    // active_within_days defaults to 30 (set in the DTO). A value of 0 means "no filter" → pass null to the
+    // repository so the SQL `($3::int IS NULL)` short-circuits and skips the recency condition entirely.
+    const effectiveActiveWithinDays = active_within_days === 0 ? null : active_within_days;
+
     const users_rankings = await this.userRepository.getLeaderboardRankingsByStreakType({
       streak_type,
       limit,
-      active_within_days,
+      active_within_days: effectiveActiveWithinDays,
     });
-    const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type, active_within_days);
+    const user_rank = await this.userRepository.getUserLeaderboardRank(user_id, streak_type, effectiveActiveWithinDays);
     return { user_rank, users_rankings };
   }
 

@@ -596,15 +596,15 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'signed_up_via_habit_pack' })
   sign_up_habit_pack?: User;
 
-  @OneToOne(() => Activity, (activity) => activity.id)
+  @OneToOne(() => Activity, (activity) => activity.id, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'current_activity_id' })
   current_activity?: Activity;
 
-  @OneToOne(() => ActivitySequence, (sequence) => sequence.user)
+  @OneToOne(() => ActivitySequence, (sequence) => sequence.user, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'current_activity_sequence_id' })
   current_activity_sequence?: ActivitySequence;
 
-  @OneToOne(() => ActivitySequence, (sequence) => sequence.user)
+  @OneToOne(() => ActivitySequence, (sequence) => sequence.user, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'last_completed_sequence_id' })
   last_completed_sequence?: ActivitySequence;
 

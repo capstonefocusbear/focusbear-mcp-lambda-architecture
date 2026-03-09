@@ -27,6 +27,7 @@ import { SendGridService, isTestEmail } from '@app/send-grid';
 import { R2Service } from '@app/r2';
 import { GetUsers200ResponseOneOfInner } from 'auth0';
 import axios from 'axios';
+import { sanitizeUrl } from '@braintree/sanitize-url';
 import { OperatingSystem } from '../../../../shared/domain/operating-system.enum';
 import { callPromiseWithTimeout, maskEmail } from '../../../../shared/utils/helpers';
 import { UserRepository } from '../../repositories/user.repository';
@@ -1239,18 +1240,48 @@ export class UserService {
   }
 
   getRefactoredURLWithRespectToPrivacy(url: string) {
-    let incomingURL = url;
-    if (!incomingURL.startsWith('http://') && !incomingURL.startsWith('https://')) {
-      incomingURL = `https://${incomingURL}`;
+    const trimmedUrl = typeof url === 'string' ? url.trim() : '';
+    const sanitizedUrl = sanitizeUrl(trimmedUrl);
+
+    if (sanitizedUrl === 'about:blank') {
+      return sanitizedUrl;
     }
-    const oldURL = new URL(incomingURL);
-    if (oldURL.hostname.includes('youtube.com')) {
-      const firstParam = oldURL.searchParams.entries().next().value;
-      if (firstParam) {
-        return `${oldURL.origin}${oldURL.pathname}?${firstParam[0]}=${firstParam[1]}`;
+
+    const hasHttpProtocol = /^https?:\/\//i.test(trimmedUrl);
+    const hasUnsupportedScheme =
+      !hasHttpProtocol &&
+      (trimmedUrl.includes('://') ||
+        /^(about|mailto|tel|file|chrome|edge|moz-extension|safari-web-extension):/i.test(trimmedUrl));
+
+    if (!trimmedUrl || trimmedUrl.startsWith('/') || hasUnsupportedScheme) {
+      return sanitizedUrl;
+    }
+
+    const incomingURL = hasHttpProtocol ? trimmedUrl : `https://${trimmedUrl}`;
+
+    try {
+      const oldURL = new URL(incomingURL);
+      if (!oldURL.hostname) {
+        return sanitizedUrl;
       }
+
+      if (oldURL.hostname.includes('youtube.com')) {
+        const firstParam = oldURL.searchParams.entries().next().value;
+        if (firstParam) {
+          return `${oldURL.origin}${oldURL.pathname}?${firstParam[0]}=${firstParam[1]}`;
+        }
+      }
+
+      return oldURL.origin + oldURL.pathname;
+    } catch (error) {
+      this.sentryService.instance().addBreadcrumb({
+        category: 'Service',
+        level: 'debug',
+        message: 'Failed to refactor URL for privacy, falling back to sanitized URL',
+        data: { url: trimmedUrl, sanitizedUrl },
+      });
+      return sanitizedUrl;
     }
-    return oldURL.origin + oldURL.pathname;
   }
 
   async getSyncedExternalPlatforms(user_id: string) {

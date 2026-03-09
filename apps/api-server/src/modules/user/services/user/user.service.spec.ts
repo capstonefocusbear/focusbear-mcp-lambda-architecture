@@ -1604,6 +1604,53 @@ describe('UserService', () => {
         { jobDetails: null, typicalDistractions: null },
       );
     });
+
+    it('positive: should fall back to about:blank for blank URLs instead of throwing', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const isUrlSafeDto = {
+        url: '   ',
+        tab_title: 'New Tab',
+        meta_description: 'Blank page',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.1,
+        reason: 'Blank URL is handled safely',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      const result = await userService.checkIsUrlSafe(isUrlSafeDto, userDummy.id);
+
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: 'about:blank',
+          justificationForThisUrl: undefined,
+        }),
+        userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
+      expect(result).toEqual(expectedResponse);
+    });
+  });
+
+  describe('getRefactoredURLWithRespectToPrivacy', () => {
+    it('returns about:blank for blank URLs', () => {
+      expect(userService.getRefactoredURLWithRespectToPrivacy('   ')).toBe('about:blank');
+    });
+
+    it('preserves non-http schemes instead of throwing', () => {
+      expect(userService.getRefactoredURLWithRespectToPrivacy('about:blank')).toBe('about:blank');
+      expect(userService.getRefactoredURLWithRespectToPrivacy('chrome://newtab')).toBe('chrome://newtab');
+    });
+
+    it('strips tracking parameters from YouTube URLs', () => {
+      expect(
+        userService.getRefactoredURLWithRespectToPrivacy('https://www.youtube.com/watch?v=12345&ab_channel=test'),
+      ).toBe('https://www.youtube.com/watch?v=12345');
+    });
   });
 
   describe('checkIsAppSafe', () => {

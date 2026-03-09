@@ -1444,6 +1444,17 @@ export class OpenAIService {
       );
 
       const response = completions.choices[0].message.content;
+      if (!response) {
+        this.sentryService.instance().captureMessage('Empty response from AI for habit adjustment', {
+          level: 'error',
+          extra: {
+            finishReason: completions.choices[0].finish_reason,
+            currentHabits,
+            userFeedback,
+          },
+        });
+        return currentHabits;
+      }
       try {
         const parsed = JSON.parse(response);
 

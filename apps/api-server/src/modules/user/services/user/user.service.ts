@@ -1253,7 +1253,7 @@ export class UserService {
       (trimmedUrl.includes('://') ||
         /^(about|mailto|tel|file|chrome|edge|moz-extension|safari-web-extension):/i.test(trimmedUrl));
 
-    if (!trimmedUrl || trimmedUrl.startsWith('/') || hasUnsupportedScheme) {
+    if (trimmedUrl.startsWith('/') || hasUnsupportedScheme) {
       return sanitizedUrl;
     }
 
@@ -1265,22 +1265,26 @@ export class UserService {
         return sanitizedUrl;
       }
 
-      if (oldURL.hostname.includes('youtube.com')) {
-        const firstParam = oldURL.searchParams.entries().next().value;
-        if (firstParam) {
-          return `${oldURL.origin}${oldURL.pathname}?${firstParam[0]}=${firstParam[1]}`;
+      const isYoutubeHostname = oldURL.hostname === 'youtube.com' || oldURL.hostname.endsWith('.youtube.com');
+
+      if (isYoutubeHostname) {
+        const videoId = oldURL.searchParams.get('v');
+        if (videoId) {
+          return `${oldURL.origin}${oldURL.pathname}?v=${videoId}`;
         }
       }
 
       return oldURL.origin + oldURL.pathname;
     } catch (error) {
+      const sanitizedFallbackUrl = sanitizedUrl.replace(/[?#].*$/, '');
+
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
         level: 'debug',
         message: 'Failed to refactor URL for privacy, falling back to sanitized URL',
-        data: { url: trimmedUrl, sanitizedUrl },
+        data: { sanitizedUrl: sanitizedFallbackUrl },
       });
-      return sanitizedUrl;
+      return sanitizedFallbackUrl;
     }
   }
 

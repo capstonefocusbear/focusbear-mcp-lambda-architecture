@@ -1650,6 +1650,35 @@ describe('UserService', () => {
       expect(
         userService.getRefactoredURLWithRespectToPrivacy('https://www.youtube.com/watch?v=12345&ab_channel=test'),
       ).toBe('https://www.youtube.com/watch?v=12345');
+      expect(
+        userService.getRefactoredURLWithRespectToPrivacy('https://www.youtube.com/watch?ab_channel=test&v=12345'),
+      ).toBe('https://www.youtube.com/watch?v=12345');
+    });
+
+    it('does not treat attacker-controlled hostnames as YouTube URLs', () => {
+      expect(
+        userService.getRefactoredURLWithRespectToPrivacy('https://youtube.com.attacker.com/watch?v=12345&token=secret'),
+      ).toBe('https://youtube.com.attacker.com/watch');
+    });
+
+    it('removes query parameters on parse fallback and avoids logging the raw URL', () => {
+      SentryServiceMock.addBreadcrumb.mockClear();
+
+      expect(userService.getRefactoredURLWithRespectToPrivacy('https://[::1?token=secret#fragment')).toBe(
+        'https://[::1',
+      );
+      expect(SentryServiceMock.addBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { sanitizedUrl: 'https://[::1' },
+        }),
+      );
+      expect(SentryServiceMock.addBreadcrumb).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            url: expect.anything(),
+          }),
+        }),
+      );
     });
   });
 

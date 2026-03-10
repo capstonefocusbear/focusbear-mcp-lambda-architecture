@@ -12,6 +12,7 @@ import { Device } from '../modules/device/entities/device.entity';
 import { ActivityTemplate } from '../modules/activity-template/entity/activity-template.entity';
 import {
   TEST_USER_ID,
+  getTestUserAuth0Id,
   TEST_MORNING_ACTIVITY_SEQUENCE_ID,
   TEST_MORNING_ACTIVITY_ID,
   TEST_EVENING_ACTIVITY_SEQUENCE_ID,
@@ -98,6 +99,7 @@ export class MainSeeder implements Seeder {
     // create dummy data for backendTestUser
     await userFactory.save({
       id: TEST_USER_ID,
+      auth0_id: getTestUserAuth0Id(),
       username: 'testuser',
       num_days_of_stats: 30,
     });

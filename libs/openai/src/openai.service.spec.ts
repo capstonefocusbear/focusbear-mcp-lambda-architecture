@@ -1467,6 +1467,49 @@ describe('OpenAIService', () => {
       expect(result).toEqual([]);
     });
 
+    it('should return current habits when no choices are returned', async () => {
+      const mockResponse = {
+        choices: [],
+      };
+
+      const captureMessageSpy = jest.spyOn(SentryServiceMock.instance(), 'captureMessage');
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
+
+      expect(result).toEqual(currentHabits);
+      expect(captureMessageSpy).toHaveBeenCalledWith('No choices returned from AI for habit adjustment', {
+        level: 'error',
+      });
+    });
+
+    it('should return current habits when OpenAI truncates JSON mode output', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            finish_reason: 'length',
+            message: {
+              content: '[{"id":"e1c022d5-f729-45de-9e9f-a21df524a749"',
+            },
+          },
+        ],
+      };
+
+      const captureMessageSpy = jest.spyOn(SentryServiceMock.instance(), 'captureMessage');
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
+
+      expect(result).toEqual(currentHabits);
+      expect(captureMessageSpy).toHaveBeenCalledWith('Incomplete response from AI for habit adjustment', {
+        level: 'warning',
+        extra: {
+          finishReason: 'length',
+          hasRefusal: false,
+        },
+      });
+    });
+
     it('should generate new IDs for habits without IDs', async () => {
       const mixedHabitsWithEmptyId = [
         ...currentHabits,

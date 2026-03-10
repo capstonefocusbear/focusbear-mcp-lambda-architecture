@@ -232,6 +232,7 @@ export const OpenAIServiceMock = {
   adjustHabitsWithAi: jest.fn(),
   createChatCompletion: jest.fn(),
   createEmbedding: jest.fn(),
+  isValidInput: jest.fn(),
   transcribeAudioToText: jest.fn(),
   createDraftTodosFromTranscript: jest.fn(),
   extractTodosFromImage: jest.fn(),

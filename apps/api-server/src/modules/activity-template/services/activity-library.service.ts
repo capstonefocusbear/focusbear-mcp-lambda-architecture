@@ -29,8 +29,17 @@ import {
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
 import { MetricsConfig } from '../../../config/metrics.config';
+import { MAX_WORD_LENGTH } from '@app/openai/openai.constants';
+import { PREDEFINED_GOAL_FALLBACKS } from './predefined-goal-fallbacks.data';
 
 const EMOJI_REGEX = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji_Component}\uFE0F\u200D]/gu;
+const SMART_PUNCTUATION_NORMALIZERS: Array<[RegExp, string]> = [
+  [/[’‘‛]/g, "'"],
+  [/[“”„‟]/g, '"'],
+  [/[–—]/g, '-'],
+  [/[（]/g, '('],
+  [/[）]/g, ')'],
+];
 
 const MAX_ROUTINE_HABITS_PER_TYPE = 10;
 const RAG_RETRIEVAL_LIMIT = 10;
@@ -384,7 +393,11 @@ export class ActivityLibraryService {
       return '';
     }
     const withoutEmojis = goal.replace(EMOJI_REGEX, '');
-    return withoutEmojis.replace(/\s+/g, ' ').trim();
+    const normalizedPunctuation = SMART_PUNCTUATION_NORMALIZERS.reduce(
+      (result, [pattern, replacement]) => result.replace(pattern, replacement),
+      withoutEmojis,
+    );
+    return normalizedPunctuation.replace(/\s+/g, ' ').trim();
   }
 
   /**
@@ -1016,11 +1029,48 @@ export class ActivityLibraryService {
     options: { limit?: number; routineType?: ActivityType | string; routineDurationSeconds?: number },
     telemetry: RoutineSuggestionsPipelineTelemetry,
   ): Promise<GeneratedHabitSuggestion[]> {
+    if (!this.openAIService.isValidInput(goal, MAX_WORD_LENGTH.longTermGoal, 'routine_suggestion_goal')) {
+      this.sentryService.instance().captureMessage('RoutineSuggestion: invalid goal input blocked before generation', {
+        level: 'warning',
+        extra: { goal },
+      });
+      return this.getPredefinedGoalFallbackHabits(goal, options);
+    }
     const generationStartedAt = Date.now();
-    const generated = await this.routineSuggestionGeneratorService.generateNewHabits(goal, options);
+    const generated = (await this.routineSuggestionGeneratorService.generateNewHabits(goal, options)) ?? [];
     const { stageDurations } = telemetry;
     stageDurations.ragGenerateMs += Date.now() - generationStartedAt;
-    return generated;
+    if (generated.length) {
+      return generated;
+    }
+    return this.getPredefinedGoalFallbackHabits(goal, options);
+  }
+
+  private getPredefinedGoalFallbackHabits(
+    goal: string,
+    options: { limit?: number; routineType?: ActivityType | string },
+  ): GeneratedHabitSuggestion[] {
+    const normalizedGoal = this.normalizeGoal(goal).toLowerCase();
+    if (!normalizedGoal) {
+      return [];
+    }
+
+    const matchingFallback = PREDEFINED_GOAL_FALLBACKS.find(({ matchers }) =>
+      matchers.some((matcher) => matcher.test(normalizedGoal)),
+    );
+    if (!matchingFallback) {
+      return [];
+    }
+
+    const normalizedRoutineType = normalizeRoutineTypeToActivityType(
+      typeof options.routineType === 'string' ? options.routineType : undefined,
+    );
+    return matchingFallback.habits
+      .map((habit) => ({
+        ...habit,
+        routineType: normalizedRoutineType ?? habit.routineType,
+      }))
+      .slice(0, Math.max(1, options.limit ?? MAX_ROUTINE_HABITS_PER_TYPE));
   }
 
   private async emitRoutineSuggestionsTelemetry({

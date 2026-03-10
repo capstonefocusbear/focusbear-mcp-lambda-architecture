@@ -47,6 +47,8 @@ import { TeamToMember } from '../../src/modules/team/entities/team-to-member.ent
 import { InvitationStatus } from '../../src/modules/team/domain/invitation-status.enum';
 import { AnnouncementType, AnnouncementPriority } from '../../src/modules/announcements/entities/announcements.entity';
 import { ViewAction } from '../../src/modules/announcements/entities/announcement-views.entity';
+import { VideoMetadataResponseDto } from '../../src/modules/video-metadata/dto/video-metadata-response.dto';
+import { VideoMetadata } from '../../src/modules/video-metadata/entities/video-metadata.entity';
 
 export const authtorizedPassportDummy = new Passport({
   isAuth: true,
@@ -1466,7 +1468,7 @@ export const videoUrlsWithInvalidURLDummy = [
   'https://youtu.be/12345n9kA5t13',
 ];
 
-export const videoMetadataRepositoryResponseDummy = [
+export const videoMetadataRepositoryResponseDummy: VideoMetadata[] = [
   {
     id: 'EL1wNBsEHiY',
     created_at: '2022-12-07T07:23:21.893Z',
@@ -1474,6 +1476,9 @@ export const videoMetadataRepositoryResponseDummy = [
     video_url: 'https://www.youtube.com/watch?v=EL1wNBsEHiY',
     title: 'Microworkout: 1 minute of Squats',
     duration: '0:00:46',
+    thumbnail_url: 'https://i.ytimg.com/vi/EL1wNBsEHiY/hqdefault.jpg',
+    thumbnail_width: 480,
+    thumbnail_height: 360,
   },
   {
     id: 'R0Ut6nldt9g',
@@ -1482,6 +1487,9 @@ export const videoMetadataRepositoryResponseDummy = [
     video_url: 'https://www.youtube.com/watch?v=R0Ut6nldt9g',
     title: 'Microworkout: 30 seconds of squats',
     duration: '0:00:43',
+    thumbnail_url: 'https://i.ytimg.com/vi/R0Ut6nldt9g/hqdefault.jpg',
+    thumbnail_width: 480,
+    thumbnail_height: 360,
   },
   {
     id: 'KLKn9kA5t58',
@@ -1490,28 +1498,40 @@ export const videoMetadataRepositoryResponseDummy = [
     video_url: 'https://youtu.be/KLKn9kA5t58',
     title: 'Productivity tips: Pomodoro technique with Focus Bear',
     duration: '0:06:40',
+    thumbnail_url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+    thumbnail_width: 480,
+    thumbnail_height: 360,
   },
 ];
 
-export const videoMetadataReturnValueDummy = {
+export const videoMetadataReturnValueDummy: VideoMetadataResponseDto = {
   videos_metadata: [
     {
       id: 'EL1wNBsEHiY',
       video_url: 'https://www.youtube.com/watch?v=EL1wNBsEHiY',
       title: 'Microworkout: 1 minute of Squats',
       duration: '0:00:46',
+      thumbnail_url: 'https://i.ytimg.com/vi/EL1wNBsEHiY/hqdefault.jpg',
+      thumbnail_width: 480,
+      thumbnail_height: 360,
     },
     {
       id: 'R0Ut6nldt9g',
       video_url: 'https://www.youtube.com/watch?v=R0Ut6nldt9g',
       title: 'Microworkout: 30 seconds of squats',
       duration: '0:00:43',
+      thumbnail_url: 'https://i.ytimg.com/vi/R0Ut6nldt9g/hqdefault.jpg',
+      thumbnail_width: 480,
+      thumbnail_height: 360,
     },
     {
       id: 'KLKn9kA5t58',
       video_url: 'https://youtu.be/KLKn9kA5t58',
       title: 'Productivity tips: Pomodoro technique with Focus Bear',
       duration: '06:40',
+      thumbnail_url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+      thumbnail_width: 480,
+      thumbnail_height: 360,
     },
   ],
 };
@@ -1523,24 +1543,77 @@ export const videoMetadataReturnValueWithInvalidURLDummy = {
       video_url: 'https://www.youtube.com/watch?v=EL1wNBsEHiY',
       title: 'Microworkout: 1 minute of Squats',
       duration: '0:00:46',
+      thumbnail_url: 'https://i.ytimg.com/vi/EL1wNBsEHiY/hqdefault.jpg',
+      thumbnail_width: 480,
+      thumbnail_height: 360,
     },
     {
       id: 'R0Ut6nldt9g',
       video_url: 'https://www.youtube.com/watch?v=R0Ut6nldt9g',
       title: 'Microworkout: 30 seconds of squats',
       duration: '0:00:43',
+      thumbnail_url: 'https://i.ytimg.com/vi/R0Ut6nldt9g/hqdefault.jpg',
+      thumbnail_width: 480,
+      thumbnail_height: 360,
     },
     {
       id: 'KLKn9kA5t58',
       video_url: 'https://youtu.be/KLKn9kA5t58',
       title: 'Productivity tips: Pomodoro technique with Focus Bear',
       duration: '06:40',
+      thumbnail_url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+      thumbnail_width: 480,
+      thumbnail_height: 360,
     },
   ],
   invalid_urls: ['https://youtu.be/12345n9kA5t13'],
 };
 
 export const videoMetadataYoutubeAPIResponseDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 1920,
+              height: 1440,
+            },
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 960,
+              height: 720,
+            },
+            standard: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with no `thumbnails` field on snippet.
+ * Used to assert that saveVideosMetadata sets thumbnail_url, thumbnail_width, thumbnail_height to null.
+ */
+export const videoMetadataYoutubeAPIResponseNoThumbnailsDummy = {
   data: {
     items: [
       {
@@ -1558,7 +1631,644 @@ export const videoMetadataYoutubeAPIResponseDummy = {
   },
 };
 
-export const videoMetadataRepositoryDBResponseDummy = [
+/**
+ * YouTube API response dummy with empty `thumbnails` object (no standard keys).
+ * Used to assert fallback to null when none of maxres/standard/high/medium/default exist.
+ */
+export const videoMetadataYoutubeAPIResponseEmptyThumbnailsDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {},
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with non-standard keys only on `thumbnails`.
+ * Used to assert that unknown keys are ignored and thumbnail fields are null.
+ */
+export const videoMetadataYoutubeAPIResponseWeirdThumbnailsDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            unknownKey: {
+              url: 'https://example.com/weird.jpg',
+              width: 999,
+              height: 999,
+            },
+            anotherWeirdKey: {
+              url: 'https://example.com/other.jpg',
+              width: 100,
+              height: 100,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with only `default` thumbnail size.
+ * Used to assert preference chain falls through to default when others are missing.
+ */
+export const videoMetadataYoutubeAPIResponseOnlyDefaultDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with only `medium` thumbnail size.
+ */
+export const videoMetadataYoutubeAPIResponseOnlyMediumDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with only `high` thumbnail size.
+ */
+export const videoMetadataYoutubeAPIResponseOnlyHighDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 480,
+              height: 360,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with only `standard` thumbnail size.
+ */
+export const videoMetadataYoutubeAPIResponseOnlyStandardDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            standard: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/sddefault.jpg',
+              width: 640,
+              height: 480,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with only `maxres` thumbnail size.
+ */
+export const videoMetadataYoutubeAPIResponseOnlyMaxresDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            maxres: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/maxresdefault.jpg',
+              width: 1280,
+              height: 720,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with all five thumbnail sizes (maxres, standard, high, medium, default).
+ * Used to assert that maxres is chosen when all are present.
+ */
+export const videoMetadataYoutubeAPIResponseAllThumbnailsDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            maxres: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/maxresdefault.jpg',
+              width: 1280,
+              height: 720,
+            },
+            standard: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with maxres missing (standard, high, medium, default present).
+ * Used to assert that standard is chosen when maxres is missing.
+ */
+export const videoMetadataYoutubeAPIResponseMissingMaxresDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            standard: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with standard missing (maxres, high, medium, default present).
+ * Used to assert that maxres is chosen when standard is missing.
+ */
+export const videoMetadataYoutubeAPIResponseMissingStandardDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            maxres: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/maxresdefault.jpg',
+              width: 1280,
+              height: 720,
+            },
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with high missing (maxres, standard, medium, default present).
+ * Used to assert that standard is chosen when high is missing (standard before high in chain).
+ */
+export const videoMetadataYoutubeAPIResponseMissingHighDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            maxres: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/maxresdefault.jpg',
+              width: 1280,
+              height: 720,
+            },
+            standard: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with medium missing (maxres, standard, high, default present).
+ */
+export const videoMetadataYoutubeAPIResponseMissingMediumDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            maxres: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/maxresdefault.jpg',
+              width: 1280,
+              height: 720,
+            },
+            standard: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with default missing (maxres, standard, high, medium present).
+ * Used to assert that maxres is chosen when default is missing.
+ */
+export const videoMetadataYoutubeAPIResponseMissingDefaultDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            maxres: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/maxresdefault.jpg',
+              width: 1280,
+              height: 720,
+            },
+            standard: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with maxres and standard missing (high, medium, default present).
+ * Used to assert that high is chosen when both maxres and standard are missing.
+ */
+export const videoMetadataYoutubeAPIResponseMissingMaxresStandardDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            high: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
+              width: 480,
+              height: 360,
+            },
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with maxres, standard and high missing (medium, default present).
+ * Used to assert that medium is chosen.
+ */
+export const videoMetadataYoutubeAPIResponseMissingMaxresStandardHighDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            medium: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
+              width: 320,
+              height: 180,
+            },
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with maxres, standard, high and medium missing (only default present).
+ * Same as only-default case; used to assert fallback to default when all larger sizes are missing.
+ */
+export const videoMetadataYoutubeAPIResponseMissingMaxresStandardHighMediumDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with a thumbnail object missing url (width/height only).
+ * Used to assert that missing url yields null for thumbnail_url and optional width/height.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailMissingUrlDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: {
+              width: 120,
+              height: 90,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy with a thumbnail object missing width and height.
+ * Used to assert that url is used and width/height are null when missing.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailMissingWidthHeightDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: {
+              url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * Expected third video metadata (KLKn9kA5t58) when YouTube response has no usable thumbnails.
+ * Used in saveVideosMetadata tests to assert null thumbnail fields.
+ */
+export const videoMetadataReturnValueThirdVideoNullThumbnailDummy = {
+  id: 'KLKn9kA5t58',
+  video_url: 'https://youtu.be/KLKn9kA5t58',
+  title: 'Productivity tips: Pomodoro technique with Focus Bear',
+  duration: '06:40',
+  thumbnail_url: null,
+  thumbnail_width: null,
+  thumbnail_height: null,
+};
+
+export const videoMetadataRepositoryDBResponseDummy: VideoMetadata[] = [
   {
     id: 'EL1wNBsEHiY',
     created_at: '2022-12-07T07:23:21.893Z',
@@ -1566,6 +2276,9 @@ export const videoMetadataRepositoryDBResponseDummy = [
     video_url: 'https://www.youtube.com/watch?v=EL1wNBsEHiY',
     title: 'Microworkout: 1 minute of Squats',
     duration: '0:00:46',
+    thumbnail_url: 'https://i.ytimg.com/vi/EL1wNBsEHiY/hqdefault.jpg',
+    thumbnail_width: 480,
+    thumbnail_height: 360,
   },
   {
     id: 'R0Ut6nldt9g',
@@ -1574,6 +2287,9 @@ export const videoMetadataRepositoryDBResponseDummy = [
     video_url: 'https://www.youtube.com/watch?v=R0Ut6nldt9g',
     title: 'Microworkout: 30 seconds of squats',
     duration: '0:00:43',
+    thumbnail_url: 'https://i.ytimg.com/vi/R0Ut6nldt9g/hqdefault.jpg',
+    thumbnail_width: 480,
+    thumbnail_height: 360,
   },
 ];
 

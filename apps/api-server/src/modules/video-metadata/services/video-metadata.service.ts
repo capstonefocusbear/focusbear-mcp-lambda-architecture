@@ -4,6 +4,7 @@ import axios from 'axios';
 import { In } from 'typeorm';
 import { UserRepository } from '../../user/repositories/user.repository';
 import { VideoMetadataResponseDto } from '../dto/video-metadata-response.dto';
+import { VideoMetadataDto } from '../dto/video-metadata.dto';
 import { VideoMetadata } from '../entities/video-metadata.entity';
 import { VideoMetadataRepository } from '../repositories/video-metadata.repository';
 
@@ -47,10 +48,9 @@ export class VideoMetadataService {
       const newVideosMetadata = videosMetadataFromYouTube.filter(
         (video) => video instanceof VideoMetadata,
       ) as VideoMetadata[];
-      const formattedMetadata = [...existingVideosMetadata, ...newVideosMetadata].map(
-        ({ id, video_url, title, duration }) => {
-          return { id, video_url, title, duration };
-        },
+      const formattedMetadata: VideoMetadataDto[] = [...existingVideosMetadata, ...newVideosMetadata].map(
+        ({ id, video_url, title, duration, thumbnail_url, thumbnail_width, thumbnail_height }: VideoMetadata) =>
+          ({ id, video_url, title, duration, thumbnail_url, thumbnail_width, thumbnail_height } as VideoMetadataDto),
       );
       return {
         videos_metadata: formattedMetadata,
@@ -86,10 +86,29 @@ export class VideoMetadataService {
     if (data.pageInfo.totalResults === 0) {
       return video_url;
     }
+
+    /**
+     * YouTube's video resource data structure
+     * @see https://developers.google.com/youtube/v3/docs/videos#resource
+     */
     const { title } = data?.items[0]?.snippet;
     const { duration } = data?.items[0]?.contentDetails;
     const formattedDuration = this.parseDuration(duration);
-    const video = new VideoMetadata({ id: video_id, video_url, title, duration: formattedDuration });
+    const { thumbnails } = data?.items[0]?.snippet;
+    const thumbnailsData =
+      thumbnails?.maxres || thumbnails?.standard || thumbnails?.high || thumbnails?.medium || thumbnails?.default;
+    const thumbnail_url = thumbnailsData?.url || null;
+    const thumbnail_width = thumbnailsData?.width || null;
+    const thumbnail_height = thumbnailsData?.height || null;
+    const video = new VideoMetadata({
+      id: video_id,
+      video_url,
+      title,
+      duration: formattedDuration,
+      thumbnail_url,
+      thumbnail_width,
+      thumbnail_height,
+    });
     return video;
   }
 

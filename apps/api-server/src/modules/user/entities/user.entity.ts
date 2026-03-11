@@ -143,6 +143,7 @@ export class User extends BaseEntity {
   @Index()
   @Column({
     type: 'uuid',
+    nullable: true,
   })
   current_activity_sequence_id?: string;
 
@@ -161,7 +162,7 @@ export class User extends BaseEntity {
   @Index()
   @Column({
     type: 'uuid',
-    nullable: false,
+    nullable: true,
   })
   current_activity_id?: string;
 
@@ -173,6 +174,7 @@ export class User extends BaseEntity {
   @Index()
   @Column({
     type: 'uuid',
+    nullable: true,
   })
   last_completed_sequence_id?: string;
 
@@ -596,15 +598,15 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'signed_up_via_habit_pack' })
   sign_up_habit_pack?: User;
 
-  @OneToOne(() => Activity, (activity) => activity.id, { onDelete: 'SET NULL' })
+  @OneToOne(() => Activity, (activity) => activity.id, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'current_activity_id' })
   current_activity?: Activity;
 
-  @OneToOne(() => ActivitySequence, (sequence) => sequence.user, { onDelete: 'SET NULL' })
+  @OneToOne(() => ActivitySequence, (sequence) => sequence.user, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'current_activity_sequence_id' })
   current_activity_sequence?: ActivitySequence;
 
-  @OneToOne(() => ActivitySequence, (sequence) => sequence.user, { onDelete: 'SET NULL' })
+  @OneToOne(() => ActivitySequence, (sequence) => sequence.user, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'last_completed_sequence_id' })
   last_completed_sequence?: ActivitySequence;
 

@@ -1443,9 +1443,50 @@ export class OpenAIService {
         OPENAI_PARAMS.habitAdjustment as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
       );
 
-      const response = completions.choices[0].message.content;
+      const choice0 = completions.choices?.[0];
+      const finishReason = choice0?.finish_reason ?? null;
+      const response = choice0?.message?.content ?? null;
+      const refusal = (choice0?.message as any)?.refusal ?? null;
+
+      if (!choice0) {
+        this.sentryService.instance().captureMessage('No choices returned from AI for habit adjustment', {
+          level: 'error',
+        });
+        return currentHabits;
+      }
+
+      if (finishReason === 'length' || finishReason === 'content_filter') {
+        this.sentryService.instance().captureMessage('Incomplete response from AI for habit adjustment', {
+          level: 'warning',
+          extra: {
+            finishReason,
+            hasRefusal: Boolean(refusal),
+          },
+        });
+        return currentHabits;
+      }
+
+      if (refusal) {
+        this.sentryService.instance().captureMessage('Habit adjustment request refused by AI', {
+          level: 'warning',
+          extra: {
+            finishReason,
+          },
+        });
+        return currentHabits;
+      }
+
+      if (!response || String(response).trim().length === 0) {
+        this.sentryService.instance().captureMessage('Empty response from AI for habit adjustment', {
+          level: 'error',
+          extra: {
+            finishReason,
+          },
+        });
+        return currentHabits;
+      }
       try {
-        const parsed = JSON.parse(response);
+        const parsed = JSON.parse(String(response));
 
         if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
           if (!Array.isArray(parsed)) {

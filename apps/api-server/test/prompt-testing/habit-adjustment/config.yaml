@@ -26,8 +26,9 @@ prompts:
 providers:
   - id: openai:gpt-5-mini
     config:
-      max_completion_tokens: 1024
       apiKeyEnvar: $OPENAI_API_KEY
+      response_format:
+        type: json_object
 
 output:
   - debug

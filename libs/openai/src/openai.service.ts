@@ -1485,20 +1485,15 @@ export class OpenAIService {
         });
         return currentHabits;
       }
+      let parsed: unknown;
       try {
-        const parsed = JSON.parse(String(response));
+        parsed = JSON.parse(String(response));
 
-        if (groupByGoals && this.isGroupedHabitsResponse(parsed)) {
-          if (!Array.isArray(parsed)) {
-            this.sentryService.instance().captureException(new Error('Grouped habits response is not iterable'), {
-              level: 'error',
-              extra: { response, currentHabits, userFeedback },
-            });
-            return currentHabits;
-          }
-          const normalizedGoals = Array.isArray(userGoals) ? userGoals : [];
+        const groupedHabitsResponse = groupByGoals ? this.extractGroupedHabitsArray(parsed) : null;
+
+        if (groupByGoals && groupedHabitsResponse) {
           const validGrouped: Record<string, ActivityTemplate[]> = {};
-          for (const { goal, habits } of parsed) {
+          for (const { goal, habits } of groupedHabitsResponse) {
             validGrouped[String(goal).trim()] = (habits as Partial<ActivityTemplate>[]).map((habit: any) => {
               const rest = currentHabits.find((incomingHabit) => incomingHabit.id === habit?.id) ?? {};
               const emoji = normalizeSingleEmoji(habit?.emoji);
@@ -1519,6 +1514,7 @@ export class OpenAIService {
         const adjustedHabits: Partial<UpdateActivityDto>[] = this.getValidatedArray(
           parsed,
           'AI response is not an array',
+          ['habits', 'adjusted_habits', 'activities'],
         );
 
         const sanitizedAdjustedHabits = adjustedHabits
@@ -1554,9 +1550,18 @@ export class OpenAIService {
         }
         return sanitizedAdjustedHabits;
       } catch (parseError) {
+        const responseKeys =
+          parsed && typeof parsed === 'object' ? Object.keys(parsed as Record<string, unknown>).slice(0, 10) : [];
         this.sentryService.instance().captureException(parseError, {
           level: 'error',
-          extra: { response, currentHabits, userFeedback },
+          extra: {
+            response,
+            responseKeys,
+            finishReason,
+            hasRefusal: Boolean(refusal),
+            currentHabits,
+            userFeedback,
+          },
         });
         return currentHabits;
       }
@@ -1817,19 +1822,15 @@ export class OpenAIService {
     routineDuration?: number,
     groupByGoals?: boolean,
   ): string {
-    const replacements: Record<string, string> = {
-      '{{habits}}': JSON.stringify(minimalHabits, null, 2),
-      '{{feedback}}': userFeedback,
-    };
-
-    let filledPromptContent = `${INPUT_WRAPPER}${promptTemplate}${INPUT_WRAPPER}`;
-    for (const [key, value] of Object.entries(replacements)) {
-      filledPromptContent = filledPromptContent.replace(key, value);
-    }
+    let filledPromptContent = this.fillPrompt(promptTemplate, {
+      habits: this.wrapUserInput(JSON.stringify(minimalHabits, null, 2)),
+      feedback: this.wrapUserInput(userFeedback),
+    });
 
     const contextLines: string[] = [];
-    if (userGoals?.length) contextLines.push(`User goals: ${userGoals.join(', ')}`);
-    if (routineDuration) contextLines.push(`Routine duration (minutes): ${routineDuration}`);
+    if (userGoals?.length) contextLines.push(`User goals: ${this.wrapUserInput(userGoals.join(', '))}`);
+    if (routineDuration)
+      contextLines.push(`Routine duration (minutes): ${this.wrapUserInput(String(routineDuration))}`);
     if (groupByGoals) contextLines.push('Group the output by user goals if possible.');
 
     if (contextLines.length) {
@@ -1852,15 +1853,46 @@ export class OpenAIService {
     );
   }
 
-  private getValidatedArray<T = any>(parsed: unknown, error: string): T[] {
+  private extractGroupedHabitsArray(parsed: unknown): { goal: string; habits: any[] }[] | null {
+    if (this.isGroupedHabitsResponse(parsed)) {
+      return parsed;
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      const record = parsed as Record<string, unknown>;
+
+      for (const key of ['groups', 'grouped_habits', 'goals']) {
+        if (this.isGroupedHabitsResponse(record[key])) {
+          return record[key];
+        }
+      }
+
+      const nestedGrouped = Object.values(record).find((value) => this.isGroupedHabitsResponse(value));
+      if (nestedGrouped) {
+        return nestedGrouped;
+      }
+    }
+
+    return null;
+  }
+
+  private getValidatedArray<T = any>(parsed: unknown, error: string, preferredKeys: string[] = []): T[] {
     if (Array.isArray(parsed)) {
       return parsed;
     }
 
     if (parsed && typeof parsed === 'object') {
-      const firstKey = Object.keys(parsed)[0];
-      if (Array.isArray((parsed as Record<string, unknown>)[firstKey])) {
-        return (parsed as Record<string, T[]>)[firstKey];
+      const record = parsed as Record<string, unknown>;
+
+      for (const key of preferredKeys) {
+        if (Array.isArray(record[key])) {
+          return record[key] as T[];
+        }
+      }
+
+      const firstArrayValue = Object.values(record).find((value) => Array.isArray(value));
+      if (Array.isArray(firstArrayValue)) {
+        return firstArrayValue as T[];
       }
     }
 

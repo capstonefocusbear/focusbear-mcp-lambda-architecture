@@ -6,10 +6,12 @@ prompts:
       Your task is to adjust the user's current habits based on their feedback while maintaining the structure and format of the activities.
 
       STRICT OUTPUT FORMAT:
-      - If no grouping: return ONLY a JSON array of objects with EXACT keys: id, name, duration_seconds, emoji.
-      - If grouping by goals: return ONLY a JSON array of objects with EXACT keys: goal, habits.
+      - Always return ONLY a JSON object.
+      - If no grouping: return {"habits":[...]} where each habit has EXACT keys: id, name, duration_seconds, emoji.
+      - If grouping by goals: return {"groups":[...]} where each group has EXACT keys: goal, habits.
         - Each "habits" must be a JSON array of objects with EXACT keys: id, name, duration_seconds, emoji.
-      - Do NOT include any other fields.
+      - Do NOT include any other top-level keys.
+      - Do NOT include any other fields inside habit objects.
 
       SCOPE:
       - Modify only name, duration_seconds, and emoji based on the user's feedback and context.

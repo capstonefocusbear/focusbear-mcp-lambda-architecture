@@ -101,6 +101,29 @@ export class UserRepository extends BaseRepository<User> {
     super(dataSource, User);
   }
 
+  private dedupeForUpsert<T extends { id?: string }>(items: T[]): T[] {
+    const seenIds = new Set<string>();
+    const deduped: T[] = [];
+
+    // Keep the last occurrence for a given id so later payload entries win.
+    for (let index = items.length - 1; index >= 0; index -= 1) {
+      const item = items[index];
+      const itemId = item?.id;
+
+      if (!itemId) {
+        deduped.unshift(item);
+        continue;
+      }
+
+      if (seenIds.has(itemId)) continue;
+
+      seenIds.add(itemId);
+      deduped.unshift(item);
+    }
+
+    return deduped;
+  }
+
   /**
    * @param user - the user setting
    * @param activitiesData
@@ -129,11 +152,14 @@ export class UserRepository extends BaseRepository<User> {
     await queryRunner.startTransaction();
     try {
       // Batch upsert activity sequences and collect activities for deletion
-      const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
+      const sequencesToUpsert = this.dedupeForUpsert(activitiesData.map(({ sequence }) => sequence));
       const sequenceIdsToKeep = sequencesToUpsert.map((seq) => seq.id).filter((seqId) => !!seqId);
 
-      await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
-      const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id).filter((routineId) => !!routineId);
+      const customRoutinesToUpsert = this.dedupeForUpsert(customRoutines);
+      await queryRunner.manager.upsert(CustomRoutine, customRoutinesToUpsert, ['id']);
+      const customRoutinesIdsToKeep = customRoutinesToUpsert
+        .map((routine) => routine.id)
+        .filter((routineId) => !!routineId);
 
       // Delete activity sequences that belong to custom routines being deleted
       // This must happen before deleting the custom routines to avoid orphaned sequences
@@ -195,7 +221,7 @@ export class UserRepository extends BaseRepository<User> {
         { is_deleted: true },
       );
 
-      const activitiesArray = activitiesData.flatMap((sequence) => sequence.activities);
+      const activitiesArray = this.dedupeForUpsert(activitiesData.flatMap((sequence) => sequence.activities));
       const parentsWithoutLinks = activitiesArray.filter(
         ({ parent_id, linked_activity_id }) => !parent_id && !linked_activity_id,
       );
@@ -240,8 +266,8 @@ export class UserRepository extends BaseRepository<User> {
       );
 
       // Batch upsert all log quantity questions in a single operation
-      await queryRunner.manager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
-      await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
+      await queryRunner.manager.upsert(LogQuantityQuestion, this.dedupeForUpsert(logQuantityQuestions), ['id']);
+      await queryRunner.manager.upsert(Tutorial, this.dedupeForUpsert(tutorials), ['id']);
 
       await queryRunner.commitTransaction();
     } catch (error) {

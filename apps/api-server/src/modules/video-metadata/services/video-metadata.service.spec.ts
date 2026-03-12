@@ -20,12 +20,21 @@ import {
   videoMetadataYoutubeAPIResponseMissingStandardDummy,
   videoMetadataYoutubeAPIResponseNoThumbnailsDummy,
   videoMetadataYoutubeAPIResponseOnlyDefaultDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsNullDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsStringDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsUndefinedDummy,
   videoMetadataYoutubeAPIResponseOnlyHighDummy,
   videoMetadataYoutubeAPIResponseOnlyMaxresDummy,
   videoMetadataYoutubeAPIResponseOnlyMediumDummy,
   videoMetadataYoutubeAPIResponseOnlyStandardDummy,
   videoMetadataYoutubeAPIResponseThumbnailMissingUrlDummy,
   videoMetadataYoutubeAPIResponseThumbnailMissingWidthHeightDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsDataAllFieldsInvalidDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsDataEmptyObjectDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsDataNullDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsDataStringDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsDataUndefinedDummy,
+  videoMetadataYoutubeAPIResponseThumbnailsDataWrongTypesDummy,
   videoMetadataYoutubeAPIResponseWeirdThumbnailsDummy,
   videoUrlsDummy,
 } from '../../../../test/dummies/index';
@@ -136,6 +145,10 @@ describe('VideoMetadataService', () => {
         expect(result.videos_metadata[2].thumbnail_height).toBe(expectedThird.thumbnail_height);
       };
 
+      /**
+       * When snippet has no "thumbnails" property at all, destructuring yields undefined and
+       * thumbnailsData is undefined; all thumbnail fields are set to null.
+       */
       it('sets thumbnail fields to null when snippet has no thumbnails field', async () => {
         await runSaveVideosMetadataWithYouTubeResponse(
           videoMetadataYoutubeAPIResponseNoThumbnailsDummy,
@@ -143,9 +156,46 @@ describe('VideoMetadataService', () => {
         );
       });
 
+      /**
+       * When snippet.thumbnails is null, optional chaining yields undefined for all size keys
+       * so thumbnailsData is undefined; all thumbnail fields are set to null.
+       */
+      it('sets thumbnail fields to null when thumbnails is null', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsNullDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * When snippet.thumbnails is undefined, optional chaining yields undefined for all size keys
+       * so thumbnailsData is undefined; all thumbnail fields are set to null.
+       */
+      it('sets thumbnail fields to null when thumbnails is undefined', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsUndefinedDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * When snippet.thumbnails is an empty object ({}), none of maxres/standard/high/medium/default
+       * exist so thumbnailsData is undefined; all thumbnail fields are set to null.
+       */
       it('sets thumbnail fields to null when thumbnails object is empty', async () => {
         await runSaveVideosMetadataWithYouTubeResponse(
           videoMetadataYoutubeAPIResponseEmptyThumbnailsDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * When snippet.thumbnails is a string (e.g. a URL) instead of an object, thumbnails?.maxres
+       * etc. are undefined so thumbnailsData is undefined; all thumbnail fields are set to null.
+       */
+      it('sets thumbnail fields to null when thumbnails is a string', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsStringDummy,
           videoMetadataReturnValueThirdVideoNullThumbnailDummy,
         );
       });
@@ -288,6 +338,73 @@ describe('VideoMetadataService', () => {
             thumbnail_width: null,
             thumbnail_height: null,
           },
+        );
+      });
+
+      /**
+       * Sets thumbnail fields to null when the resolved thumbnailsData (the first of maxres/standard/high/medium/default)
+       * is a string instead of an object. The service only treats objects as valid thumbnail data.
+       */
+      it('sets thumbnail fields to null when thumbnailsData is a string (non-object)', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsDataStringDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * Sets thumbnail fields to null when the resolved thumbnailsData is null.
+       * Null is not an object so the service leaves all thumbnail fields as null.
+       */
+      it('sets thumbnail fields to null when thumbnailsData is null', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsDataNullDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * Sets thumbnail fields to null when the resolved thumbnailsData is undefined
+       * (e.g. snippet.thumbnails.default is undefined). Undefined is not an object.
+       */
+      it('sets thumbnail fields to null when thumbnailsData is undefined', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsDataUndefinedDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * Sets thumbnail fields to null when thumbnailsData is an empty object (no url, width, height).
+       * The service enters the object branch but each property is missing so all outputs are null.
+       */
+      it('sets thumbnail fields to null when thumbnailsData is an empty object', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsDataEmptyObjectDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * Sets thumbnail fields to null when thumbnailsData is an object but url, width and height
+       * are all null or undefined. Only string url and number width/height are accepted.
+       */
+      it('sets thumbnail fields to null when thumbnailsData object has url, width and height all null or undefined', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsDataAllFieldsInvalidDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
+        );
+      });
+
+      /**
+       * Sets thumbnail fields to null when thumbnailsData is an object but url, width and height
+       * have incorrect types (e.g. number for url, strings for width/height). The service
+       * requires typeof url === "string" and typeof width/height === "number".
+       */
+      it('sets thumbnail fields to null when thumbnailsData object has url, width and height with incorrect data types', async () => {
+        await runSaveVideosMetadataWithYouTubeResponse(
+          videoMetadataYoutubeAPIResponseThumbnailsDataWrongTypesDummy,
+          videoMetadataReturnValueThirdVideoNullThumbnailDummy,
         );
       });
     });

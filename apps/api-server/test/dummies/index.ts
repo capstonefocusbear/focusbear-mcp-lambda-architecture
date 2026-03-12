@@ -1655,6 +1655,78 @@ export const videoMetadataYoutubeAPIResponseEmptyThumbnailsDummy = {
 };
 
 /**
+ * YouTube API response dummy where the snippet's `thumbnails` property is explicitly null.
+ * Simulates API or serialisation returning null for thumbnails; thumbnails?.maxres etc. are
+ * undefined so thumbnailsData is undefined and all thumbnail fields are set to null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsNullDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: null,
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the snippet's `thumbnails` property is explicitly undefined.
+ * Ensures that when thumbnails is undefined, the service does not access nested properties and
+ * sets all thumbnail fields to null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsUndefinedDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: undefined,
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the snippet's `thumbnails` property is a string (URL) instead
+ * of an object. Simulates malformed API data; thumbnails?.maxres etc. are undefined so
+ * thumbnailsData is undefined and all thumbnail fields are set to null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsStringDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
  * YouTube API response dummy with non-standard keys only on `thumbnails`.
  * Used to assert that unknown keys are ignored and thumbnail fields are null.
  */
@@ -2240,6 +2312,166 @@ export const videoMetadataYoutubeAPIResponseThumbnailMissingWidthHeightDummy = {
           thumbnails: {
             default: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the chosen thumbnail slot (`default`) is a string instead of an object.
+ * Simulates malformed API data; thumbnailsData becomes a string so typeof thumbnailsData !== 'object'
+ * and all thumbnail fields are set to null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsDataStringDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the chosen thumbnail slot (`default`) is null.
+ * thumbnailsData is null so it is not an object and all thumbnail fields are set to null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsDataNullDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: null,
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the chosen thumbnail slot (`default`) is undefined.
+ * thumbnailsData is undefined so it is not treated as an object and all thumbnail fields are set to null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsDataUndefinedDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: undefined,
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the chosen thumbnail slot (`default`) is an empty object.
+ * thumbnailsData is an object but has no url, width, or height, so all thumbnail fields are null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsDataEmptyObjectDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: {},
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the chosen thumbnail object has url, width and height
+ * all null, undefined, or incorrect types (e.g. number for url, string for dimensions).
+ * Ensures the service sets thumbnail_url, thumbnail_width, thumbnail_height to null.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsDataAllFieldsInvalidDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: {
+              url: null,
+              width: undefined,
+              height: undefined,
+            },
+          },
+        },
+        contentDetails: {
+          duration: 'PT06M40S',
+        },
+      },
+    ],
+    pageInfo: {
+      totalResults: 1,
+    },
+  },
+};
+
+/**
+ * YouTube API response dummy where the chosen thumbnail object has url, width and height
+ * as incorrect data types (number for url, strings for width/height) so none are used.
+ */
+export const videoMetadataYoutubeAPIResponseThumbnailsDataWrongTypesDummy = {
+  data: {
+    items: [
+      {
+        snippet: {
+          title: 'Productivity tips: Pomodoro technique with Focus Bear',
+          thumbnails: {
+            default: {
+              url: 12345,
+              width: '120',
+              height: '90',
             },
           },
         },

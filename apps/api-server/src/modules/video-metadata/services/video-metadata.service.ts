@@ -97,9 +97,14 @@ export class VideoMetadataService {
     const { thumbnails } = data?.items[0]?.snippet;
     const thumbnailsData =
       thumbnails?.maxres || thumbnails?.standard || thumbnails?.high || thumbnails?.medium || thumbnails?.default;
-    const thumbnail_url = thumbnailsData?.url || null;
-    const thumbnail_width = thumbnailsData?.width || null;
-    const thumbnail_height = thumbnailsData?.height || null;
+    let thumbnail_url: string | null = null;
+    let thumbnail_width: number | null = null;
+    let thumbnail_height: number | null = null;
+    if (thumbnailsData instanceof Object) {
+      thumbnail_url = typeof thumbnailsData?.url === 'string' ? thumbnailsData?.url : null;
+      thumbnail_width = typeof thumbnailsData?.width === 'number' ? thumbnailsData?.width : null;
+      thumbnail_height = typeof thumbnailsData?.height === 'number' ? thumbnailsData?.height : null;
+    }
     const video = new VideoMetadata({
       id: video_id,
       video_url,

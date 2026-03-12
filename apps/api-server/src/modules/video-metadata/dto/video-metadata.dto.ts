@@ -7,9 +7,9 @@ export class VideoMetadataDto {
 
   duration: string;
 
-  thumbnail_url?: string;
+  thumbnail_url: string | null = null;
 
-  thumbnail_width?: number;
+  thumbnail_width: number | null = null;
 
-  thumbnail_height?: number;
+  thumbnail_height: number | null = null;
 }

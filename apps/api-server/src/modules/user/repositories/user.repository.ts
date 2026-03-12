@@ -124,6 +124,32 @@ export class UserRepository extends BaseRepository<User> {
     return deduped;
   }
 
+  private getUserSequencePointerReset(
+    user: Pick<
+      User,
+      | 'current_activity_sequence_id'
+      | 'current_activity_id'
+      | 'current_completing_sequence_log_id'
+      | 'last_completed_sequence_id'
+    >,
+    deletedSequenceIds: string[],
+  ): Partial<User> {
+    const deletedIds = new Set(deletedSequenceIds);
+    const userUpdate: Partial<User> = {};
+
+    if (user.last_completed_sequence_id && deletedIds.has(user.last_completed_sequence_id)) {
+      userUpdate.last_completed_sequence_id = null;
+    }
+
+    if (user.current_activity_sequence_id && deletedIds.has(user.current_activity_sequence_id)) {
+      userUpdate.current_activity_sequence_id = null;
+      userUpdate.current_activity_id = null;
+      userUpdate.current_completing_sequence_log_id = null;
+    }
+
+    return userUpdate;
+  }
+
   /**
    * @param user - the user setting
    * @param activitiesData
@@ -173,6 +199,37 @@ export class UserRepository extends BaseRepository<User> {
         // Delete sequences for custom routines that are being removed
         // Only delete if the sequence is not being kept AND the custom_routine_id is not in the kept list
         if (keptCustomRoutineIds.size > 0) {
+          const sequencesToDelete = await queryRunner.manager.find(ActivitySequence, {
+            select: { id: true },
+            where: {
+              user_id: id,
+              custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
+              id: Not(In(sequenceIdsToKeep)),
+            },
+          });
+
+          const pointerReset = await queryRunner.manager.findOne(User, {
+            where: { id },
+            select: {
+              id: true,
+              current_activity_sequence_id: true,
+              current_activity_id: true,
+              current_completing_sequence_log_id: true,
+              last_completed_sequence_id: true,
+            },
+          });
+
+          if (pointerReset) {
+            const userUpdate = this.getUserSequencePointerReset(
+              pointerReset,
+              sequencesToDelete.map((sequence) => sequence.id),
+            );
+
+            if (Object.keys(userUpdate).length > 0) {
+              await queryRunner.manager.update(User, { id }, userUpdate);
+            }
+          }
+
           await queryRunner.manager.delete(ActivitySequence, {
             user_id: id,
             custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
@@ -180,6 +237,37 @@ export class UserRepository extends BaseRepository<User> {
           });
         } else {
           // If no custom routine sequences are being kept, delete all sequences with custom_routine_id
+          const sequencesToDelete = await queryRunner.manager.find(ActivitySequence, {
+            select: { id: true },
+            where: {
+              user_id: id,
+              custom_routine_id: Not(IsNull()),
+              id: Not(In(sequenceIdsToKeep)),
+            },
+          });
+
+          const pointerReset = await queryRunner.manager.findOne(User, {
+            where: { id },
+            select: {
+              id: true,
+              current_activity_sequence_id: true,
+              current_activity_id: true,
+              current_completing_sequence_log_id: true,
+              last_completed_sequence_id: true,
+            },
+          });
+
+          if (pointerReset) {
+            const userUpdate = this.getUserSequencePointerReset(
+              pointerReset,
+              sequencesToDelete.map((sequence) => sequence.id),
+            );
+
+            if (Object.keys(userUpdate).length > 0) {
+              await queryRunner.manager.update(User, { id }, userUpdate);
+            }
+          }
+
           await queryRunner.manager.delete(ActivitySequence, {
             user_id: id,
             custom_routine_id: Not(IsNull()),
@@ -192,6 +280,36 @@ export class UserRepository extends BaseRepository<User> {
           id: Not(In(customRoutinesIdsToKeep)),
         });
       } else {
+        const sequencesToDelete = await queryRunner.manager.find(ActivitySequence, {
+          select: { id: true },
+          where: {
+            user_id: id,
+            custom_routine_id: Not(IsNull()),
+          },
+        });
+
+        const pointerReset = await queryRunner.manager.findOne(User, {
+          where: { id },
+          select: {
+            id: true,
+            current_activity_sequence_id: true,
+            current_activity_id: true,
+            current_completing_sequence_log_id: true,
+            last_completed_sequence_id: true,
+          },
+        });
+
+        if (pointerReset) {
+          const userUpdate = this.getUserSequencePointerReset(
+            pointerReset,
+            sequencesToDelete.map((sequence) => sequence.id),
+          );
+
+          if (Object.keys(userUpdate).length > 0) {
+            await queryRunner.manager.update(User, { id }, userUpdate);
+          }
+        }
+
         await queryRunner.manager.delete(ActivitySequence, {
           user_id: id,
           custom_routine_id: Not(IsNull()),

@@ -41,4 +41,40 @@ describe('UserRepository', () => {
       expect(result).toEqual([{ name: 'no-id-1' }, { id: 'seq-1', name: 'latest' }, { name: 'no-id-2' }]);
     });
   });
+
+  describe('getUserSequencePointerReset', () => {
+    it('clears last_completed_sequence_id when it points to a deleted sequence', () => {
+      const result = repository.getUserSequencePointerReset(
+        {
+          current_activity_sequence_id: 'seq-1',
+          current_activity_id: 'activity-1',
+          current_completing_sequence_log_id: 'log-1',
+          last_completed_sequence_id: 'seq-2',
+        },
+        ['seq-2'],
+      );
+
+      expect(result).toEqual({
+        last_completed_sequence_id: null,
+      });
+    });
+
+    it('clears current sequence pointers when the active sequence is deleted', () => {
+      const result = repository.getUserSequencePointerReset(
+        {
+          current_activity_sequence_id: 'seq-1',
+          current_activity_id: 'activity-1',
+          current_completing_sequence_log_id: 'log-1',
+          last_completed_sequence_id: 'seq-2',
+        },
+        ['seq-1'],
+      );
+
+      expect(result).toEqual({
+        current_activity_sequence_id: null,
+        current_activity_id: null,
+        current_completing_sequence_log_id: null,
+      });
+    });
+  });
 });

@@ -376,6 +376,49 @@ describe('UserService', () => {
       expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
+
+    it('recreates a deleted account as a fresh blank account on relogin', async () => {
+      const reloginDto: SyncUserAccountDto = {
+        ...syncAccountDto,
+        auth0_id: 'new-auth0-id-after-deletion',
+        email: auth0UserDummy.email,
+      };
+
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
+        ...auth0UserDummy,
+        user_id: reloginDto.auth0_id,
+      });
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValueOnce([
+        { ...auth0UserDummy, user_id: 'deleted-auth0-id' },
+        { ...auth0UserDummy, user_id: reloginDto.auth0_id },
+      ]);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+
+      await userService.syncUserAccount(reloginDto);
+
+      expect(UserRepositoryMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auth0_id: reloginDto.auth0_id,
+          stripe_customer_id: null,
+        }),
+      );
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalledWith(
+        { user_id: userDummy.id },
+        expect.objectContaining({
+          morning_activities: [],
+          evening_activities: [],
+          break_activities: [],
+          custom_routines: [],
+        }),
+        false,
+        { is_onboarding: true },
+      );
+    });
   });
 
   describe('getUserDetails', () => {

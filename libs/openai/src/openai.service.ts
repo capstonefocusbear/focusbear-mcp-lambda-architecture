@@ -1822,15 +1822,10 @@ export class OpenAIService {
     routineDuration?: number,
     groupByGoals?: boolean,
   ): string {
-    const replacements: Record<string, string> = {
-      '{{habits}}': this.wrapUserInput(JSON.stringify(minimalHabits, null, 2)),
-      '{{feedback}}': this.wrapUserInput(userFeedback),
-    };
-
-    let filledPromptContent = promptTemplate;
-    for (const [key, value] of Object.entries(replacements)) {
-      filledPromptContent = filledPromptContent.replace(key, value);
-    }
+    let filledPromptContent = this.fillPrompt(promptTemplate, {
+      habits: this.wrapUserInput(JSON.stringify(minimalHabits, null, 2)),
+      feedback: this.wrapUserInput(userFeedback),
+    });
 
     const contextLines: string[] = [];
     if (userGoals?.length) contextLines.push(`User goals: ${this.wrapUserInput(userGoals.join(', '))}`);

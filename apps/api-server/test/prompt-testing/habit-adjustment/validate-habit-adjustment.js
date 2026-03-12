@@ -7,12 +7,10 @@
  * @returns {object} - A grading result object
  */
 function isGroupedHabitsArray(arr) {
-  return Array.isArray(arr) && arr.length > 0 && arr.every(
-    (item) =>
-      item &&
-      typeof item === 'object' &&
-      typeof item.goal === 'string' &&
-      Array.isArray(item.habits)
+  return (
+    Array.isArray(arr) &&
+    arr.length > 0 &&
+    arr.every((item) => item && typeof item === 'object' && typeof item.goal === 'string' && Array.isArray(item.habits))
   );
 }
 
@@ -78,10 +76,18 @@ function validateHabitAdjustment(output, context) {
     // Handle both cases where output could be an object or a string
     const result = typeof output === 'object' ? output : JSON.parse(output.replace(/```json|```/g, '').trim());
 
+    const groupedResult = isGroupedHabitsArray(result)
+      ? result
+      : isGroupedHabitsArray(result?.groups)
+      ? result.groups
+      : isGroupedHabitsArray(result?.grouped_habits)
+      ? result.grouped_habits
+      : null;
+
     // Detect grouped output
-    if (isGroupedHabitsArray(result)) {
+    if (groupedResult) {
       // Validate each group
-      for (const group of result) {
+      for (const group of groupedResult) {
         if (!group.goal || typeof group.goal !== 'string') {
           return {
             pass: false,
@@ -112,16 +118,16 @@ function validateHabitAdjustment(output, context) {
           };
         }
         // Compare group count (warn if more groups than expected)
-        if (result.length < expected.length) {
+        if (groupedResult.length < expected.length) {
           return {
             pass: false,
             score: 0.5,
-            reason: `Expected ${expected.length} groups but got ${result.length}`,
+            reason: `Expected ${expected.length} groups but got ${groupedResult.length}`,
           };
         }
         let groupWarnings = [];
         for (const expectedGroup of expected) {
-          const actualGroup = result.find((g) => g.goal === expectedGroup.goal);
+          const actualGroup = groupedResult.find((g) => g.goal === expectedGroup.goal);
           if (!actualGroup) {
             return {
               pass: false,
@@ -131,41 +137,56 @@ function validateHabitAdjustment(output, context) {
           }
           // Check for missing habits in the group
           const missingHabits = expectedGroup.habits.filter(
-            expectedHabit => !actualGroup.habits.find(h => h.id === expectedHabit.id)
+            (expectedHabit) => !actualGroup.habits.find((h) => h.id === expectedHabit.id),
           );
           if (missingHabits.length > 0) {
             return {
               pass: false,
               score: 0.3,
-              reason: `Expected habits with ids [${missingHabits.map(h => h.id).join(', ')}] not found in group '${expectedGroup.goal}'`,
+              reason: `Expected habits with ids [${missingHabits.map((h) => h.id).join(', ')}] not found in group '${
+                expectedGroup.goal
+              }'`,
             };
           }
           // Collect warnings for name/duration mismatches
           for (const expectedHabit of expectedGroup.habits) {
             const actualHabit = actualGroup.habits.find((h) => h.id === expectedHabit.id);
             if (actualHabit.name !== expectedHabit.name) {
-              groupWarnings.push(`Group '${expectedGroup.goal}': Habit '${expectedHabit.id}' expected name '${expectedHabit.name}' but got '${actualHabit.name}'`);
+              groupWarnings.push(
+                `Group '${expectedGroup.goal}': Habit '${expectedHabit.id}' expected name '${expectedHabit.name}' but got '${actualHabit.name}'`,
+              );
             }
             if (actualHabit.duration_seconds !== expectedHabit.duration_seconds) {
-              groupWarnings.push(`Group '${expectedGroup.goal}': Habit '${expectedHabit.id}' expected duration ${expectedHabit.duration_seconds} but got ${actualHabit.duration_seconds}`);
+              groupWarnings.push(
+                `Group '${expectedGroup.goal}': Habit '${expectedHabit.id}' expected duration ${expectedHabit.duration_seconds} but got ${actualHabit.duration_seconds}`,
+              );
             }
           }
           // Warn if there are extra habits in the group
           if (actualGroup.habits.length > expectedGroup.habits.length) {
-            const extraIds = actualGroup.habits.map(h => h.id).filter(id => !expectedGroup.habits.some(eh => eh.id === id));
-            groupWarnings.push(`Group '${expectedGroup.goal}' contains extra habits with ids: [${extraIds.join(', ')}]`);
+            const extraIds = actualGroup.habits
+              .map((h) => h.id)
+              .filter((id) => !expectedGroup.habits.some((eh) => eh.id === id));
+            groupWarnings.push(
+              `Group '${expectedGroup.goal}' contains extra habits with ids: [${extraIds.join(', ')}]`,
+            );
           }
         }
         // Warn if there are extra groups
-        if (result.length > expected.length) {
-          const extraGoals = result.map(g => g.goal).filter(goal => !expected.some(eg => eg.goal === goal));
+        if (groupedResult.length > expected.length) {
+          const extraGoals = groupedResult
+            .map((g) => g.goal)
+            .filter((goal) => !expected.some((eg) => eg.goal === goal));
           groupWarnings.push(`Extra groups found: [${extraGoals.join(', ')}]`);
         }
         // All groups and habits present
         return {
           pass: true,
           score: 1.0,
-          reason: groupWarnings.length > 0 ? `Grouped test passed with warnings: ${groupWarnings.join('; ')}` : 'Grouped response matches expected habit data exactly',
+          reason:
+            groupWarnings.length > 0
+              ? `Grouped test passed with warnings: ${groupWarnings.join('; ')}`
+              : 'Grouped response matches expected habit data exactly',
         };
       }
       // If we get here, the grouped response is valid but no expected data to compare
@@ -177,14 +198,22 @@ function validateHabitAdjustment(output, context) {
     }
 
     // Flat array validation (legacy)
-    if (!Array.isArray(result)) {
+    const flatResult = Array.isArray(result)
+      ? result
+      : Array.isArray(result?.habits)
+      ? result.habits
+      : Array.isArray(result?.adjusted_habits)
+      ? result.adjusted_habits
+      : null;
+
+    if (!flatResult) {
       return {
         pass: false,
         score: 0.0,
-        reason: 'Response must be a JSON array',
+        reason: 'Response must contain a habits array',
       };
     }
-    for (const habit of result) {
+    for (const habit of flatResult) {
       const habitValidation = validateSingleHabit(habit);
       if (!habitValidation.pass) return habitValidation;
     }
@@ -192,37 +221,46 @@ function validateHabitAdjustment(output, context) {
     if (context && context.vars && context.vars.expected) {
       const expected = JSON.parse(context.vars.expected);
       // Check that all expected habits are present in the result
-      const missingHabits = expected.filter(
-        expectedHabit => !result.find(h => h.id === expectedHabit.id)
-      );
+      const missingHabits = expected.filter((expectedHabit) => !flatResult.find((h) => h.id === expectedHabit.id));
       if (missingHabits.length > 0) {
         return {
           pass: false,
           score: 0.3,
-          reason: `Expected habits with ids [${missingHabits.map(h => h.id).join(', ')}] not found`,
+          reason: `Expected habits with ids [${missingHabits.map((h) => h.id).join(', ')}] not found`,
         };
       }
       // Collect warnings for name/duration mismatches
       let warnings = [];
       for (const expectedHabit of expected) {
-        const actualHabit = result.find((h) => h.id === expectedHabit.id);
+        const actualHabit = flatResult.find((h) => h.id === expectedHabit.id);
         if (actualHabit.name !== expectedHabit.name) {
-          warnings.push(`Habit '${expectedHabit.id}' expected name '${expectedHabit.name}' but got '${actualHabit.name}'`);
+          warnings.push(
+            `Habit '${expectedHabit.id}' expected name '${expectedHabit.name}' but got '${actualHabit.name}'`,
+          );
         }
         if (actualHabit.duration_seconds !== expectedHabit.duration_seconds) {
-          warnings.push(`Habit '${expectedHabit.id}' expected duration ${expectedHabit.duration_seconds} but got ${actualHabit.duration_seconds}`);
+          warnings.push(
+            `Habit '${expectedHabit.id}' expected duration ${expectedHabit.duration_seconds} but got ${actualHabit.duration_seconds}`,
+          );
         }
       }
       // Warn if there are extra habits
-      if (result.length > expected.length) {
-        const extraIds = result.map(h => h.id).filter(id => !expected.some(eh => eh.id === id));
-        warnings.push(`Response contains extra habits with ids: [${extraIds.join(', ')}]. This is allowed, but you may want to review if the breakdown is reasonable.`);
+      if (flatResult.length > expected.length) {
+        const extraIds = flatResult.map((h) => h.id).filter((id) => !expected.some((eh) => eh.id === id));
+        warnings.push(
+          `Response contains extra habits with ids: [${extraIds.join(
+            ', ',
+          )}]. This is allowed, but you may want to review if the breakdown is reasonable.`,
+        );
       }
       // If we get here, all expected habits are present
       return {
         pass: true,
         score: 1.0,
-        reason: warnings.length > 0 ? `Test passed with warnings: ${warnings.join('; ')}` : 'Response matches expected habit data exactly',
+        reason:
+          warnings.length > 0
+            ? `Test passed with warnings: ${warnings.join('; ')}`
+            : 'Response matches expected habit data exactly',
       };
     }
     // If we get here, the response is valid but no expected data to compare

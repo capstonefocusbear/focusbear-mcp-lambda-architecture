@@ -8,9 +8,6 @@ export class createTableVideoMetadata1670386974948 implements MigrationInterface
             "video_url" VARCHAR(255) NOT NULL,
             "title" VARCHAR(255),
             "duration" VARCHAR(255),
-            "thumbnail_url" VARCHAR(255) DEFAULT NULL,
-            "thumbnail_width" INTEGER DEFAULT NULL,
-            "thumbnail_height" INTEGER DEFAULT NULL,
             "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         );

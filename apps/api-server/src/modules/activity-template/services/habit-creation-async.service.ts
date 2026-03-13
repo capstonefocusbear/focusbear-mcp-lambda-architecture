@@ -14,6 +14,7 @@ export interface HabitCreationJobData {
   userId: string;
   request: CreateHabitWithAiDto;
   requestHash: string;
+  enqueuedAt: string;
 }
 
 @Injectable()
@@ -33,6 +34,7 @@ export class HabitCreationAsyncService {
   ): Promise<{ asyncTaskId: string }> {
     const requestHash = this.computeRequestHash(dto, userId);
     const jobId = `${HabitCreationAsyncService.TASK_TYPE}:${requestHash}`;
+    const enqueuedAt = new Date().toISOString();
     const existingTask = await this.asyncTaskService.findActiveTaskByRequestHash(
       HabitCreationAsyncService.TASK_TYPE,
       userId,
@@ -59,6 +61,7 @@ export class HabitCreationAsyncService {
       durationMinutes: dto.routine_duration ?? null,
       source: source ?? 'unknown',
       requestHash,
+      enqueuedAt,
     };
 
     const asyncTask = await this.asyncTaskService.createAsyncTask({ metadata });
@@ -71,6 +74,7 @@ export class HabitCreationAsyncService {
           userId,
           request: dto,
           requestHash,
+          enqueuedAt,
         } satisfies HabitCreationJobData,
         {
           jobId,

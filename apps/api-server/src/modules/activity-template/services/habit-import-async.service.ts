@@ -26,6 +26,7 @@ export class HabitImportAsyncService {
   ): Promise<{ asyncTaskId: string }> {
     const requestHash = this.computeRequestHash(dto, userId);
     const jobId = `${HabitImportAsyncService.TASK_TYPE}:${requestHash}`;
+    const enqueuedAt = new Date().toISOString();
     const existingTask = await this.asyncTaskService.findActiveTaskByRequestHash(
       HabitImportAsyncService.TASK_TYPE,
       userId,
@@ -53,6 +54,7 @@ export class HabitImportAsyncService {
       routineType: dto.routineType ?? null,
       source: source ?? 'unknown',
       requestHash,
+      enqueuedAt,
     };
 
     const asyncTask = await this.asyncTaskService.createAsyncTask({ metadata });
@@ -68,6 +70,7 @@ export class HabitImportAsyncService {
           routineDurationMinutes: dto.routineDurationMinutes,
           routineType: dto.routineType,
           requestHash,
+          enqueuedAt,
         } satisfies HabitImportJobData,
         {
           jobId,

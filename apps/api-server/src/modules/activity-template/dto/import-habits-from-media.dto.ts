@@ -56,4 +56,5 @@ export interface HabitImportJobData {
   routineDurationMinutes?: number;
   routineType?: HabitImportRoutineType;
   requestHash: string;
+  enqueuedAt: string;
 }

@@ -14,6 +14,7 @@ export interface RoutineSuggestionsJobData {
   userId: string;
   request: GetRoutineSuggestionsDto;
   requestHash: string;
+  enqueuedAt: string;
 }
 
 @Injectable()
@@ -33,6 +34,7 @@ export class RoutineSuggestionsAsyncService {
   ): Promise<{ asyncTaskId: string }> {
     const requestHash = this.computeRequestHash(dto, userId);
     const jobId = `${RoutineSuggestionsAsyncService.TASK_TYPE}:${requestHash}`;
+    const enqueuedAt = new Date().toISOString();
     const existingTask = await this.asyncTaskService.findActiveTaskByRequestHash(
       RoutineSuggestionsAsyncService.TASK_TYPE,
       userId,
@@ -61,6 +63,7 @@ export class RoutineSuggestionsAsyncService {
       groupByGoals: dto.groupByGoals ?? false,
       source: source ?? 'unknown',
       requestHash,
+      enqueuedAt,
     };
 
     const asyncTask = await this.asyncTaskService.createAsyncTask({ metadata });
@@ -73,6 +76,7 @@ export class RoutineSuggestionsAsyncService {
           userId,
           request: dto,
           requestHash,
+          enqueuedAt,
         } satisfies RoutineSuggestionsJobData,
         {
           jobId,

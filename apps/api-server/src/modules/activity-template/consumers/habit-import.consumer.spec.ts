@@ -12,6 +12,18 @@ import { HabitImportJobData, ExtractedHabit, HabitSuggestionResult } from '../dt
 import { SentryServiceMock } from '../../../../test/mocks';
 import { ActivityLibraryService } from '../services/activity-library.service';
 
+jest.mock('@app/observability', () => {
+  const actual = jest.requireActual('@app/observability');
+  return {
+    ...actual,
+    emitAiPipelineMetrics: jest.fn(),
+  };
+});
+
+const { emitAiPipelineMetrics } = jest.requireMock('@app/observability') as {
+  emitAiPipelineMetrics: jest.Mock;
+};
+
 // Mock axios
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -94,6 +106,7 @@ describe('HabitImportConsumer', () => {
 
     consumer = moduleRef.get<HabitImportConsumer>(HabitImportConsumer);
     jest.clearAllMocks();
+    emitAiPipelineMetrics.mockReset();
   });
 
   const buildJob = (overrides: Partial<HabitImportJobData> = {}): Job<HabitImportJobData> =>
@@ -108,6 +121,7 @@ describe('HabitImportConsumer', () => {
         routineDurationMinutes: 30,
         routineType: 'morning',
         requestHash: 'hash-abc',
+        enqueuedAt: '2025-03-13T10:00:00.000Z',
         ...overrides,
       },
     } as Job<HabitImportJobData>);
@@ -242,6 +256,16 @@ describe('HabitImportConsumer', () => {
           category: 'meditation',
           text_instructions: 'Guided meditation',
           habit_icon: '🧘',
+        }),
+      );
+
+      expect(emitAiPipelineMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipeline: 'habit-import',
+          operation: 'processHabitImport',
+          success: true,
+          endToEndDurationMs: expect.any(Number),
+          queueWaitMs: expect.any(Number),
         }),
       );
       expect(result[1]).toEqual(
@@ -667,6 +691,16 @@ describe('HabitImportConsumer', () => {
           asyncTaskId: 'task-123',
         },
       });
+
+      expect(emitAiPipelineMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipeline: 'habit-import',
+          operation: 'processHabitImport',
+          success: false,
+          endToEndDurationMs: expect.any(Number),
+          queueWaitMs: expect.any(Number),
+        }),
+      );
     });
 
     it('should handle extraction service errors', async () => {

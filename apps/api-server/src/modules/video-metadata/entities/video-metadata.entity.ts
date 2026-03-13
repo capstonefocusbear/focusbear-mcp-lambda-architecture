@@ -32,4 +32,22 @@ export class VideoMetadata extends BaseEntity {
     nullable: false,
   })
   duration?: string;
+
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  thumbnail_url: string | null = null;
+
+  @Column({
+    type: 'integer',
+    nullable: true,
+  })
+  thumbnail_width: number | null = null;
+
+  @Column({
+    type: 'integer',
+    nullable: true,
+  })
+  thumbnail_height: number | null = null;
 }

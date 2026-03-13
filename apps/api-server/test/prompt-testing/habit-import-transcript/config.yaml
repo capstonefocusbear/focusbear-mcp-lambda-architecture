@@ -9,9 +9,10 @@ prompts:
       2. NORMALIZE NAMES: Convert to clear, action-oriented names (e.g., 'Morning meditation' not 'I usually meditate')
       3. INFER DURATION: Estimate reasonable duration in minutes when mentioned or implied
       4. CATEGORIZE: Assign a category if discernible (exercise, meditation, journaling, reading, etc.)
-      5. BE COMPREHENSIVE: Extract all mentioned habits, even briefly mentioned ones
-      6. PRESERVE INTENT: Keep the core purpose of each habit clear
-      7. LANGUAGE: Output habit names in English
+      5. ASSIGN ROUTINE TYPE: Every habit must include a routineType of "morning", "evening", or "break". Infer it from timing/context in the transcript. Use "break" for short reset habits done during the day, "morning" for start-of-day habits, and "evening" for wind-down or end-of-day habits.
+      6. BE COMPREHENSIVE: Extract all mentioned habits, even briefly mentioned ones
+      7. PRESERVE INTENT: Keep the core purpose of each habit clear
+      8. LANGUAGE: Output habit names in English
 
       ## CATEGORY GUIDELINES
       - exercise: Physical activities like workouts, yoga, stretching, walking, running
@@ -37,6 +38,7 @@ prompts:
           {
             "name": "string (clear, action-oriented habit name)",
             "description": "string (brief description of what the habit involves)",
+            "routineType": "string (morning|evening|break)",
             "estimatedDurationMinutes": number (1-120, best estimate),
             "category": "string (exercise|meditation|journaling|reading|learning|health|productivity|other)",
             "emoji": "string (a single emoji that represents this habit)"

@@ -9,7 +9,7 @@ import {
   HabitLibraryRequestRepository,
   HabitLibraryRequestRecord,
 } from '../repository/habit-library-request.repository';
-import { ExtractedHabit, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
+import { ExtractedHabit, HabitImportRoutineType, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
 
 const RAG_RETRIEVAL_LIMIT = 10;
 const DEFAULT_MATCH_THRESHOLD = 0.5;
@@ -317,7 +317,7 @@ export class HabitImportExtractionService {
     metadata: {
       asyncTaskId: string;
       mediaType: 'image' | 'audio';
-      routineType?: string;
+      routineType?: HabitImportRoutineType;
     },
   ): Promise<void> {
     const unmatchedHabits = results.filter((r) => !r.matched);
@@ -331,7 +331,7 @@ export class HabitImportExtractionService {
       goal: 'habit_import',
       habitName: result.extractedHabit.name,
       habitDescription: result.extractedHabit.description,
-      routineType: metadata.routineType || 'morning',
+      routineType: this.resolveRoutineTypeForLogging(result.extractedHabit.routineType, metadata.routineType),
       durationMinutes: result.extractedHabit.estimatedDurationMinutes,
       justification: 'No matching habit in library - imported from user screenshot/audio',
       requestMetadata: {
@@ -353,5 +353,26 @@ export class HabitImportExtractionService {
       });
       // Don't throw - logging failure shouldn't fail the whole import
     }
+  }
+
+  private resolveRoutineTypeForLogging(
+    extractedRoutineType?: HabitImportRoutineType,
+    requestRoutineType?: string,
+  ): HabitImportRoutineType {
+    const routineType = extractedRoutineType ?? this.normalizeRoutineType(requestRoutineType);
+    return routineType ?? 'morning';
+  }
+
+  private normalizeRoutineType(routineType?: string): HabitImportRoutineType | undefined {
+    if (!routineType) {
+      return undefined;
+    }
+
+    const normalized = String(routineType).trim().toLowerCase();
+    if (normalized === 'morning' || normalized === 'evening' || normalized === 'break') {
+      return normalized;
+    }
+
+    return undefined;
   }
 }

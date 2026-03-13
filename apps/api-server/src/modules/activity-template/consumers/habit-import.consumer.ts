@@ -21,7 +21,7 @@ import { ExtractedHabit, HabitImportJobData, HabitSuggestionResult } from '../dt
 import { BullQueues, BullWorkers, S3_BUCKET_HABIT_IMPORTS } from '../../../shared/utils/constants';
 import { normalizeSingleEmoji } from '../../../shared/utils/emoji';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
-import { ActivityType } from '../../activity/domain/activity-type.enum';
+import { ActivityType, normalizeRoutineTypeToActivityType } from '../../activity/domain/activity-type.enum';
 import { MetricsConfig } from '../../../config/metrics.config';
 import { ActivityLibraryService } from '../services/activity-library.service';
 
@@ -429,7 +429,7 @@ export class HabitImportConsumer {
     routineType?: string,
     requestHash?: string,
   ): UpdateActivityDto[] {
-    const requestedActivityType = this.resolveActivityTypeFromRoutineType(routineType);
+    const requestedActivityType = normalizeRoutineTypeToActivityType(routineType);
     const fallbackActivityType = requestedActivityType ?? ActivityType.library;
     return results
       .map((result, index) => {
@@ -454,9 +454,12 @@ export class HabitImportConsumer {
 
         const rawDescription = template?.description ? template.description : sourceHabit.description;
         const description = rawDescription || name;
+        const inferredActivityType = normalizeRoutineTypeToActivityType(sourceHabit.routineType);
         let activityType: string;
         if (requestedActivityType !== undefined) {
           activityType = String(requestedActivityType);
+        } else if (inferredActivityType !== undefined) {
+          activityType = String(inferredActivityType);
         } else if (template?.activityType) {
           activityType = String(template.activityType);
         } else {
@@ -676,17 +679,5 @@ export class HabitImportConsumer {
         logQueueFailures: true,
       }
     );
-  }
-
-  private resolveActivityTypeFromRoutineType(routineType?: string): ActivityType | undefined {
-    if (!routineType) return undefined;
-    const normalized = String(routineType).trim().toLowerCase();
-    if (normalized === 'morning') return ActivityType.morning;
-    if (normalized === 'evening') return ActivityType.evening;
-    if (normalized === 'break') return ActivityType.break;
-    if (normalized === 'breaking') return ActivityType.break;
-    if (normalized === 'library') return ActivityType.library;
-    if (normalized === 'standalone') return ActivityType.standalone;
-    return undefined;
   }
 }

@@ -120,8 +120,16 @@ describe('HabitImportConsumer', () => {
         description: 'Meditate',
         estimatedDurationMinutes: 10,
         category: 'meditation',
+        routineType: 'morning',
       },
-      { name: 'Exercise', emoji: '🏃', description: 'Workout', estimatedDurationMinutes: 30, category: 'exercise' },
+      {
+        name: 'Exercise',
+        emoji: '🏃',
+        description: 'Workout',
+        estimatedDurationMinutes: 30,
+        category: 'exercise',
+        routineType: 'morning',
+      },
     ];
 
     const mockResults: HabitSuggestionResult[] = [
@@ -397,6 +405,108 @@ describe('HabitImportConsumer', () => {
       ]);
     });
 
+    it('uses AI inferred routineType when request routineType is absent', async () => {
+      const job = buildJob({ mediaType: 'image', routineType: undefined });
+      const inferredHabit: ExtractedHabit = {
+        name: 'Desk stretch',
+        description: 'Quick mobility reset between work blocks',
+        estimatedDurationMinutes: 5,
+        category: 'exercise',
+        routineType: 'break',
+      };
+
+      r2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/image.png');
+      mockedAxios.get.mockResolvedValueOnce({
+        data: Buffer.from('fake-image-data'),
+      });
+      habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce([inferredHabit]);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValueOnce({
+        results: [
+          {
+            extractedHabit: inferredHabit,
+            matched: false,
+            suggestedHabit: inferredHabit,
+          },
+        ],
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 10,
+          ragTemplateFetchMs: 0,
+          ragRerankMs: 0,
+          rerankLlmCalls: 0,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
+      habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
+
+      const result = await consumer.processHabitImport(job);
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          name: 'Desk stretch',
+          activity_type: 'breaking',
+          category: 'exercise',
+          text_instructions: 'Quick mobility reset between work blocks',
+        }),
+      ]);
+    });
+
+    it('prefers AI inferred routineType over matched template activity type when request routineType is absent', async () => {
+      const job = buildJob({ mediaType: 'image', routineType: undefined });
+      const inferredHabit: ExtractedHabit = {
+        name: 'Read fiction',
+        description: 'Read to wind down before bed',
+        estimatedDurationMinutes: 20,
+        category: 'reading',
+        routineType: 'evening',
+      };
+
+      r2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/image.png');
+      mockedAxios.get.mockResolvedValueOnce({
+        data: Buffer.from('fake-image-data'),
+      });
+      habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce([inferredHabit]);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValueOnce({
+        results: [
+          {
+            extractedHabit: inferredHabit,
+            matched: true,
+            matchedTemplate: {
+              id: '33333333-3333-4333-8333-333333333333',
+              name: 'Daily Reading',
+              description: 'Read for 20 minutes',
+              activityType: 'morning',
+              durationSeconds: 1200,
+              matchScore: 0.86,
+              justification: 'Reading activity match',
+            },
+          },
+        ],
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 10,
+          ragTemplateFetchMs: 5,
+          ragRerankMs: 8,
+          rerankLlmCalls: 1,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
+      habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
+
+      const result = await consumer.processHabitImport(job);
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: '33333333-3333-4333-8333-333333333333',
+          name: 'Daily Reading',
+          activity_type: 'evening',
+          text_instructions: 'Read for 20 minutes',
+        }),
+      ]);
+    });
+
     it('should return empty array when no habits are extracted', async () => {
       const job = buildJob({ mediaType: 'image' });
 
@@ -427,7 +537,13 @@ describe('HabitImportConsumer', () => {
 
   describe('processHabitImport - Audio flow', () => {
     const mockExtractedHabits: ExtractedHabit[] = [
-      { name: 'Reading', description: 'Read a book', estimatedDurationMinutes: 20, category: 'reading' },
+      {
+        name: 'Reading',
+        description: 'Read a book',
+        estimatedDurationMinutes: 20,
+        category: 'reading',
+        routineType: 'evening',
+      },
     ];
 
     const mockResults: HabitSuggestionResult[] = [

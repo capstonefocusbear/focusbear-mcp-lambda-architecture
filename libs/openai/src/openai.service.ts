@@ -1660,10 +1660,15 @@ export class OpenAIService {
     }
   }
 
-  async extractHabitsFromImage(
-    imageBuffer: string,
-  ): Promise<
-    { name: string; emoji?: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]
+  async extractHabitsFromImage(imageBuffer: string): Promise<
+    {
+      name: string;
+      emoji?: string;
+      description?: string;
+      estimatedDurationMinutes?: number;
+      category?: string;
+      routineType?: 'morning' | 'evening' | 'break';
+    }[]
   > {
     try {
       const prompt = this.promptCacheService.getPrompt('habit-import-image');
@@ -1767,10 +1772,15 @@ export class OpenAIService {
     }
   }
 
-  async extractHabitsFromTranscript(
-    transcript: string,
-  ): Promise<
-    { name: string; emoji?: string; description?: string; estimatedDurationMinutes?: number; category?: string }[]
+  async extractHabitsFromTranscript(transcript: string): Promise<
+    {
+      name: string;
+      emoji?: string;
+      description?: string;
+      estimatedDurationMinutes?: number;
+      category?: string;
+      routineType?: 'morning' | 'evening' | 'break';
+    }[]
   > {
     try {
       if (!this.isValidInput(transcript, MAX_WORD_LENGTH.audioTranscript, 'habit_import_transcript')) {

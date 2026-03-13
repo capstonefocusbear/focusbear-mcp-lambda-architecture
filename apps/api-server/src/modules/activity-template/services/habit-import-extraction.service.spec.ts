@@ -7,7 +7,7 @@ import { RoutineSuggestionGeneratorService } from './routine-suggestion-generato
 import { ActivityTemplateRepository } from '../repository/activity-template.repository';
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 import { SentryServiceMock } from '../../../../test/mocks';
-import { ExtractedHabit, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
+import { ExtractedHabit, HabitImportRoutineType, HabitSuggestionResult } from '../dto/import-habits-from-media.dto';
 
 describe('HabitImportExtractionService', () => {
   let service: HabitImportExtractionService;
@@ -273,7 +273,7 @@ describe('HabitImportExtractionService', () => {
     const metadata = {
       asyncTaskId: 'task-123',
       mediaType: 'image' as const,
-      routineType: 'morning',
+      routineType: 'morning' as HabitImportRoutineType,
     };
 
     it('should log unmatched habits to repository', async () => {
@@ -314,6 +314,43 @@ describe('HabitImportExtractionService', () => {
             asyncTaskId: 'task-123',
             extractedCategory: 'other',
           }),
+        }),
+      ]);
+    });
+
+    it('should prefer extracted habit routineType when logging unmatched habits', async () => {
+      const results: HabitSuggestionResult[] = [
+        {
+          extractedHabit: {
+            name: 'Read fiction',
+            description: 'Read before bed',
+            estimatedDurationMinutes: 20,
+            category: 'reading',
+            routineType: 'evening',
+          },
+          matched: false,
+          suggestedHabit: {
+            name: 'Read fiction',
+            description: 'Read before bed',
+            estimatedDurationMinutes: 20,
+            category: 'reading',
+            routineType: 'evening',
+          },
+        },
+      ];
+
+      habitLibraryRequestRepositoryMock.logRequests.mockResolvedValueOnce(undefined);
+
+      await service.logUnmatchedHabits(results, 'user-123', {
+        asyncTaskId: 'task-123',
+        mediaType: 'image',
+      });
+
+      expect(habitLibraryRequestRepositoryMock.logRequests).toHaveBeenCalledWith([
+        expect.objectContaining({
+          habitName: 'Read fiction',
+          routineType: 'evening',
+          durationMinutes: 20,
         }),
       ]);
     });

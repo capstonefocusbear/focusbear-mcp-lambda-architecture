@@ -50,6 +50,10 @@ export interface AiPipelineMetricInput {
   durationMs: number;
   stageDurationsMs: Record<string, number>;
   counters?: Record<string, number>;
+  endToEndDurationMs?: number;
+  queueWaitMs?: number;
+  emitDurationMetric?: boolean;
+  emitSuccessMetric?: boolean;
   timestamp?: Date;
 }
 
@@ -64,10 +68,43 @@ export async function emitAiPipelineMetrics(input: AiPipelineMetricInput): Promi
       ['Service', input.service],
     ]);
 
-    const metricData: MetricDatum[] = [
-      createMetricDatum('AiPipelineDurationMs', input.durationMs, StandardUnit.Milliseconds, baseDimensions, timestamp),
-      createMetricDatum('AiPipelineSuccess', input.success ? 1 : 0, StandardUnit.Count, baseDimensions, timestamp),
-    ];
+    const metricData: MetricDatum[] = [];
+
+    if (input.emitDurationMetric !== false && Number.isFinite(input.durationMs)) {
+      metricData.push(
+        createMetricDatum('AiPipelineDurationMs', input.durationMs, StandardUnit.Milliseconds, baseDimensions, timestamp),
+      );
+    }
+
+    if (input.emitSuccessMetric !== false) {
+      metricData.push(
+        createMetricDatum('AiPipelineSuccess', input.success ? 1 : 0, StandardUnit.Count, baseDimensions, timestamp),
+      );
+    }
+
+    if (Number.isFinite(input.endToEndDurationMs)) {
+      metricData.push(
+        createMetricDatum(
+          'AiPipelineEndToEndDurationMs',
+          input.endToEndDurationMs as number,
+          StandardUnit.Milliseconds,
+          baseDimensions,
+          timestamp,
+        ),
+      );
+    }
+
+    if (Number.isFinite(input.queueWaitMs)) {
+      metricData.push(
+        createMetricDatum(
+          'AiPipelineQueueWaitMs',
+          input.queueWaitMs as number,
+          StandardUnit.Milliseconds,
+          baseDimensions,
+          timestamp,
+        ),
+      );
+    }
 
     Object.entries(input.stageDurationsMs || {})
       .filter(([, value]) => Number.isFinite(value))

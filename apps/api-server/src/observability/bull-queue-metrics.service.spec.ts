@@ -125,6 +125,8 @@ describe('BullQueueMetricsService', () => {
         namespace: 'FocusBear/Queues',
         environment: 'test',
         service: 'api',
+        aiPipelineNamespace: 'FocusBear/AiPipelines',
+        aiPipelineService: 'api',
       }),
     } as unknown as ConfigService;
 

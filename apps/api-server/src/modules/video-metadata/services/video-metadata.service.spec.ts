@@ -258,8 +258,8 @@ describe('VideoMetadataService', () => {
       it('uses standard when maxres is missing (standard, high, medium, default present)', async () => {
         await runSaveVideosMetadataWithYouTubeResponse(videoMetadataYoutubeAPIResponseMissingMaxresDummy, {
           thumbnail_url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-          thumbnail_width: 480,
-          thumbnail_height: 360,
+          thumbnail_width: 640,
+          thumbnail_height: 480,
         });
       });
 

@@ -1499,8 +1499,8 @@ export const videoMetadataRepositoryResponseDummy: VideoMetadata[] = [
     title: 'Productivity tips: Pomodoro technique with Focus Bear',
     duration: '0:06:40',
     thumbnail_url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-    thumbnail_width: 480,
-    thumbnail_height: 360,
+    thumbnail_width: 640,
+    thumbnail_height: 480,
   },
 ];
 
@@ -1530,8 +1530,8 @@ export const videoMetadataReturnValueDummy: VideoMetadataResponseDto = {
       title: 'Productivity tips: Pomodoro technique with Focus Bear',
       duration: '06:40',
       thumbnail_url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-      thumbnail_width: 480,
-      thumbnail_height: 360,
+      thumbnail_width: 640,
+      thumbnail_height: 480,
     },
   ],
 };
@@ -1562,13 +1562,18 @@ export const videoMetadataReturnValueWithInvalidURLDummy = {
       title: 'Productivity tips: Pomodoro technique with Focus Bear',
       duration: '06:40',
       thumbnail_url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-      thumbnail_width: 480,
-      thumbnail_height: 360,
+      thumbnail_width: 640,
+      thumbnail_height: 480,
     },
   ],
   invalid_urls: ['https://youtu.be/12345n9kA5t13'],
 };
 
+/**
+ * YouTube API response dummy used when the third video (KLKn9kA5t58) is fetched from the API.
+ * Thumbnail dimensions follow YouTube Data API v3: high 480×360, medium 320×180, standard 640×480, default 120×90.
+ * Service picks standard (first in preference order) so the third video gets stdefault.jpg 640×480.
+ */
 export const videoMetadataYoutubeAPIResponseDummy = {
   data: {
     items: [
@@ -1578,18 +1583,18 @@ export const videoMetadataYoutubeAPIResponseDummy = {
           thumbnails: {
             high: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
-              width: 1920,
-              height: 1440,
+              width: 480,
+              height: 360,
             },
             medium: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
-              width: 960,
-              height: 720,
+              width: 320,
+              height: 180,
             },
             standard: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-              width: 480,
-              height: 360,
+              width: 640,
+              height: 480,
             },
             default: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/default.jpg',
@@ -1919,8 +1924,8 @@ export const videoMetadataYoutubeAPIResponseAllThumbnailsDummy = {
             },
             standard: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-              width: 480,
-              height: 360,
+              width: 640,
+              height: 480,
             },
             high: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
@@ -1963,8 +1968,8 @@ export const videoMetadataYoutubeAPIResponseMissingMaxresDummy = {
           thumbnails: {
             standard: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-              width: 480,
-              height: 360,
+              width: 640,
+              height: 480,
             },
             high: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
@@ -2056,8 +2061,8 @@ export const videoMetadataYoutubeAPIResponseMissingHighDummy = {
             },
             standard: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-              width: 480,
-              height: 360,
+              width: 640,
+              height: 480,
             },
             medium: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/mddefault.jpg',
@@ -2099,8 +2104,8 @@ export const videoMetadataYoutubeAPIResponseMissingMediumDummy = {
             },
             standard: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-              width: 480,
-              height: 360,
+              width: 640,
+              height: 480,
             },
             high: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',
@@ -2143,8 +2148,8 @@ export const videoMetadataYoutubeAPIResponseMissingDefaultDummy = {
             },
             standard: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/stdefault.jpg',
-              width: 480,
-              height: 360,
+              width: 640,
+              height: 480,
             },
             high: {
               url: 'https://i.ytimg.com/vi/KLKn9kA5t58/hddefault.jpg',

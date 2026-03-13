@@ -10,7 +10,7 @@ import { AsyncTaskService } from '../../async-task/services/async-task.service';
 import { AsyncTaskStatus } from '../../async-task/domain/async-task-status.enum';
 import { ActivityLibraryService } from '../services/activity-library.service';
 import { HabitCreationJobData } from '../services/habit-creation-async.service';
-import { MetricsConfig } from '../../../config/metrics.config';
+import { getActivityTemplateMetricsConfig, parseMetricsTimestamp } from '../utils/ai-pipeline-metrics.util';
 
 const ROUTINE_SUGGESTIONS_PIPELINE = 'routine-suggestions';
 const ROUTINE_SUGGESTIONS_OPERATION = 'getActivitiesRelatedToUserGoals';
@@ -216,22 +216,6 @@ export class RoutineSuggestionsConsumer {
     }
   }
 
-  private getMetricsConfig(): MetricsConfig {
-    return (
-      this.configService?.get<MetricsConfig>('metrics') || {
-        emitQueueMetrics: true,
-        emitUserActivityMetrics: true,
-        pollIntervalMs: 60_000,
-        namespace: 'FocusBear/Queues',
-        service: 'api',
-        aiPipelineNamespace: 'FocusBear/Queues',
-        aiPipelineService: 'api',
-        environment: 'prod',
-        logQueueFailures: true,
-      }
-    );
-  }
-
   private async emitAsyncLatencyMetrics({
     pipeline,
     operation,
@@ -247,13 +231,13 @@ export class RoutineSuggestionsConsumer {
     processingStartedAt: Date;
     completedAt?: Date;
   }): Promise<void> {
-    const metrics = this.getMetricsConfig();
+    const metrics = getActivityTemplateMetricsConfig(this.configService);
     const shouldEmitMetrics = Boolean(metrics.emitUserActivityMetrics || metrics.emitQueueMetrics);
     if (!shouldEmitMetrics) {
       return;
     }
 
-    const enqueuedAtMs = this.parseTimestamp(enqueuedAt);
+    const enqueuedAtMs = parseMetricsTimestamp(enqueuedAt);
     const processingStartedAtMs = processingStartedAt.getTime();
     const completedAtMs = completedAt?.getTime();
     if (typeof enqueuedAtMs !== 'number' || typeof completedAtMs !== 'number') {
@@ -278,10 +262,5 @@ export class RoutineSuggestionsConsumer {
     } catch {
       // Best-effort only.
     }
-  }
-
-  private parseTimestamp(value?: string): number | undefined {
-    const parsed = Date.parse(value ?? '');
-    return Number.isFinite(parsed) ? parsed : undefined;
   }
 }

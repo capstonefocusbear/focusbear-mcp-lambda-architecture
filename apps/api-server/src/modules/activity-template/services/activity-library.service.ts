@@ -1603,15 +1603,18 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     } finally {
+      const durationMs = Date.now() - pipelineStartedAt;
+      const stageDurationsMs = {
+        ...stageDurations,
+        totalMs: durationMs,
+      };
+
       await this.emitAiPipelineTelemetry({
         pipeline: ADJUST_HABITS_PIPELINE,
         operation: ADJUST_HABITS_OPERATION,
         success,
-        durationMs: Date.now() - pipelineStartedAt,
-        stageDurationsMs: {
-          ...stageDurations,
-          totalMs: Date.now() - pipelineStartedAt,
-        },
+        durationMs,
+        stageDurationsMs,
         counters,
       });
 
@@ -1622,11 +1625,8 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
             pipeline: ADJUST_HABITS_PIPELINE,
             operation: ADJUST_HABITS_OPERATION,
             success,
-            durationMs: Date.now() - pipelineStartedAt,
-            stageDurationsMs: {
-              ...stageDurations,
-              totalMs: Date.now() - pipelineStartedAt,
-            },
+            durationMs,
+            stageDurationsMs,
             counters,
             userId: user_id,
             errorName: processingError.name,
@@ -1671,6 +1671,7 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
       processingError = error instanceof Error ? error : new Error(String(error));
       throw error;
     } finally {
+      const durationMs = Date.now() - pipelineStartedAt;
       const counters: Record<string, number> = {
         resultCount: libraryFirst.length,
         generatedHabitCount: libraryFirst.filter((habit: any) => habit.ai_generated).length,
@@ -1684,7 +1685,7 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
             pipeline: HABIT_CREATION_PIPELINE,
             operation: HABIT_CREATION_OPERATION,
             success,
-            durationMs: Date.now() - pipelineStartedAt,
+            durationMs,
             counters,
             userId: user_id,
             errorName: processingError.name,
@@ -1698,7 +1699,7 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
         pipeline: HABIT_CREATION_PIPELINE,
         operation: HABIT_CREATION_OPERATION,
         success,
-        durationMs: Date.now() - pipelineStartedAt,
+        durationMs,
         counters,
       });
     }

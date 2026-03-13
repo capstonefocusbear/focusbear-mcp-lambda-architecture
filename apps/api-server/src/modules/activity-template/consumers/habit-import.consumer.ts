@@ -24,6 +24,7 @@ import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { ActivityType, normalizeRoutineTypeToActivityType } from '../../activity/domain/activity-type.enum';
 import { MetricsConfig } from '../../../config/metrics.config';
 import { ActivityLibraryService } from '../services/activity-library.service';
+import { getActivityTemplateMetricsConfig, parseMetricsTimestamp } from '../utils/ai-pipeline-metrics.util';
 
 const MIN_IMAGE_DIMENSION = 768;
 const ONE_MINUTE_SECONDS = 60;
@@ -694,19 +695,7 @@ export class HabitImportConsumer {
   }
 
   private getMetricsConfig(): MetricsConfig {
-    return (
-      this.configService?.get<MetricsConfig>('metrics') || {
-        emitQueueMetrics: true,
-        emitUserActivityMetrics: true,
-        pollIntervalMs: 60_000,
-        namespace: 'FocusBear/Queues',
-        service: 'api',
-        aiPipelineNamespace: 'FocusBear/Queues',
-        aiPipelineService: 'api',
-        environment: 'prod',
-        logQueueFailures: true,
-      }
-    );
+    return getActivityTemplateMetricsConfig(this.configService);
   }
 
   private buildLatencyDurationMs(enqueuedAt?: string, completedAt?: Date): number | undefined {
@@ -727,7 +716,6 @@ export class HabitImportConsumer {
   }
 
   private parseTimestamp(value?: string): number | undefined {
-    const parsed = Date.parse(value ?? '');
-    return Number.isFinite(parsed) ? parsed : undefined;
+    return parseMetricsTimestamp(value);
   }
 }

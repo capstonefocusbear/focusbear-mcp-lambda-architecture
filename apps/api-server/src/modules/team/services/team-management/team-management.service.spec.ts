@@ -1380,7 +1380,12 @@ describe('TeamManagementService', () => {
         admins: [teamToAdminDummy],
       });
       UserRepositoryMock.orm.find.mockResolvedValueOnce([
-        { morning_routines_streak: 0, evening_routines_streak: 0, focus_modes_streak: 0, id: TeamMemberDummy.member_id },
+        {
+          morning_routines_streak: 0,
+          evening_routines_streak: 0,
+          focus_modes_streak: 0,
+          id: TeamMemberDummy.member_id,
+        },
       ]);
       UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
 
@@ -1400,7 +1405,12 @@ describe('TeamManagementService', () => {
         admins: [teamToAdminDummy],
       });
       UserRepositoryMock.orm.find.mockResolvedValueOnce([
-        { morning_routines_streak: 0, evening_routines_streak: 0, focus_modes_streak: 0, id: TeamMemberDummy.member_id },
+        {
+          morning_routines_streak: 0,
+          evening_routines_streak: 0,
+          focus_modes_streak: 0,
+          id: TeamMemberDummy.member_id,
+        },
       ]);
       UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
 
@@ -2223,7 +2233,12 @@ describe('TeamManagementService', () => {
     });
 
     it('positive: joinTeam should store null for email/first_name/last_name when Auth0 returns no name fields', async () => {
-      const auth0UserWithoutName = { ...auth0UserDummy, given_name: undefined, family_name: undefined, email: undefined };
+      const auth0UserWithoutName = {
+        ...auth0UserDummy,
+        given_name: undefined,
+        family_name: undefined,
+        email: undefined,
+      };
       const teamWithCapacity = { ...TeamWithMembersDummy, team_size_limit: 10 };
       const { insertQueryBuilder } = setupJoinTeamTransactionMocks({
         team: teamWithCapacity,

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { Auth0ManagementService } from '@app/auth0';
 import { TeamToMember } from '../src/modules/team/entities/team-to-member.entity';
@@ -26,12 +27,16 @@ export class BackfillTeamMemberEmailName1773449293877 implements MigrationInterf
       return;
     }
 
-    console.log(`[BackfillTeamMemberEmailName] Found ${nullMembers.length} team member(s) with null email. Starting backfill...`);
+    console.log(
+      `[BackfillTeamMemberEmailName] Found ${nullMembers.length} team member(s) with null email. Starting backfill...`,
+    );
 
     const auth0Service: Auth0ManagementService = queryRunner.connection.options['auth0ManagementService'];
     if (!auth0Service) {
-      console.warn('[BackfillTeamMemberEmailName] Auth0ManagementService not available via connection options. ' +
-        'Falling back to TypeORM repository pattern — email/name will be set via entity transformer.');
+      console.warn(
+        '[BackfillTeamMemberEmailName] Auth0ManagementService not available via connection options. ' +
+          'Falling back to TypeORM repository pattern — email/name will be set via entity transformer.',
+      );
     }
 
     const teamToMemberRepository = queryRunner.connection.getRepository(TeamToMember);
@@ -53,7 +58,9 @@ export class BackfillTeamMemberEmailName1773449293877 implements MigrationInterf
             if (auth0Service) {
               const auth0User = await auth0Service.getAuth0User(member.auth0_id);
               if (!auth0User) {
-                console.warn(`[BackfillTeamMemberEmailName] Auth0 user not found for auth0_id=${member.auth0_id} (member_id=${member.member_id}). Skipping.`);
+                console.warn(
+                  `[BackfillTeamMemberEmailName] Auth0 user not found for auth0_id=${member.auth0_id} (member_id=${member.member_id}). Skipping.`,
+                );
                 skipCount++;
                 return;
               }

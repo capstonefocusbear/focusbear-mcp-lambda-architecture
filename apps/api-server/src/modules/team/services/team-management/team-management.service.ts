@@ -76,8 +76,7 @@ export class TeamManagementService {
       const { members } = await this.teamRepository.getTeamIncludingUnregistered(team);
 
       const membersToDelete = members.filter(
-        ({ member_id, email }) =>
-          member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
+        ({ member_id, email }) => member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
       );
 
       await Promise.allSettled([
@@ -203,8 +202,7 @@ export class TeamManagementService {
       this.validateMemberAction(admins, adminId);
 
       const membersToRemove = members.filter(
-        ({ member_id, email }) =>
-          member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
+        ({ member_id, email }) => member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
       );
 
       await Promise.allSettled([

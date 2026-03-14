@@ -401,10 +401,10 @@ export class TeamManagementService {
     userDetail: any,
     last90DaysDailyStats: Array<Partial<{ focus_modes: number; total_hours_spent_in_focus_sessions: number }>> = [],
   ): GetTeamMembersDetailsDto {
-    const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + (curr?.focus_modes || 0), 0) || 0;
-    const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
-      ? parseFloat(((totalFocusModes / (last90DaysDailyStats?.length || 1)) * 100).toFixed(DECIMAL_PRECISION))
-      : 0;
+    const totalDays = last90DaysDailyStats?.length || 0;
+    const daysWithFocusModes = (last90DaysDailyStats || []).filter((day) => (day?.focus_modes || 0) >= 1).length;
+    const focus_modes_percent_number_day_of_stats_completed =
+      totalDays > 0 ? parseFloat(((daysWithFocusModes / totalDays) * 100).toFixed(DECIMAL_PRECISION)) : 0;
 
     const totalFocusModesHours =
       parseFloat(
@@ -632,6 +632,9 @@ export class TeamManagementService {
   }
 
   async joinTeam(userId: string, joinCode: string) {
+    // Fetch Auth0 data outside the transaction to minimise lock duration
+    const { auth0User } = await this.validateUserInDBAndAuth0(userId);
+
     try {
       const result = await this.teamJoinCodeRepository.orm.manager.transaction(async (manager) => {
         const codeRecord = await manager
@@ -687,6 +690,9 @@ export class TeamManagementService {
           .values({
             team_id: codeRecord.team_id,
             member_id: userId,
+            email: auth0User.email || null,
+            first_name: auth0User.given_name || null,
+            last_name: auth0User.family_name || null,
             member_expiry_date: team.expires_date ? (team.expires_date as Date) : null,
             invitation_status: InvitationStatus.ACCEPTED,
             invitation_sent_at: null,

@@ -20,7 +20,7 @@ describe('UserRepository', () => {
         { id: 'seq-1', name: 'latest' },
       ];
 
-      const result = repository['dedupeForUpsert'](items);
+      const result = (repository as any).dedupeForUpsert(items);
 
       expect(result).toEqual([
         { id: 'seq-2', name: 'second' },
@@ -36,7 +36,7 @@ describe('UserRepository', () => {
         { name: 'no-id-2' },
       ];
 
-      const result = repository['dedupeForUpsert'](items);
+      const result = (repository as any).dedupeForUpsert(items);
 
       expect(result).toEqual([{ name: 'no-id-1' }, { id: 'seq-1', name: 'latest' }, { name: 'no-id-2' }]);
     });
@@ -44,7 +44,7 @@ describe('UserRepository', () => {
 
   describe('getUserSequencePointerReset', () => {
     it('clears last_completed_sequence_id when it points to a deleted sequence', () => {
-      const result = repository['getUserSequencePointerReset'](
+      const result = (repository as any).getUserSequencePointerReset(
         {
           current_activity_sequence_id: 'seq-1',
           current_activity_id: 'activity-1',
@@ -60,7 +60,7 @@ describe('UserRepository', () => {
     });
 
     it('clears current sequence pointers when the active sequence is deleted', () => {
-      const result = repository['getUserSequencePointerReset'](
+      const result = (repository as any).getUserSequencePointerReset(
         {
           current_activity_sequence_id: 'seq-1',
           current_activity_id: 'activity-1',

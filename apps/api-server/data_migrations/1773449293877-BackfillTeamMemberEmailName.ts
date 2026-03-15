@@ -1,4 +1,4 @@
-/* eslint-disable */
+import { Logger } from '@nestjs/common';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { Auth0ManagementService } from '@app/auth0';
 import { TeamToMember } from '../src/modules/team/entities/team-to-member.entity';
@@ -13,6 +13,8 @@ function sleep(ms: number): Promise<void> {
 export class BackfillTeamMemberEmailName1773449293877 implements MigrationInterface {
   name = 'BackfillTeamMemberEmailName1773449293877';
 
+  private readonly logger = new Logger(BackfillTeamMemberEmailName1773449293877.name);
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     const nullMembers: Array<{ id: string; member_id: string; auth0_id: string }> = await queryRunner.query(`
       SELECT ttm.id, ttm.member_id, u.auth0_id
@@ -23,17 +25,17 @@ export class BackfillTeamMemberEmailName1773449293877 implements MigrationInterf
     `);
 
     if (nullMembers.length === 0) {
-      console.log('[BackfillTeamMemberEmailName] No null-email team members found. Nothing to do.');
+      this.logger.log('[BackfillTeamMemberEmailName] No null-email team members found. Nothing to do.');
       return;
     }
 
-    console.log(
+    this.logger.log(
       `[BackfillTeamMemberEmailName] Found ${nullMembers.length} team member(s) with null email. Starting backfill...`,
     );
 
     const auth0Service: Auth0ManagementService = queryRunner.connection.options['auth0ManagementService'];
     if (!auth0Service) {
-      console.warn(
+      this.logger.warn(
         '[BackfillTeamMemberEmailName] Auth0ManagementService not available via connection options. ' +
           'Falling back to TypeORM repository pattern — email/name will be set via entity transformer.',
       );
@@ -45,9 +47,12 @@ export class BackfillTeamMemberEmailName1773449293877 implements MigrationInterf
     let skipCount = 0;
     let errorCount = 0;
 
+    const batches: Array<Array<{ id: string; member_id: string; auth0_id: string }>> = [];
     for (let i = 0; i < nullMembers.length; i += BATCH_SIZE) {
-      const batch = nullMembers.slice(i, i + BATCH_SIZE);
+      batches.push(nullMembers.slice(i, i + BATCH_SIZE));
+    }
 
+    for (const [batchIndex, batch] of batches.entries()) {
       await Promise.allSettled(
         batch.map(async (member) => {
           try {
@@ -58,7 +63,7 @@ export class BackfillTeamMemberEmailName1773449293877 implements MigrationInterf
             if (auth0Service) {
               const auth0User = await auth0Service.getAuth0User(member.auth0_id);
               if (!auth0User) {
-                console.warn(
+                this.logger.warn(
                   `[BackfillTeamMemberEmailName] Auth0 user not found for auth0_id=${member.auth0_id} (member_id=${member.member_id}). Skipping.`,
                 );
                 skipCount++;
@@ -81,27 +86,27 @@ export class BackfillTeamMemberEmailName1773449293877 implements MigrationInterf
 
             successCount++;
           } catch (err) {
-            console.error(`[BackfillTeamMemberEmailName] Failed to update member id=${member.id}: ${err}`);
+            this.logger.error(`[BackfillTeamMemberEmailName] Failed to update member id=${member.id}: ${err}`);
             errorCount++;
           }
         }),
       );
 
       // Rate-limit delay between batches
-      if (i + BATCH_SIZE < nullMembers.length) {
+      if (batchIndex < batches.length - 1) {
         await sleep(DELAY_MS);
       }
     }
 
-    console.log(
+    this.logger.log(
       `[BackfillTeamMemberEmailName] Done. Success: ${successCount}, Skipped: ${skipCount}, Errors: ${errorCount}`,
     );
   }
 
-  public async down(_queryRunner: QueryRunner): Promise<void> {
+  public async down(): Promise<void> {
     // This migration cannot be safely reversed — email/name data populated from Auth0
     // would need to be individually nulled out, but we don't know which records were
     // originally null vs. already populated. No-op down migration is intentional.
-    console.warn('[BackfillTeamMemberEmailName] down() is a no-op. Email/name data cannot be safely reverted.');
+    this.logger.warn('[BackfillTeamMemberEmailName] down() is a no-op. Email/name data cannot be safely reverted.');
   }
 }

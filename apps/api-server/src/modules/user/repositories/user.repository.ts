@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, In, IsNull, Not } from 'typeorm';
+import { DataSource, FindOptionsWhere, In, IsNull, Not, QueryRunner } from 'typeorm';
 import { FEATURE_FLAGS } from '@api-server/shared/utils/constants';
 import { AppDataSource } from '../../../../ormconfig';
 import { BaseRepository } from '../../../shared/repositories/base-repository.repository';
@@ -101,6 +101,99 @@ export class UserRepository extends BaseRepository<User> {
     super(dataSource, User);
   }
 
+  private dedupeForUpsert<T extends { id?: string }>(items: T[]): T[] {
+    const seenIds = new Set<string>();
+    const dedupedReversed: T[] = [];
+
+    // Keep the last occurrence for a given id so later payload entries win.
+    for (let index = items.length - 1; index >= 0; index -= 1) {
+      const item = items[index];
+      const itemId = item?.id;
+
+      if (!itemId) {
+        dedupedReversed.push(item);
+        continue;
+      }
+
+      if (seenIds.has(itemId)) continue;
+
+      seenIds.add(itemId);
+      dedupedReversed.push(item);
+    }
+
+    return dedupedReversed.reverse();
+  }
+
+  private getUserSequencePointerReset(
+    user: Pick<
+      User,
+      | 'current_activity_sequence_id'
+      | 'current_activity_id'
+      | 'current_completing_sequence_log_id'
+      | 'last_completed_sequence_id'
+    >,
+    deletedSequenceIds: string[],
+  ): Partial<User> {
+    const deletedIds = new Set(deletedSequenceIds);
+    const userUpdate: Partial<User> = {};
+
+    if (user.last_completed_sequence_id && deletedIds.has(user.last_completed_sequence_id)) {
+      userUpdate.last_completed_sequence_id = null;
+    }
+
+    if (user.current_activity_sequence_id && deletedIds.has(user.current_activity_sequence_id)) {
+      userUpdate.current_activity_sequence_id = null;
+      userUpdate.current_activity_id = null;
+      userUpdate.current_completing_sequence_log_id = null;
+    }
+
+    return userUpdate;
+  }
+
+  private async resetUserPointersBeforeDelete(
+    queryRunner: QueryRunner,
+    userId: string,
+    sequenceWhere: FindOptionsWhere<ActivitySequence>,
+  ): Promise<Partial<User>> {
+    const sequencesToDelete = await queryRunner.manager.find(ActivitySequence, {
+      select: { id: true },
+      where: sequenceWhere,
+    });
+
+    if (sequencesToDelete.length === 0) {
+      return {};
+    }
+
+    const pointerReset = await queryRunner.manager.findOne(User, {
+      where: { id: userId },
+      select: {
+        id: true,
+        current_activity_sequence_id: true,
+        current_activity_id: true,
+        current_completing_sequence_log_id: true,
+        last_completed_sequence_id: true,
+      },
+    });
+
+    if (!pointerReset) {
+      return {};
+    }
+
+    // We still clear pointers explicitly because this transaction deletes sequences
+    // before the final user update, and not every affected pointer is covered by a
+    // database-level ON DELETE SET NULL path.
+    const userUpdate = this.getUserSequencePointerReset(
+      pointerReset,
+      sequencesToDelete.map((sequence) => sequence.id),
+    );
+
+    if (Object.keys(userUpdate).length > 0) {
+      await queryRunner.manager.update(User, { id: userId }, userUpdate);
+    }
+
+    return userUpdate;
+  }
+
   /**
    * @param user - the user setting
    * @param activitiesData
@@ -129,11 +222,15 @@ export class UserRepository extends BaseRepository<User> {
     await queryRunner.startTransaction();
     try {
       // Batch upsert activity sequences and collect activities for deletion
-      const sequencesToUpsert = activitiesData.map(({ sequence }) => sequence);
+      const sequencesToUpsert = this.dedupeForUpsert(activitiesData.map(({ sequence }) => sequence));
       const sequenceIdsToKeep = sequencesToUpsert.map((seq) => seq.id).filter((seqId) => !!seqId);
+      const pendingUserPointerReset: Partial<User> = {};
 
-      await queryRunner.manager.upsert(CustomRoutine, customRoutines, ['id']);
-      const customRoutinesIdsToKeep = customRoutines.map((routine) => routine.id).filter((routineId) => !!routineId);
+      const customRoutinesToUpsert = this.dedupeForUpsert(customRoutines);
+      await queryRunner.manager.upsert(CustomRoutine, customRoutinesToUpsert, ['id']);
+      const customRoutinesIdsToKeep = customRoutinesToUpsert
+        .map((routine) => routine.id)
+        .filter((routineId) => !!routineId);
 
       // Delete activity sequences that belong to custom routines being deleted
       // This must happen before deleting the custom routines to avoid orphaned sequences
@@ -147,6 +244,15 @@ export class UserRepository extends BaseRepository<User> {
         // Delete sequences for custom routines that are being removed
         // Only delete if the sequence is not being kept AND the custom_routine_id is not in the kept list
         if (keptCustomRoutineIds.size > 0) {
+          Object.assign(
+            pendingUserPointerReset,
+            await this.resetUserPointersBeforeDelete(queryRunner, id, {
+              user_id: id,
+              custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
+              id: Not(In(sequenceIdsToKeep)),
+            }),
+          );
+
           await queryRunner.manager.delete(ActivitySequence, {
             user_id: id,
             custom_routine_id: Not(In(Array.from(keptCustomRoutineIds))),
@@ -154,6 +260,15 @@ export class UserRepository extends BaseRepository<User> {
           });
         } else {
           // If no custom routine sequences are being kept, delete all sequences with custom_routine_id
+          Object.assign(
+            pendingUserPointerReset,
+            await this.resetUserPointersBeforeDelete(queryRunner, id, {
+              user_id: id,
+              custom_routine_id: Not(IsNull()),
+              id: Not(In(sequenceIdsToKeep)),
+            }),
+          );
+
           await queryRunner.manager.delete(ActivitySequence, {
             user_id: id,
             custom_routine_id: Not(IsNull()),
@@ -166,6 +281,14 @@ export class UserRepository extends BaseRepository<User> {
           id: Not(In(customRoutinesIdsToKeep)),
         });
       } else {
+        Object.assign(
+          pendingUserPointerReset,
+          await this.resetUserPointersBeforeDelete(queryRunner, id, {
+            user_id: id,
+            custom_routine_id: Not(IsNull()),
+          }),
+        );
+
         await queryRunner.manager.delete(ActivitySequence, {
           user_id: id,
           custom_routine_id: Not(IsNull()),
@@ -176,7 +299,7 @@ export class UserRepository extends BaseRepository<User> {
         });
       }
 
-      await queryRunner.manager.update(User, { id }, { ...updateData });
+      await queryRunner.manager.update(User, { id }, { ...updateData, ...pendingUserPointerReset });
 
       // Collect all activity IDs to keep
       const allActivityIds = activitiesData.flatMap(({ activities }) => activities.map((activity) => activity.id));
@@ -195,7 +318,7 @@ export class UserRepository extends BaseRepository<User> {
         { is_deleted: true },
       );
 
-      const activitiesArray = activitiesData.flatMap((sequence) => sequence.activities);
+      const activitiesArray = this.dedupeForUpsert(activitiesData.flatMap((sequence) => sequence.activities));
       const parentsWithoutLinks = activitiesArray.filter(
         ({ parent_id, linked_activity_id }) => !parent_id && !linked_activity_id,
       );
@@ -240,8 +363,8 @@ export class UserRepository extends BaseRepository<User> {
       );
 
       // Batch upsert all log quantity questions in a single operation
-      await queryRunner.manager.upsert(LogQuantityQuestion, logQuantityQuestions, ['id']);
-      await queryRunner.manager.upsert(Tutorial, tutorials, ['id']);
+      await queryRunner.manager.upsert(LogQuantityQuestion, this.dedupeForUpsert(logQuantityQuestions), ['id']);
+      await queryRunner.manager.upsert(Tutorial, this.dedupeForUpsert(tutorials), ['id']);
 
       await queryRunner.commitTransaction();
     } catch (error) {

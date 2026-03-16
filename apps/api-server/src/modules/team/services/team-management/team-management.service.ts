@@ -70,19 +70,18 @@ export class TeamManagementService {
 
   async bulkDeleteTeamMembers(bulkDeleteDto: BulkDeleteDto, adminId: string): Promise<any> {
     try {
-      const { member_ids, emails, team_id } = bulkDeleteDto;
+      const { member_ids = [], emails = [], team_id } = bulkDeleteDto;
       const team = await this.validateTeam(team_id);
 
       const { members } = await this.teamRepository.getTeamIncludingUnregistered(team);
 
       const membersToDelete = members.filter(
-        ({ member_id, email }) =>
-          member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
+        ({ member_id, email }) => member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
       );
 
       await Promise.allSettled([
         ...membersToDelete.map((member) => this.disassociateMemberFromTheTeam(member, team_id)),
-        this.syncTeamSizeWithSubscription(team, team.team_size - member_ids.length),
+        this.syncTeamSizeWithSubscription(team, members.length - membersToDelete.length),
       ]);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
@@ -159,7 +158,7 @@ export class TeamManagementService {
         this.revenueCatService.grantTeamMembership(member.id, Entitlement.team_member, team.expires_date),
       );
     }
-    await Promise.all([reassignEntitlementsPromises]);
+    await Promise.all(reassignEntitlementsPromises);
   }
 
   private async disassociateMemberFromTheTeam(member: TeamToMember, teamId: string) {
@@ -171,7 +170,7 @@ export class TeamManagementService {
 
     // If user is only part of a single team & registered/invite accepted, then revoke team_member entitlement
     if (!isPartOfMultipleTeams && member.member_id && member.invitation_status === InvitationStatus.ACCEPTED) {
-      await this.revenueCatService.revokeTeamMembership(member.id, Entitlement.team_member);
+      await this.revenueCatService.revokeTeamMembership(member.member_id, Entitlement.team_member);
     }
   }
 
@@ -203,8 +202,7 @@ export class TeamManagementService {
       this.validateMemberAction(admins, adminId);
 
       const membersToRemove = members.filter(
-        ({ member_id, email }) =>
-          member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
+        ({ member_id, email }) => member_id !== adminId && (member_ids.includes(member_id) || emails?.includes(email)),
       );
 
       await Promise.allSettled([
@@ -401,10 +399,10 @@ export class TeamManagementService {
     userDetail: any,
     last90DaysDailyStats: Array<Partial<{ focus_modes: number; total_hours_spent_in_focus_sessions: number }>> = [],
   ): GetTeamMembersDetailsDto {
-    const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + (curr?.focus_modes || 0), 0) || 0;
-    const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
-      ? parseFloat(((totalFocusModes / (last90DaysDailyStats?.length || 1)) * 100).toFixed(DECIMAL_PRECISION))
-      : 0;
+    const totalDays = last90DaysDailyStats?.length || 0;
+    const daysWithFocusModes = (last90DaysDailyStats || []).filter((day) => (day?.focus_modes || 0) >= 1).length;
+    const focus_modes_percent_number_day_of_stats_completed =
+      totalDays > 0 ? parseFloat(((daysWithFocusModes / totalDays) * 100).toFixed(DECIMAL_PRECISION)) : 0;
 
     const totalFocusModesHours =
       parseFloat(
@@ -632,6 +630,9 @@ export class TeamManagementService {
   }
 
   async joinTeam(userId: string, joinCode: string) {
+    // Fetch Auth0 data outside the transaction to minimise lock duration
+    const { auth0User } = await this.validateUserInDBAndAuth0(userId);
+
     try {
       const result = await this.teamJoinCodeRepository.orm.manager.transaction(async (manager) => {
         const codeRecord = await manager
@@ -687,6 +688,9 @@ export class TeamManagementService {
           .values({
             team_id: codeRecord.team_id,
             member_id: userId,
+            email: auth0User.email || null,
+            first_name: auth0User.given_name || null,
+            last_name: auth0User.family_name || null,
             member_expiry_date: team.expires_date ? (team.expires_date as Date) : null,
             invitation_status: InvitationStatus.ACCEPTED,
             invitation_sent_at: null,

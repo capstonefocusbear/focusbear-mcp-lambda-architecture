@@ -176,7 +176,6 @@
     "cross-spawn": "7.0.6",
     "undici": "6.24.1",
     "fastify": "5.8.2",
-    "ajv": "8.18.0",
     "serialize-javascript": "7.0.4",
     "flatted": "3.4.1",
     "minimatch@<9": {
@@ -228,7 +227,6 @@
     "cross-spawn": "7.0.6",
     "undici": "6.24.1",
     "fastify": "5.8.2",
-    "ajv": "8.18.0",
     "serialize-javascript": "7.0.4",
     "flatted": "3.4.1",
     "minimatch@<9": {

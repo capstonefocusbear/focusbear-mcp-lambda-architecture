@@ -183,7 +183,7 @@ describe('TeamManagementService', () => {
         member_id: memberToDelete.member_id,
       });
       expect(RevenueCatServiceMock.revokeTeamMembership).toHaveBeenCalledWith(
-        memberToDelete.id,
+        memberToDelete.member_id,
         Entitlement.team_member,
       );
       expect(StripeServiceMock.updateSubscription).toHaveBeenCalledWith(
@@ -192,6 +192,40 @@ describe('TeamManagementService', () => {
         1,
       );
       expect(TeamRepositoryMock.update).toHaveBeenCalledWith(teamId, { team_size: 1 });
+    });
+
+    it('positive: owner bulk delete should sync team size based on actual removed members', async () => {
+      const ownerMember = new TeamToMember({
+        id: randomUUID(),
+        team_id: teamId,
+        member_id: adminId,
+        invitation_status: InvitationStatus.ACCEPTED,
+      });
+      const dummyTeam = {
+        ...TeamWithMembersDummy,
+        owner_id: adminId,
+        team_size: 3,
+        team_size_limit: 10,
+        payment_type: PaymentType.STRIPE,
+      };
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(dummyTeam);
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamMemberDummy]);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValue({
+        members: [ownerMember, TeamMemberDummy, TeamMemberFake],
+      });
+
+      await teamManagementService.bulkDeleteTeamMembers(
+        { member_ids: [adminId, TeamMemberDummy.member_id], team_id: teamId },
+        adminId,
+      );
+
+      expect(StripeServiceMock.updateSubscription).toHaveBeenCalledWith(
+        TeamWithMembersDummy.stripe_data.subscriptionId,
+        TeamWithMembersDummy.stripe_data.subscriptionItemId,
+        2,
+      );
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(teamId, { team_size: 2 });
     });
   });
 
@@ -1278,10 +1312,10 @@ describe('TeamManagementService', () => {
       expect(response.members).toHaveLength(1);
       const member = response.members[0];
 
-      // Total focus modes: 2+1+3+0+2 = 8
-      // Days with stats: 5
-      // Percentage: (8/5) * 100 = 160%
-      expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(160);
+      // Days with at least 1 focus mode: [2,1,3,0,2] → 4 days (the day with 0 is excluded)
+      // Total days: 5
+      // Percentage: (4/5) * 100 = 80%
+      expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(80);
     });
 
     it('positive: should handle empty daily stats array', async () => {
@@ -1369,6 +1403,56 @@ describe('TeamManagementService', () => {
 
       // Total hours: 1.5 + 0.8 + 2.2 + 0.0 + 1.1 = 5.6
       expect(member.total_hours_in_focus_sessions).toBe(5.6);
+    });
+
+    it('positive: focus_modes_percent should be 0 when all days have zero focus modes', async () => {
+      const mockDailyStats = [{ focus_modes: 0 }, { focus_modes: 0 }, { focus_modes: 0 }];
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: 0,
+          evening_routines_streak: 0,
+          focus_modes_streak: 0,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+      const member = response.members[0];
+
+      // 0 of 3 days with focus modes → 0%
+      expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(0);
+    });
+
+    it('positive: focus_modes_percent should be 100 when all days have at least one focus mode', async () => {
+      const mockDailyStats = [{ focus_modes: 1 }, { focus_modes: 2 }, { focus_modes: 1 }];
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(TeamWithMembersDummy);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValueOnce({
+        members: [TeamMemberDummy],
+        admins: [teamToAdminDummy],
+      });
+      UserRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          morning_routines_streak: 0,
+          evening_routines_streak: 0,
+          focus_modes_streak: 0,
+          id: TeamMemberDummy.member_id,
+        },
+      ]);
+      UserDailyStatsServiceMock.getLastNDaysDailyStats.mockResolvedValue(mockDailyStats);
+
+      const response = await teamManagementService.getAllTeamMembers(adminId, TeamWithMembersDummy.id);
+      const member = response.members[0];
+
+      // 3 of 3 days with focus modes → 100%
+      expect(member.focus_modes_percent_number_day_of_stats_completed).toBe(100);
     });
   });
 
@@ -1840,6 +1924,7 @@ describe('TeamManagementService', () => {
       membersCount = 1,
       insertIdentifiers = [{ id: randomUUID() }],
       updateAffected = 1,
+      auth0UserOverride = auth0UserDummy,
     }: {
       codeRecord?: any;
       team?: any;
@@ -1847,7 +1932,11 @@ describe('TeamManagementService', () => {
       membersCount?: number;
       insertIdentifiers?: any[];
       updateAffected?: number;
+      auth0UserOverride?: any;
     } = {}) => {
+      // validateUserInDBAndAuth0 is called outside the transaction — set up its mocks
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(auth0UserOverride);
       const joinCodeQueryBuilder = {
         setLock: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -2066,6 +2155,9 @@ describe('TeamManagementService', () => {
       expect(insertQueryBuilder.values).toHaveBeenCalledWith({
         team_id: TeamWithMembersDummy.id,
         member_id: userId,
+        email: auth0UserDummy.email,
+        first_name: auth0UserDummy.given_name,
+        last_name: auth0UserDummy.family_name,
         member_expiry_date: teamWithCapacity.expires_date,
         invitation_status: InvitationStatus.ACCEPTED,
         invitation_sent_at: null,
@@ -2153,6 +2245,67 @@ describe('TeamManagementService', () => {
       expect(exception).toBeInstanceOf(BadRequestException);
       expect(exception.message).toEqual('This join code has reached its maximum number of redemptions');
       expect(RevenueCatServiceMock.grantTeamMembership).not.toHaveBeenCalled();
+    });
+
+    it('positive: joinTeam should populate email, first_name, and last_name from Auth0', async () => {
+      const teamWithCapacity = { ...TeamWithMembersDummy, team_size_limit: 10 };
+      const { insertQueryBuilder } = setupJoinTeamTransactionMocks({
+        team: teamWithCapacity,
+        existingMember: null,
+        membersCount: 1,
+      });
+
+      await teamManagementService.joinTeam(userId, validJoinCode);
+
+      expect(insertQueryBuilder.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: auth0UserDummy.email,
+          first_name: auth0UserDummy.given_name,
+          last_name: auth0UserDummy.family_name,
+        }),
+      );
+    });
+
+    it('positive: joinTeam should store null for email/first_name/last_name when Auth0 returns no name fields', async () => {
+      const auth0UserWithoutName = {
+        ...auth0UserDummy,
+        given_name: undefined,
+        family_name: undefined,
+        email: undefined,
+      };
+      const teamWithCapacity = { ...TeamWithMembersDummy, team_size_limit: 10 };
+      const { insertQueryBuilder } = setupJoinTeamTransactionMocks({
+        team: teamWithCapacity,
+        existingMember: null,
+        membersCount: 1,
+        auth0UserOverride: auth0UserWithoutName,
+      });
+
+      await teamManagementService.joinTeam(userId, validJoinCode);
+
+      expect(insertQueryBuilder.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: null,
+          first_name: null,
+          last_name: null,
+        }),
+      );
+    });
+
+    it('negative: joinTeam should throw NotFoundException if user does not exist in Auth0', async () => {
+      // validateUserInDBAndAuth0 finds the DB user but Auth0 returns null
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce(null);
+
+      let exception: any;
+      try {
+        await teamManagementService.joinTeam(userId, validJoinCode);
+      } catch (error) {
+        exception = error;
+      }
+
+      expect(exception).toBeDefined();
+      expect(exception).toBeInstanceOf(NotFoundException);
     });
   });
 

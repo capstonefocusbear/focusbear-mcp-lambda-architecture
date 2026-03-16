@@ -36,10 +36,10 @@ export class ServiceAccountTeamManagementService {
       const userDetail = member.member_id ? userDetails.find((u) => u.id === member.member_id) : undefined;
       const last90DaysDailyStats = allMembersDailyStats?.[index];
 
-      const totalFocusModes = last90DaysDailyStats?.reduce((acc, curr) => acc + curr.focus_modes, 0) || 0;
-      const focus_modes_percent_number_day_of_stats_completed = totalFocusModes
-        ? parseFloat(((totalFocusModes / last90DaysDailyStats.length) * 100).toFixed(DECIMAL_PRECISION))
-        : 0;
+      const daysWithFocusModes = (last90DaysDailyStats || []).filter((day) => (day?.focus_modes || 0) >= 1).length;
+      const totalDays = last90DaysDailyStats?.length || 0;
+      const focus_modes_percent_number_day_of_stats_completed =
+        totalDays > 0 ? parseFloat(((daysWithFocusModes / totalDays) * 100).toFixed(DECIMAL_PRECISION)) : 0;
 
       const totalFocusModesHours =
         parseFloat(

@@ -108,8 +108,20 @@ type RoutineSuggestionsMetricsContext = {
   requestHash?: string | null;
 };
 
+type AdjustHabitsStageDurations = {
+  validateUserMs: number;
+  buildOverridesMs: number;
+  openAiMs: number;
+  applyOverridesMs: number;
+  persistLogsMs: number;
+};
+
 const ROUTINE_SUGGESTIONS_PIPELINE = 'routine-suggestions';
 const ROUTINE_SUGGESTIONS_OPERATION = 'getActivitiesRelatedToUserGoals';
+const HABIT_CREATION_PIPELINE = 'habit-creation';
+const HABIT_CREATION_OPERATION = 'createHabitWithAi';
+const ADJUST_HABITS_PIPELINE = 'adjust-habits';
+const ADJUST_HABITS_OPERATION = 'adjustHabitsWithAi';
 
 @Injectable()
 export class ActivityLibraryService {
@@ -1109,6 +1121,43 @@ export class ActivityLibraryService {
       this.logger.error(JSON.stringify(payload), error?.stack);
     }
 
+    if (!context.asyncTaskId) {
+      return;
+    }
+
+    await this.emitAiPipelineTelemetry({
+      pipeline: ROUTINE_SUGGESTIONS_PIPELINE,
+      operation: ROUTINE_SUGGESTIONS_OPERATION,
+      success,
+      durationMs: stageDurations.totalMs,
+      stageDurationsMs: stageDurations,
+      counters,
+    });
+  }
+
+  private async emitAiPipelineTelemetry({
+    pipeline,
+    operation,
+    success,
+    durationMs,
+    stageDurationsMs = {},
+    counters,
+    endToEndDurationMs,
+    queueWaitMs,
+    emitDurationMetric = true,
+    emitSuccessMetric = true,
+  }: {
+    pipeline: string;
+    operation: string;
+    success: boolean;
+    durationMs: number;
+    stageDurationsMs?: Record<string, number>;
+    counters?: Record<string, number>;
+    endToEndDurationMs?: number;
+    queueWaitMs?: number;
+    emitDurationMetric?: boolean;
+    emitSuccessMetric?: boolean;
+  }): Promise<void> {
     const metrics = this.getMetricsConfig();
     const shouldEmitMetrics = Boolean(metrics.emitUserActivityMetrics || metrics.emitQueueMetrics);
     if (!shouldEmitMetrics) {
@@ -1117,15 +1166,19 @@ export class ActivityLibraryService {
 
     try {
       await emitAiPipelineMetrics({
-        namespace: metrics.namespace,
+        namespace: metrics.aiPipelineNamespace,
         environment: metrics.environment,
-        service: metrics.service,
-        pipeline: ROUTINE_SUGGESTIONS_PIPELINE,
-        operation: ROUTINE_SUGGESTIONS_OPERATION,
+        service: metrics.aiPipelineService,
+        pipeline,
+        operation,
         success,
-        durationMs: stageDurations.totalMs,
-        stageDurationsMs: stageDurations,
+        durationMs,
+        stageDurationsMs,
         counters,
+        endToEndDurationMs,
+        queueWaitMs,
+        emitDurationMetric,
+        emitSuccessMetric,
       });
     } catch {
       // Best-effort: metrics must not impact request execution.
@@ -1140,6 +1193,8 @@ export class ActivityLibraryService {
         pollIntervalMs: 60_000,
         namespace: 'FocusBear/Queues',
         service: 'api',
+        aiPipelineNamespace: 'FocusBear/Queues',
+        aiPipelineService: 'api',
         environment: 'prod',
         logQueueFailures: true,
       }
@@ -1488,6 +1543,20 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
   }
 
   async adjustHabitsWithAi(adjustHabitsWithAiDto: AdjustHabitsWithAiDto, user_id: string) {
+    const pipelineStartedAt = Date.now();
+    const stageDurations: AdjustHabitsStageDurations = {
+      validateUserMs: 0,
+      buildOverridesMs: 0,
+      openAiMs: 0,
+      applyOverridesMs: 0,
+      persistLogsMs: 0,
+    };
+    const counters: Record<string, number> = {
+      currentHabitCount: adjustHabitsWithAiDto.current_habits?.length ?? 0,
+    };
+    let success = false;
+    let processingError: Error | undefined;
+
     try {
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -1496,13 +1565,18 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
         data: { user_id, feedback: adjustHabitsWithAiDto.user_feedback },
       });
 
+      const validateUserStartedAt = Date.now();
       await this.validateUser(user_id);
+      stageDurations.validateUserMs += Date.now() - validateUserStartedAt;
 
+      const buildOverridesStartedAt = Date.now();
       const overrides = await this.buildLibraryOverridesForHabits(
         adjustHabitsWithAiDto.current_habits,
         adjustHabitsWithAiDto.user_feedback,
       );
+      stageDurations.buildOverridesMs += Date.now() - buildOverridesStartedAt;
 
+      const openAiStartedAt = Date.now();
       const adjustedHabits = await this.openAIService.adjustHabitsWithAi(
         adjustHabitsWithAiDto.current_habits,
         adjustHabitsWithAiDto.user_feedback,
@@ -1510,19 +1584,66 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
         adjustHabitsWithAiDto.routine_duration,
         adjustHabitsWithAiDto.groupByGoals,
       );
+      stageDurations.openAiMs += Date.now() - openAiStartedAt;
 
+      const applyOverridesStartedAt = Date.now();
       const resolved = this.applyLibraryOverridesToAdjustedHabits(adjustedHabits, overrides);
+      stageDurations.applyOverridesMs += Date.now() - applyOverridesStartedAt;
+      counters.adjustedHabitCount = resolved.length;
+      counters.overrideCount = overrides.size;
 
+      const persistLogsStartedAt = Date.now();
       await this.logAdjustedGeneratedHabits(resolved, user_id, adjustHabitsWithAiDto);
+      stageDurations.persistLogsMs += Date.now() - persistLogsStartedAt;
 
+      success = true;
       return resolved;
     } catch (error) {
+      processingError = error instanceof Error ? error : new Error(String(error));
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
+    } finally {
+      const durationMs = Date.now() - pipelineStartedAt;
+      const stageDurationsMs = {
+        ...stageDurations,
+        totalMs: durationMs,
+      };
+
+      await this.emitAiPipelineTelemetry({
+        pipeline: ADJUST_HABITS_PIPELINE,
+        operation: ADJUST_HABITS_OPERATION,
+        success,
+        durationMs,
+        stageDurationsMs,
+        counters,
+      });
+
+      if (!success && processingError) {
+        this.logger.error(
+          JSON.stringify({
+            event: 'AiPipelineTimingV1',
+            pipeline: ADJUST_HABITS_PIPELINE,
+            operation: ADJUST_HABITS_OPERATION,
+            success,
+            durationMs,
+            stageDurationsMs,
+            counters,
+            userId: user_id,
+            errorName: processingError.name,
+            errorMessage: processingError.message,
+          }),
+          processingError.stack,
+        );
+      }
     }
   }
 
   async createHabitWithAi(createHabitWithAiDto: CreateHabitWithAiDto, user_id: string) {
+    const pipelineStartedAt = Date.now();
+    let success = false;
+    let libraryFirst: ActivityTemplate[] = [];
+    let processingError: Error | undefined;
+
     const hasExplicitGoals = (createHabitWithAiDto.user_goals?.length ?? 0) > 0;
     const rawGoals = hasExplicitGoals ? (createHabitWithAiDto.user_goals as string[]) : [createHabitWithAiDto.prompt];
     const goals = this.normalizeUserGoals(rawGoals.map((goal) => ({ goal, isCustom: !hasExplicitGoals })));
@@ -1533,17 +1654,55 @@ ${habitNames.map((name) => `- ${INPUT_WRAPPER}${name}${INPUT_WRAPPER}`).join('\n
       routine: createHabitWithAiDto.routine,
       groupByGoals: false,
     };
-    const routineDurationSeconds = routineDuration * ONE_MINUTE_SECONDS;
-    const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, {
-      requestHash: null,
-    });
+    try {
+      const routineDurationSeconds = routineDuration * ONE_MINUTE_SECONDS;
+      const ragResult = await this.getActivitiesFromRag(request, routineDurationSeconds, user_id, {
+        requestHash: null,
+      });
 
-    // Prioritize library / non-generated habits first
-    const libraryFirst = [
-      ...ragResult.templates.filter((t: any) => !t.ai_generated),
-      ...ragResult.templates.filter((t: any) => t.ai_generated),
-    ];
-    return libraryFirst;
+      // Prioritize library / non-generated habits first
+      libraryFirst = [
+        ...ragResult.templates.filter((t: any) => !t.ai_generated),
+        ...ragResult.templates.filter((t: any) => t.ai_generated),
+      ];
+      success = true;
+      return libraryFirst;
+    } catch (error) {
+      processingError = error instanceof Error ? error : new Error(String(error));
+      throw error;
+    } finally {
+      const durationMs = Date.now() - pipelineStartedAt;
+      const counters: Record<string, number> = {
+        resultCount: libraryFirst.length,
+        generatedHabitCount: libraryFirst.filter((habit: any) => habit.ai_generated).length,
+        acceptedTemplateCount: libraryFirst.filter((habit: any) => !habit.ai_generated).length,
+      };
+
+      if (!success && processingError) {
+        this.logger.error(
+          JSON.stringify({
+            event: 'AiPipelineTimingV1',
+            pipeline: HABIT_CREATION_PIPELINE,
+            operation: HABIT_CREATION_OPERATION,
+            success,
+            durationMs,
+            counters,
+            userId: user_id,
+            errorName: processingError.name,
+            errorMessage: processingError.message,
+          }),
+          processingError.stack,
+        );
+      }
+
+      await this.emitAiPipelineTelemetry({
+        pipeline: HABIT_CREATION_PIPELINE,
+        operation: HABIT_CREATION_OPERATION,
+        success,
+        durationMs,
+        counters,
+      });
+    }
   }
 
   private async buildLibraryOverridesForHabits(currentHabits: any[], userFeedback?: string) {

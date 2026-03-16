@@ -38,6 +38,18 @@ import { ActivityType } from '../../activity/domain/activity-type.enum';
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 import { PromptCacheService } from '../../../../../../libs/openai/src/prompt-cache.service';
 
+jest.mock('@app/observability', () => {
+  const actual = jest.requireActual('@app/observability');
+  return {
+    ...actual,
+    emitAiPipelineMetrics: jest.fn(),
+  };
+});
+
+const { emitAiPipelineMetrics } = jest.requireMock('@app/observability') as {
+  emitAiPipelineMetrics: jest.Mock;
+};
+
 describe('ActivityLibraryService', () => {
   let activityLibraryService: ActivityLibraryService;
   const habitLibraryRequestRepositoryMock = {
@@ -101,6 +113,7 @@ describe('ActivityLibraryService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     OpenAIServiceMock.isValidInput.mockReturnValue(true);
+    emitAiPipelineMetrics.mockReset();
   });
 
   it('should be defined', () => {
@@ -1402,6 +1415,147 @@ describe('ActivityLibraryService', () => {
 
       expect(habits[0].text_instructions).toBe('Sit quietly for 10 minutes and focus on your breath.');
       expect(habits[0].description).toBe('A calming morning practice');
+    });
+  });
+
+  describe('AI pipeline telemetry', () => {
+    it('emits routine suggestion metrics for async requests', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      jest.spyOn(activityLibraryService as any, 'getActivitiesFromRag').mockResolvedValueOnce({
+        templates: [{ id: 'template-1', ai_generated: false }],
+      });
+
+      await activityLibraryService.getActivitiesRelatedToUserGoals(dummyGetRoutineSuggestionsDto, userDummy.id, {
+        asyncTaskId: 'task-123',
+        requestHash: 'hash-123',
+      });
+
+      expect(emitAiPipelineMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipeline: 'routine-suggestions',
+          operation: 'getActivitiesRelatedToUserGoals',
+          success: true,
+          durationMs: expect.any(Number),
+        }),
+      );
+    });
+
+    it('emits failed routine suggestion metrics for async requests', async () => {
+      const failure = new Error('rag failed');
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([]);
+      jest.spyOn(activityLibraryService as any, 'getActivitiesFromRag').mockRejectedValueOnce(failure);
+
+      await expect(
+        activityLibraryService.getActivitiesRelatedToUserGoals(dummyGetRoutineSuggestionsDto, userDummy.id, {
+          asyncTaskId: 'task-123',
+          requestHash: 'hash-123',
+        }),
+      ).rejects.toThrow('rag failed');
+
+      expect(emitAiPipelineMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipeline: 'routine-suggestions',
+          operation: 'getActivitiesRelatedToUserGoals',
+          success: false,
+        }),
+      );
+    });
+
+    it('emits habit creation metrics', async () => {
+      jest.spyOn(activityLibraryService as any, 'getActivitiesFromRag').mockResolvedValueOnce({
+        templates: [
+          { id: 'template-1', ai_generated: false },
+          { id: 'template-2', ai_generated: true },
+        ],
+      });
+
+      await activityLibraryService.createHabitWithAi(
+        {
+          prompt: 'Create a mobility habit',
+          user_goals: ['mobility'],
+          routine_duration: 10,
+          routine: ActivityType.morning,
+        },
+        userDummy.id,
+      );
+
+      expect(emitAiPipelineMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipeline: 'habit-creation',
+          operation: 'createHabitWithAi',
+          success: true,
+          counters: expect.objectContaining({
+            resultCount: 2,
+            generatedHabitCount: 1,
+            acceptedTemplateCount: 1,
+          }),
+        }),
+      );
+    });
+
+    it('emits adjust habits metrics on success', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      (ActivityTemplateRetrieverServiceMock as any).retrieveByText = jest.fn().mockResolvedValue([]);
+      OpenAIServiceMock.adjustHabitsWithAi.mockResolvedValueOnce([
+        {
+          id: 'habit-1',
+          name: 'Meditation',
+          ai_generated: false,
+          original_template_id: 'template-1',
+        },
+      ]);
+
+      await activityLibraryService.adjustHabitsWithAi(
+        {
+          current_habits: [{ id: 'habit-1', name: 'Meditation' }],
+          user_feedback: 'Keep it simple',
+          user_goals: ['calm'],
+          routine_duration: 10,
+          groupByGoals: false,
+        } as any,
+        userDummy.id,
+      );
+
+      expect(emitAiPipelineMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipeline: 'adjust-habits',
+          operation: 'adjustHabitsWithAi',
+          success: true,
+          counters: expect.objectContaining({
+            currentHabitCount: 1,
+            adjustedHabitCount: 1,
+          }),
+        }),
+      );
+    });
+
+    it('emits adjust habits metrics on failure', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      (ActivityTemplateRetrieverServiceMock as any).retrieveByText = jest.fn().mockResolvedValue([]);
+      OpenAIServiceMock.adjustHabitsWithAi.mockRejectedValueOnce(new Error('openai down'));
+
+      await expect(
+        activityLibraryService.adjustHabitsWithAi(
+          {
+            current_habits: [{ id: 'habit-1', name: 'Meditation' }],
+            user_feedback: 'Keep it simple',
+            user_goals: ['calm'],
+            routine_duration: 10,
+            groupByGoals: false,
+          } as any,
+          userDummy.id,
+        ),
+      ).rejects.toThrow('openai down');
+
+      expect(emitAiPipelineMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pipeline: 'adjust-habits',
+          operation: 'adjustHabitsWithAi',
+          success: false,
+        }),
+      );
     });
   });
 });

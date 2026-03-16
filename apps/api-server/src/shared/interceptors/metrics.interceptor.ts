@@ -19,6 +19,8 @@ export class MetricsInterceptor implements NestInterceptor {
         pollIntervalMs: 60_000,
         namespace: 'FocusBear/API',
         service: 'api',
+        aiPipelineNamespace: 'FocusBear/API',
+        aiPipelineService: 'api',
         environment: 'prod',
         logQueueFailures: true,
       }

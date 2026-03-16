@@ -24,6 +24,7 @@ import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { ActivityType, normalizeRoutineTypeToActivityType } from '../../activity/domain/activity-type.enum';
 import { MetricsConfig } from '../../../config/metrics.config';
 import { ActivityLibraryService } from '../services/activity-library.service';
+import { getActivityTemplateMetricsConfig, parseMetricsTimestamp } from '../utils/ai-pipeline-metrics.util';
 
 const MIN_IMAGE_DIMENSION = 768;
 const ONE_MINUTE_SECONDS = 60;
@@ -65,25 +66,32 @@ export class HabitImportConsumer {
 
   @Process(BullWorkers.PROCESS_HABIT_IMPORT)
   async processHabitImport(job: Job<HabitImportJobData>): Promise<UpdateActivityDto[]> {
-    const { asyncTaskId, userId, mediaKey, mediaType, routineType, requestHash } = job.data;
+    const { asyncTaskId, userId, mediaKey, mediaType, routineType, requestHash, enqueuedAt } = job.data;
     const attempt = job.attemptsMade + 1;
     const stageDurations = this.createEmptyStageDurations();
     const counters = this.createEmptyCounters();
     const pipelineStartedAt = Date.now();
+    const processingStartedAt = new Date();
     let success = false;
     let processingError: Error | null = null;
     let matchingTelemetry = this.createEmptyMatchingTelemetry();
+    let completedAt: Date | undefined;
+    let failedAt: Date | undefined;
 
     const baseMetadata = {
       taskType: 'habit-import',
       userId,
       mediaKey,
       mediaType,
+      requestHash,
+      routineType: routineType ?? null,
+      enqueuedAt,
     };
 
     // Update status to PROCESSING
     await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.PROCESSING, baseMetadata, {
-      processingStarted: new Date(),
+      processingStarted: processingStartedAt,
+      processingStartedAt,
     });
 
     try {
@@ -175,8 +183,10 @@ export class HabitImportConsumer {
 
       // 6. Update AsyncTask with results
       const updateStartedAt = Date.now();
+      completedAt = new Date();
       await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.COMPLETED, baseMetadata, {
-        processingCompleted: new Date(),
+        processingCompleted: completedAt,
+        completedAt,
         extractedCount: extractedHabits.length,
         matchedCount,
         unmatchedCount,
@@ -191,8 +201,10 @@ export class HabitImportConsumer {
 
       // Update status to FAILED
       const updateStartedAt = Date.now();
+      failedAt = new Date();
       await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
-        processingFailed: new Date(),
+        processingFailed: failedAt,
+        failedAt,
         error: processingError.message,
       });
       stageDurations.updateTaskMs += Date.now() - updateStartedAt;
@@ -218,6 +230,9 @@ export class HabitImportConsumer {
         success,
         stageDurations,
         counters,
+        enqueuedAt,
+        processingStartedAt,
+        completedAt: success ? completedAt : failedAt,
         error: processingError ?? undefined,
       });
     }
@@ -611,6 +626,9 @@ export class HabitImportConsumer {
     success,
     stageDurations,
     counters,
+    enqueuedAt,
+    processingStartedAt,
+    completedAt,
     error,
   }: {
     asyncTaskId: string;
@@ -620,14 +638,21 @@ export class HabitImportConsumer {
     success: boolean;
     stageDurations: HabitImportStageDurations;
     counters: HabitImportCounters;
+    enqueuedAt?: string;
+    processingStartedAt: Date;
+    completedAt?: Date;
     error?: Error;
   }): Promise<void> {
+    const endToEndDurationMs = this.buildLatencyDurationMs(enqueuedAt, completedAt);
+    const queueWaitMs = this.buildQueueWaitMs(enqueuedAt, processingStartedAt);
     const payload = {
       event: 'AiPipelineTimingV1',
       pipeline: 'habit-import',
       operation: 'processHabitImport',
       success,
       durationMs: stageDurations.totalMs,
+      endToEndDurationMs,
+      queueWaitMs,
       stageDurationsMs: stageDurations,
       counters,
       asyncTaskId,
@@ -652,15 +677,17 @@ export class HabitImportConsumer {
 
     try {
       await emitAiPipelineMetrics({
-        namespace: metrics.namespace,
+        namespace: metrics.aiPipelineNamespace,
         environment: metrics.environment,
-        service: metrics.service,
+        service: metrics.aiPipelineService,
         pipeline: 'habit-import',
         operation: 'processHabitImport',
         success,
         durationMs: stageDurations.totalMs,
         stageDurationsMs: stageDurations,
         counters,
+        endToEndDurationMs,
+        queueWaitMs,
       });
     } catch {
       // Best-effort: metrics must not affect pipeline processing.
@@ -668,16 +695,27 @@ export class HabitImportConsumer {
   }
 
   private getMetricsConfig(): MetricsConfig {
-    return (
-      this.configService?.get<MetricsConfig>('metrics') || {
-        emitQueueMetrics: true,
-        emitUserActivityMetrics: true,
-        pollIntervalMs: 60_000,
-        namespace: 'FocusBear/Queues',
-        service: 'api',
-        environment: 'prod',
-        logQueueFailures: true,
-      }
-    );
+    return getActivityTemplateMetricsConfig(this.configService);
+  }
+
+  private buildLatencyDurationMs(enqueuedAt?: string, completedAt?: Date): number | undefined {
+    const enqueuedAtMs = this.parseTimestamp(enqueuedAt);
+    const completedAtMs = completedAt?.getTime();
+    if (typeof enqueuedAtMs !== 'number' || typeof completedAtMs !== 'number') {
+      return undefined;
+    }
+    return Math.max(0, completedAtMs - enqueuedAtMs);
+  }
+
+  private buildQueueWaitMs(enqueuedAt: string | undefined, processingStartedAt: Date): number | undefined {
+    const enqueuedAtMs = this.parseTimestamp(enqueuedAt);
+    if (typeof enqueuedAtMs !== 'number') {
+      return undefined;
+    }
+    return Math.max(0, processingStartedAt.getTime() - enqueuedAtMs);
+  }
+
+  private parseTimestamp(value?: string): number | undefined {
+    return parseMetricsTimestamp(value);
   }
 }

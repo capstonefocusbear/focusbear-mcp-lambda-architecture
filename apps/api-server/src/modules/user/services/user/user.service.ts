@@ -1418,6 +1418,8 @@ export class UserService {
         pollIntervalMs: 60_000,
         namespace: 'FocusBear/Queues',
         service: 'api',
+        aiPipelineNamespace: 'FocusBear/Queues',
+        aiPipelineService: 'api',
         environment: 'prod',
         logQueueFailures: true,
       }

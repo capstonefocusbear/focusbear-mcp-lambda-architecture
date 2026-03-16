@@ -120,8 +120,6 @@ export class ToDoRepository extends BaseRepository<ToDo> {
 
     if (status) {
       query.andWhere('to_do.status = :status', { status });
-    } else {
-      query.andWhere("to_do.status != 'COMPLETED'");
     }
     if (eisenhower_quadrant) {
       query.andWhere('to_do.eisenhower_quadrant = :eisenhower_quadrant', { eisenhower_quadrant });
@@ -314,8 +312,6 @@ export class ToDoRepository extends BaseRepository<ToDo> {
 
     if (status) {
       query.andWhere('to_do.status = :status', { status });
-    } else {
-      query.andWhere("to_do.status != 'COMPLETED'");
     }
     if (eisenhower_quadrant) {
       query.andWhere('to_do.eisenhower_quadrant = :eisenhower_quadrant', { eisenhower_quadrant });

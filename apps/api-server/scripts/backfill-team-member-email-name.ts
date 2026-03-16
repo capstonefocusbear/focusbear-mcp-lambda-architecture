@@ -3,6 +3,7 @@ import { Auth0ManagementService, IAuth0Options } from '@app/auth0';
 import { QueryRunner, Repository } from 'typeorm';
 import { AppDataSource } from '../ormconfig';
 import { TeamToMember } from '../src/modules/team/entities/team-to-member.entity';
+import { User } from '../src/modules/user/entities/user.entity';
 
 const BATCH_SIZE = 10;
 const DELAY_MS = 100; // ~10 requests/second to stay within Auth0 Management API rate limits
@@ -58,10 +59,13 @@ class BackfillTeamMemberEmailNameScript {
   constructor(private readonly auth0Service: Auth0ManagementService) {}
 
   async run(queryRunner: QueryRunner): Promise<void> {
+    const teamToMemberTable = queryRunner.manager.getRepository(TeamToMember).metadata.tableName;
+    const usersTable = queryRunner.manager.getRepository(User).metadata.tableName;
+
     const incompleteMembers: MemberBackfillRow[] = await queryRunner.query(`
       SELECT ttm.id, ttm.member_id, u.auth0_id
-      FROM team_to_member ttm
-      JOIN "user" u ON u.id = ttm.member_id
+      FROM ${teamToMemberTable} ttm
+      JOIN ${usersTable} u ON u.id = ttm.member_id
       WHERE (ttm.email IS NULL OR ttm.first_name IS NULL OR ttm.last_name IS NULL)
         AND ttm.member_id IS NOT NULL
     `);

@@ -183,7 +183,7 @@ describe('TeamManagementService', () => {
         member_id: memberToDelete.member_id,
       });
       expect(RevenueCatServiceMock.revokeTeamMembership).toHaveBeenCalledWith(
-        memberToDelete.id,
+        memberToDelete.member_id,
         Entitlement.team_member,
       );
       expect(StripeServiceMock.updateSubscription).toHaveBeenCalledWith(
@@ -192,6 +192,40 @@ describe('TeamManagementService', () => {
         1,
       );
       expect(TeamRepositoryMock.update).toHaveBeenCalledWith(teamId, { team_size: 1 });
+    });
+
+    it('positive: owner bulk delete should sync team size based on actual removed members', async () => {
+      const ownerMember = new TeamToMember({
+        id: randomUUID(),
+        team_id: teamId,
+        member_id: adminId,
+        invitation_status: InvitationStatus.ACCEPTED,
+      });
+      const dummyTeam = {
+        ...TeamWithMembersDummy,
+        owner_id: adminId,
+        team_size: 3,
+        team_size_limit: 10,
+        payment_type: PaymentType.STRIPE,
+      };
+
+      TeamRepositoryMock.orm.findOne.mockResolvedValue(dummyTeam);
+      TeamToMemberRepositoryMock.orm.find.mockResolvedValueOnce([TeamMemberDummy]);
+      TeamRepositoryMock.getTeamIncludingUnregistered.mockResolvedValue({
+        members: [ownerMember, TeamMemberDummy, TeamMemberFake],
+      });
+
+      await teamManagementService.bulkDeleteTeamMembers(
+        { member_ids: [adminId, TeamMemberDummy.member_id], team_id: teamId },
+        adminId,
+      );
+
+      expect(StripeServiceMock.updateSubscription).toHaveBeenCalledWith(
+        TeamWithMembersDummy.stripe_data.subscriptionId,
+        TeamWithMembersDummy.stripe_data.subscriptionItemId,
+        2,
+      );
+      expect(TeamRepositoryMock.update).toHaveBeenCalledWith(teamId, { team_size: 2 });
     });
   });
 

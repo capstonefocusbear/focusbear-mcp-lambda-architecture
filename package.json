@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "nest build api-server && npm run build:cron && npm run build:cron-support && npm run build:assets && npm run sentry:sourcemaps",
+    "build": "nest build api-server && npm run build:cron && npm run build:cron-support && npm run build:assets",
     "build:cron": "tsc -p tsconfig.cron.json",
     "build:cron-support": "mkdir -p dist/cron-jobs && cp cron-jobs/register-dist-paths.js dist/cron-jobs/register-dist-paths.js",
     "build:assets": "mkdir -p dist/apps/api-server/shared && cp -R apps/api-server/src/shared/i18n dist/apps/api-server/shared/i18n && mkdir -p dist/apps/api-server/src/shared && cp -R apps/api-server/src/shared/i18n dist/apps/api-server/src/shared/i18n && mkdir -p dist/apps/api-server/modules/email && cp -R apps/api-server/src/modules/email/templates dist/apps/api-server/modules/email/templates && mkdir -p dist/apps/api-server/src/modules/email && cp -R apps/api-server/src/modules/email/templates dist/apps/api-server/src/modules/email/templates && mkdir -p dist/apps/api-server/test && cp -R apps/api-server/test/prompt-testing dist/apps/api-server/test/prompt-testing",
@@ -48,9 +48,7 @@
     "data:migration:run": "ts-node apps/api-server/data_migrations/1710000000000-DataTransferWithEncryption.ts",
     "render:deploy": "node ./.github/workflows/deploy.js",
     "seed": "ts-node apps/api-server/src/seeding/seed.ts",
-    "smoke-test": "bash scripts/smoke-test.sh",
-    "verify:website-without-worker": "bash scripts/verify-website-without-worker.sh",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org focus-bear --project backend dist/ && sentry-cli sourcemaps upload --org focus-bear --project backend dist/"
+    "smoke-test": "bash scripts/smoke-test.sh"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.931.0",
@@ -78,8 +76,8 @@
     "@nestjs/websockets": "^11.0.12",
     "@pusher/push-notifications-server": "^1.2.6",
     "@sendgrid/mail": "^8.1.6",
-    "@sentry/cli": "^2.58.5",
     "@sentry/nestjs": "^10.29.0",
+    "@sentry/webpack-plugin": "^5.1.1",
     "@types/handlebars": "^4.0.40",
     "@types/html-to-text": "^9.0.0",
     "@types/mjml": "^4.7.4",

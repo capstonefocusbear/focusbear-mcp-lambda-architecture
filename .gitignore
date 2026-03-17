@@ -58,4 +58,4 @@ package-lock.json
 *.csv
 
 # Sentry Config File
-.sentryclirc
+.env.sentry-build-plugin

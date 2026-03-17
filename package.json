@@ -78,6 +78,7 @@
     "@pusher/push-notifications-server": "^1.2.6",
     "@sendgrid/mail": "^8.1.6",
     "@sentry/nestjs": "^10.29.0",
+    "@sentry/webpack-plugin": "^5.1.1",
     "@types/handlebars": "^4.0.40",
     "@types/html-to-text": "^9.0.0",
     "@types/mjml": "^4.7.4",

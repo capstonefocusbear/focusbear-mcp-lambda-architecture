@@ -7,7 +7,12 @@ import { QueueEvents } from 'bullmq';
 import IORedis from 'ioredis';
 import { getQueueToken } from '@nestjs/bull-shared';
 import { emitQueueMetrics, QueueMetricCounts } from '@app/observability';
-import { MetricsConfig } from '../config/metrics.config';
+import {
+  DEFAULT_AI_PIPELINE_METRICS_NAMESPACE,
+  DEFAULT_METRICS_SERVICE,
+  DEFAULT_QUEUE_METRICS_NAMESPACE,
+  MetricsConfig,
+} from '../config/metrics.config';
 import { BullQueues } from '../shared/utils/constants';
 
 type RedisLike = {
@@ -162,10 +167,10 @@ export class BullQueueMetricsService implements OnModuleInit, OnModuleDestroy {
         emitQueueMetrics: true,
         emitUserActivityMetrics: true,
         pollIntervalMs: 60_000,
-        namespace: 'FocusBear/Queues',
-        service: 'api',
-        aiPipelineNamespace: 'FocusBear/Queues',
-        aiPipelineService: 'api',
+        namespace: DEFAULT_QUEUE_METRICS_NAMESPACE,
+        service: DEFAULT_METRICS_SERVICE,
+        aiPipelineNamespace: DEFAULT_AI_PIPELINE_METRICS_NAMESPACE,
+        aiPipelineService: DEFAULT_METRICS_SERVICE,
         environment: 'prod',
         logQueueFailures: true,
       }

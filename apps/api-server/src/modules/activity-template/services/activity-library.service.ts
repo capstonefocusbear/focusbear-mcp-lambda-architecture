@@ -29,6 +29,11 @@ import {
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
 import { MetricsConfig } from '../../../config/metrics.config';
+import {
+  DEFAULT_AI_PIPELINE_METRICS_NAMESPACE,
+  DEFAULT_METRICS_SERVICE,
+  DEFAULT_QUEUE_METRICS_NAMESPACE,
+} from '../../../config/metrics.config';
 import { MAX_WORD_LENGTH } from '@app/openai/openai.constants';
 import { PREDEFINED_GOAL_FALLBACKS } from './predefined-goal-fallbacks.data';
 
@@ -1191,10 +1196,10 @@ export class ActivityLibraryService {
         emitQueueMetrics: true,
         emitUserActivityMetrics: true,
         pollIntervalMs: 60_000,
-        namespace: 'FocusBear/Queues',
-        service: 'api',
-        aiPipelineNamespace: 'FocusBear/Queues',
-        aiPipelineService: 'api',
+        namespace: DEFAULT_QUEUE_METRICS_NAMESPACE,
+        service: DEFAULT_METRICS_SERVICE,
+        aiPipelineNamespace: DEFAULT_AI_PIPELINE_METRICS_NAMESPACE,
+        aiPipelineService: DEFAULT_METRICS_SERVICE,
         environment: 'prod',
         logQueueFailures: true,
       }

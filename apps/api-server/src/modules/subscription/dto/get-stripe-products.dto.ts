@@ -1,5 +1,4 @@
-/* eslint-disable max-classes-per-file */
-/* eslint-disable @typescript-eslint/no-inferrable-types */
+// biome-ignore-all lint/style/noInferrableTypes: explicit types for API clarity
 export class GetStripeProductsDto {
   ending_before?: string;
 

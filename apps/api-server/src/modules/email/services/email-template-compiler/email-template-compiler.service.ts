@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as Handlebars from 'handlebars';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// biome-ignore lint/style/noCommonJs: dynamic require for Handlebars
 const mjml2html = require('mjml');
 
 interface CompiledTemplate {
@@ -395,13 +395,12 @@ export class EmailTemplateCompilerService {
           return a === b ? options.fn(this) : options.inverse(this);
         }
         return a === b;
-      } catch (error) {
+      } catch (_error) {
         return false;
       }
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getEmailTitle(templateType: string, data: TemplateData): string {
     const titles = {
       'weekly-progress': 'Weekly Progress Report',
@@ -422,7 +421,6 @@ export class EmailTemplateCompilerService {
     return previews[templateType] || 'Focus Bear Update';
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getEmailSubject(templateType: string, data: TemplateData): string {
     if (templateType === 'weekly-progress') {
       if (data.variant === 'daily') {

@@ -124,7 +124,7 @@ export class FocusModeManagerService {
         },
       ]);
 
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: focus mode logging
       console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
 
       try {

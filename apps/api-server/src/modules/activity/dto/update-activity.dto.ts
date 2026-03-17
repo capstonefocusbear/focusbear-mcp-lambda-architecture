@@ -36,7 +36,7 @@ function IsEqualWhenHasChoices(property: any, validationOptions?: ValidationOpti
       validator: {
         validate(_value: any, args: ValidationArguments) {
           const fieldValue = (args.object as any)[propertyName];
-          // eslint-disable-next-line @typescript-eslint/dot-notation
+          // biome-ignore lint/complexity/useLiteralKeys: use the literal key here
           const choices = args.object?.['choices'];
           const hasChoices = choices?.length > 0;
           if (!hasChoices) return true;

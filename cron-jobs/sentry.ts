@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
 import * as Sentry from '@sentry/nestjs';
 import * as dotenv from 'dotenv';
 import { emitCronMetrics } from '@app/observability';
@@ -17,10 +18,7 @@ export function initializeSentry() {
 // @returns Whatever your job returns
 // Example:
 // WithSentry(runMyCronJob);
-export async function withSentry<T>(
-  job: () => Promise<T>,
-  options: { exitOnFinish?: boolean } = {},
-): Promise<T> {
+export async function withSentry<T>(job: () => Promise<T>, options: { exitOnFinish?: boolean } = {}): Promise<T> {
   const { exitOnFinish = true } = options;
   initializeSentry();
   let succeeded = false;
@@ -35,10 +33,10 @@ export async function withSentry<T>(
   } finally {
     try {
       await Sentry.flush(2000);
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
     } catch (_) {}
     if (exitOnFinish) {
       // Exit with appropriate code after resources have been flushed
-      // eslint-disable-next-line no-process-exit
       process.exit(succeeded ? 0 : 1);
     }
   }
@@ -69,12 +67,15 @@ export async function runCronWithTelemetry<T extends Record<string, any> | void>
   let itemCounts: Record<string, number> | undefined;
 
   try {
-    const result = await withSentry(async () => {
-      const output = await job();
-      itemCounts = extractNumericCounts(output);
-      exitCode = 0;
-      return output;
-    }, { exitOnFinish: false });
+    const result = await withSentry(
+      async () => {
+        const output = await job();
+        itemCounts = extractNumericCounts(output);
+        exitCode = 0;
+        return output;
+      },
+      { exitOnFinish: false },
+    );
     return result;
   } catch (error) {
     throw error;
@@ -89,7 +90,9 @@ export async function runCronWithTelemetry<T extends Record<string, any> | void>
     const namespace = process.env.CRON_METRICS_NAMESPACE || 'FocusBear/Cron';
 
     try {
-      const processedCount = itemCounts ? Object.values(itemCounts).reduce((total, count) => total + count, 0) : undefined;
+      const processedCount = itemCounts
+        ? Object.values(itemCounts).reduce((total, count) => total + count, 0)
+        : undefined;
       const metricsPromise = emitCronMetrics({
         namespace,
         environment,
@@ -100,16 +103,12 @@ export async function runCronWithTelemetry<T extends Record<string, any> | void>
         processedCount,
         itemCounts,
       });
-      await Promise.race([
-        metricsPromise,
-        new Promise<void>((resolve) => setTimeout(resolve, METRICS_TIMEOUT_MS)),
-      ]);
+      await Promise.race([metricsPromise, new Promise<void>((resolve) => setTimeout(resolve, METRICS_TIMEOUT_MS))]);
     } catch (error) {
       console.error('Failed to emit cron metrics', error);
     }
 
     if (exitOnFinish) {
-      // eslint-disable-next-line no-process-exit
       process.exit(exitCode);
     }
   }

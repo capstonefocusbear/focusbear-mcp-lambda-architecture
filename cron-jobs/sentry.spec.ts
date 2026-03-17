@@ -15,11 +15,11 @@ describe('withSentry', () => {
   });
   afterAll(() => {
     // restore
-    // eslint-disable-next-line no-global-assign, @typescript-eslint/no-empty-function
     process.exit = origExit as any;
   });
 
   test('does not exit when exitOnFinish is false', async () => {
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
     await withSentry(async () => 42, { exitOnFinish: false });
     expect(Sentry.flush).toHaveBeenCalled();
@@ -27,14 +27,23 @@ describe('withSentry', () => {
   });
 
   test('exits with 0 when exitOnFinish is true and success', async () => {
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
     await withSentry(async () => 42, { exitOnFinish: true });
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 
   test('exits with 1 when exitOnFinish is true and error', async () => {
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
     const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
-    await expect(withSentry(async () => { throw new Error('boom'); }, { exitOnFinish: true })).rejects.toThrow('boom');
+    await expect(
+      withSentry(
+        async () => {
+          throw new Error('boom');
+        },
+        { exitOnFinish: true },
+      ),
+    ).rejects.toThrow('boom');
     expect(Sentry.captureException).toHaveBeenCalled();
     expect(exitSpy).toHaveBeenCalledWith(1);
   });

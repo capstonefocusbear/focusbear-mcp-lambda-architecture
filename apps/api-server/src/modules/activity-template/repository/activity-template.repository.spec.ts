@@ -44,9 +44,7 @@ describe('ActivityTemplateRepository', () => {
     const activityTypeFilter = where.activity_type as FindOperator<ActivityType>;
     const values =
       (activityTypeFilter as any)?.value ??
-      // eslint-disable-next-line no-underscore-dangle
       (activityTypeFilter as any)?._value ??
-      // eslint-disable-next-line no-underscore-dangle
       (activityTypeFilter as any)?._value ??
       [];
 

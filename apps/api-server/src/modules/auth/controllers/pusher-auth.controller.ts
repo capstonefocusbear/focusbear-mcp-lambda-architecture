@@ -28,7 +28,7 @@ export class PusherAuthController {
   @Get('beams-auth')
   getPusherBeamsToken(@AuthContext() { user }: Passport): Promise<PusherBeamsAuthResponse> {
     if (user?.id === JEREMYS_USER_ID) {
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: auth debug logging
       console.log({ userId: user.id }, 'Jeremy requested Beams token');
     }
     return this.pusherBeamsAuthService.getPusherBeamsToken(user.id);
@@ -37,7 +37,7 @@ export class PusherAuthController {
   @Get('beams-unsubscribe')
   unsubscribeFromBeams(@AuthContext() { user }: Passport): Promise<void> {
     if (user?.id === JEREMYS_USER_ID) {
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: auth debug logging
       console.log({ userId: user.id }, 'Jeremy requested Beams unsubscribe');
     }
     return this.pusherBeamsAuthService.unsubscribeFromBeams(user.id);

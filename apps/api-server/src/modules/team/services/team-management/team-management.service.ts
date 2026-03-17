@@ -1189,7 +1189,7 @@ export class TeamManagementService {
   }
 
   // @Description: This method is used to add bulk students to a team (dev use only)
-  /* eslint-disable */
+  // biome-ignore-start lint: disable linting for this method
   async addBulkStudents(adminId: string, addBulkStudentsDto: { team_id: string; students: string[] }) {
     const { team_id, students } = addBulkStudentsDto;
     try {
@@ -1404,5 +1404,5 @@ export class TeamManagementService {
       console.error(`Failed to add bulk students:`, error);
     }
   }
-  /* eslint-enable */
+  // biome-ignore-end lint: disable linting for this method
 }

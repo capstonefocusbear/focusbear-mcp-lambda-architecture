@@ -492,14 +492,14 @@ export class UserSettingsService {
     const differenceSeconds = cutoffDateTime.diff(shutdownDateTime, 'seconds').seconds;
     if (differenceSeconds > 0) {
       // @Description: Check for any high priority activities
-      /* eslint-disable no-param-reassign */
+      // biome-ignore-start lint/style/noParameterAssign: intentional mutation in reduce
       const eveningRoutineHighPriorityActivitiesDuration = eveningActivities.reduce((totalDuration, activity) => {
         if (activity.priority === ActivityPriority.HIGH) {
           totalDuration += activity.duration_seconds;
         }
         return totalDuration;
       }, 0);
-      /* eslint-enable no-param-reassign */
+      // biome-ignore-end lint/style/noParameterAssign: intentional mutation in reduce
 
       const remainingDuration = differenceSeconds - eveningRoutineHighPriorityActivitiesDuration;
       return remainingDuration > 0 ? remainingDuration : 0;
@@ -603,10 +603,10 @@ export class UserSettingsService {
             fixed_shutdown_time: '22:00',
           },
         });
-        /* eslint-disable no-param-reassign */
+        // biome-ignore-start lint/style/noParameterAssign: intentional mutation
         startupTime = '06:00';
         shutdownTime = '22:00';
-        /* eslint-enable no-param-reassign */
+        // biome-ignore-end lint/style/noParameterAssign: intentional mutation
       } else {
         throw new BadRequestException('Startup and shutdown times cannot be identical');
       }

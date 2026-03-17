@@ -1,5 +1,6 @@
-/* eslint-disable no-console */
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
+// biome-ignore-all lint/style/noNonNullAssertion: Ignore the null assertion in cron-job files
 import * as sendGrid from '@sendgrid/mail';
 import { ManagementClient } from 'auth0';
 import { isTestEmail } from '@app/send-grid';
@@ -158,7 +159,7 @@ export async function getUserDetails(
 }
 
 // The following function is intentionally unused in this file but kept for reference and potential future use.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// biome-ignore lint/correctness/noUnusedVariables: kept for reference and potential future use
 async function sendEmail(email: string, language: string) {
   ensureI18n();
   ensureSendGrid();
@@ -187,6 +188,7 @@ async function sendEmail(email: string, language: string) {
 }
 
 // Move the UNICAES-specific logic to a new function
+// biome-ignore lint/correctness/noUnusedVariables: this function is kept for future use
 async function sendUnicaesDataSyncEmail(email: string, name?: string, os: 'ios' | 'android' = 'ios') {
   ensureSendGrid();
   if (isTestEmail(email)) {
@@ -266,7 +268,6 @@ async function sendUnicaesDataSyncWhatsapp(
   // Simple retry with exponential backoff for rate limiting
   const maxRetries = 3;
   let attempt = 0;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       await zohoService.initiateWhatsAppSession(phoneNumber, language, cannedMessageId, whatsappMessage);
@@ -306,14 +307,11 @@ export async function processInBatches<T>(args: {
   for (let start = 0; start < items.length; start += effectiveBatch) {
     const batch = items.slice(start, start + effectiveBatch);
     // sequential processing within batch
-    // eslint-disable-next-line no-restricted-syntax
     for (const item of batch) {
-      // eslint-disable-next-line no-await-in-loop
       await processItem(item);
     }
     const hasMore = start + effectiveBatch < items.length;
     if (hasMore && effectiveCooldown > 0) {
-      // eslint-disable-next-line no-await-in-loop
       await sleep(effectiveCooldown);
     }
   }
@@ -347,6 +345,7 @@ export async function runDataSyncCronJob() {
       batchSize: 30,
       cooldownMs: 60_000,
       processItem: async (participant) => {
+        // biome-ignore lint/correctness/noUnusedVariables: the email variable is intentionally unused
         const { email, name, os, phoneNumber, language } = await getUserDetails(participant.userId);
         if (phoneNumber) {
           await sendUnicaesDataSyncWhatsapp(zohoService, phoneNumber, name, os, participant.participantCode, language);
@@ -377,9 +376,11 @@ export async function runDataSyncCronJob() {
   } finally {
     try {
       if (app) await app.close();
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
     } catch (_) {}
     try {
       if (CronJobDataSource.isInitialized) await CronJobDataSource.destroy();
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
     } catch (_) {}
   }
 }

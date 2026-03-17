@@ -1,7 +1,6 @@
 import { IsDate, IsEmail, IsNotEmpty, IsOptional, IsUUID, ValidationOptions, registerDecorator } from 'class-validator';
 
 export function IsTimestampGreaterThanNow(property: string, validationOptions?: ValidationOptions) {
-  // eslint-disable-next-line func-names
   return function (object: any, propertyName: string) {
     registerDecorator({
       target: object.constructor,

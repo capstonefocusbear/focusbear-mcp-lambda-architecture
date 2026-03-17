@@ -1,10 +1,9 @@
-/* eslint-disable no-console */
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
 import { DateTime } from 'luxon';
 import PushNotifications = require('@pusher/push-notifications-server');
 import OpenAI from 'openai';
 import { MoreThanOrEqual } from 'typeorm';
-// eslint-disable-next-line import/extensions
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { GPT_4_1_MINI, CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-beams-publish-request.model';
@@ -14,7 +13,7 @@ import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/
 import { openAiConfig } from '../../apps/api-server/src/config';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// biome-ignore lint/style/noCommonJs: cron script uses require for dotenv
 require('dotenv').config();
 
 //TODO: Remove after root cause is found
@@ -437,7 +436,6 @@ function createFileName(routine: string, language: string) {
 async function runRoutineNotificationsCronJob() {
   await CronJobDataSource.initialize();
   try {
-    // eslint-disable-next-line no-console
     console.log('Routine cron: data source initialized');
     if (JEREMYS_USER_ID) {
       await logRoutineNotificationDebugForUser(JEREMYS_USER_ID);
@@ -446,14 +444,12 @@ async function runRoutineNotificationsCronJob() {
     let notificationsDispatched = 0;
 
     for await (const language of LANGUAGES) {
-      // eslint-disable-next-line no-console
       console.log('Routine cron: processing language', language);
       const morningMessage = await getMessage(
         ActivityType.morning,
         createFileName(ActivityType.morning, language),
         language,
       );
-      // eslint-disable-next-line no-console
       console.log('Routine cron: morning message resolved', language);
       const eveningMessage = await getMessage(
         ActivityType.evening,
@@ -467,7 +463,6 @@ async function runRoutineNotificationsCronJob() {
       const startupUsers = await getUsersForStartup(language);
       const shutdownUsers = await getUsersForShutdown(language);
 
-      // eslint-disable-next-line no-console
       console.log('Routine cron: fetched users', {
         language,
         startup: startupUsers.length,
@@ -487,23 +482,19 @@ async function runRoutineNotificationsCronJob() {
         translationData,
       );
 
-      // eslint-disable-next-line no-console
       console.log('Routine cron: finished publishing notifications', language);
 
       await Promise.all([
         updateUsersMorningRoutineNotification(startupUsers),
         updateUsersEveningRoutineNotification(shutdownUsers),
       ]);
-      // eslint-disable-next-line no-console
       console.log('Routine cron: updated routine notifications', language);
     }
-    // eslint-disable-next-line no-console
     console.log('Routine cron: finished all languages', { notificationsDispatched });
     return { notificationsDispatched };
   } finally {
     if (CronJobDataSource.isInitialized) {
       await CronJobDataSource.destroy().catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to destroy CronJobDataSource', error);
       });
     }

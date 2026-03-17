@@ -347,7 +347,7 @@ export class UnlockRequestService {
       let payload: UnlockRequestApprovalPayload;
       try {
         payload = await this.tokenService.verifyApprovalToken(approveUnlockRequestByTokenDto.token);
-      } catch (error) {
+      } catch (_error) {
         throw new UnauthorizedException('Invalid or expired approval token');
       }
 

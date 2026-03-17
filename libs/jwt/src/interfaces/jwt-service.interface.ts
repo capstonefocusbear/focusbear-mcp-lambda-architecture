@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-types */
+// biome-ignore-all lint/complexity/noBannedTypes: allow banned types in this file
 import * as jwt from 'jsonwebtoken';
 
 export interface IJwtService {

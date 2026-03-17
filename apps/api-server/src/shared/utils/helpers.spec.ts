@@ -117,6 +117,7 @@ describe('withTimeout', () => {
 
   it('awaits onTimeout callback before rejecting', async () => {
     const onTimeout = jest.fn(() => new Promise<void>((resolve) => setTimeout(resolve, 500)));
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
     const neverResolves = new Promise<void>(() => {});
     const promise = withTimeout(neverResolves, 1000, 'Operation timed out', onTimeout);
 

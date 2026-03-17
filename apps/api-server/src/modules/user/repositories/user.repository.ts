@@ -733,7 +733,7 @@ ${LEADERBOARD_USER_AGGREGATE_SUBQUERY}
       .getMany();
   }
 
-  /* eslint-disable no-param-reassign */
+  // biome-ignore-start lint/style/noParameterAssign: intentional mutation in loop
   private removeUnwantedProperties(sequence?: ActivitySequence) {
     if (sequence?.custom_routine) {
       sequence.custom_routine.user_id = undefined;
@@ -742,5 +742,5 @@ ${LEADERBOARD_USER_AGGREGATE_SUBQUERY}
       sequence.custom_routine_id = undefined;
     }
   }
-  /* eslint-enable no-param-reassign */
+  // biome-ignore-end lint/style/noParameterAssign: intentional mutation in loop
 }

@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
 import axios from 'axios';
 import { In, IsNull, Not } from 'typeorm';
 import { getDataCenterUrl } from '../../apps/api-server/src/shared/utils/helpers';
@@ -12,7 +12,7 @@ import { SyncedProject } from '../../apps/api-server/src/modules/to-do/entities/
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// biome-ignore lint/style/noCommonJs: cron script uses require for dotenv
 require('dotenv').config();
 
 async function getPlatformIntegrationData(platform: IntegrationPlatforms, userId: string, userExternalId?: string) {
@@ -277,7 +277,6 @@ async function runIntegrationCronJob() {
   } finally {
     if (CronJobDataSource.isInitialized) {
       await CronJobDataSource.destroy().catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to destroy CronJobDataSource', error);
       });
     }

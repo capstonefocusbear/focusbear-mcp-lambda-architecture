@@ -148,7 +148,7 @@ export class AccountabilityBuddyService {
       let payload: BuddyInvitationPayload;
       try {
         payload = await this.tokenService.verifyInvitationToken(token);
-      } catch (error) {
+      } catch (_error) {
         throw new UnauthorizedException('Invalid or expired invitation token');
       }
 

@@ -1,0 +1,121 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.7/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": { "ignoreUnknown": false },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 120,
+    "attributePosition": "auto",
+    "bracketSameLine": false,
+    "bracketSpacing": true,
+    "expand": "auto",
+    "useEditorconfig": true,
+    "includes": ["apps/**/*.ts", "libs/**/*.ts"]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "complexity": {
+        "noBannedTypes": "error",
+        "noUselessConstructor": "error",
+        "noUselessThisAlias": "error",
+        "noUselessTypeConstraint": "error",
+        "useArrowFunction": "off",
+        "useLiteralKeys": "error"
+      },
+      "correctness": {
+        "noInvalidUseBeforeDeclaration": "error",
+        "noPrecisionLoss": "error",
+        "noUndeclaredDependencies": "off",
+        "noUnusedVariables": "error"
+      },
+      "style": {
+        "noCommonJs": "error",
+        "noInferrableTypes": "off",
+        "noMagicNumbers": "off",
+        "noNamespace": "error",
+        "noNonNullAssertion": "error",
+        "useArrayLiterals": "error",
+        "useAsConstAssertion": "error",
+        "useBlockStatements": "off",
+        "useConsistentArrowReturn": "off",
+        "useDefaultParameterLast": "error",
+        "useNamingConvention": { "level": "off", "options": { "strictCase": false, "requireAscii": false } },
+        "useThrowOnlyError": "off"
+      },
+      "suspicious": {
+        "noConsole": { "level": "error", "options": { "allow": ["error"] } },
+        "noDuplicateClassMembers": "error",
+        "noEmptyBlockStatements": "error",
+        "noEmptyInterface": "error",
+        "noExplicitAny": "off",
+        "noExtraNonNullAssertion": "error",
+        "noImportCycles": "off",
+        "noMisleadingInstantiator": "error",
+        "noNonNullAssertedOptionalChain": "error",
+        "noRedeclare": "error",
+        "noTsIgnore": "error",
+        "noUnusedExpressions": "off",
+        "useAdjacentOverloadSignatures": "error",
+        "useAwait": "off",
+        "useNamespaceKeyword": "error"
+      },
+      "performance": {
+        "noAwaitInLoops": "error"
+      }
+    },
+    "includes": ["apps/api-server/src/**/*.ts", "apps/api-server/test/**/*.ts", "libs/**/*.ts", "cron-jobs/**/*.ts"]
+  },
+  "javascript": {
+    "formatter": {
+      "jsxQuoteStyle": "single",
+      "quoteProperties": "preserve",
+      "trailingCommas": "all",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "bracketSameLine": false,
+      "quoteStyle": "single",
+      "attributePosition": "auto",
+      "bracketSpacing": true
+    },
+    "parser": { "unsafeParameterDecoratorsEnabled": true }
+  },
+  "html": { "formatter": { "indentScriptAndStyle": false, "selfCloseVoidElements": "always" } },
+  "overrides": [
+    {
+      "includes": ["*.ts", "*.tsx", "*.mts", "*.cts"],
+      "linter": {
+        "rules": {
+          "complexity": { "noArguments": "error" },
+          "correctness": {
+            "noConstAssign": "error",
+            "noGlobalObjectCalls": "error",
+            "noInvalidConstructorSuper": "error",
+            "noSetterReturn": "error",
+            "noUndeclaredVariables": "error",
+            "noUnreachable": "error",
+            "noUnreachableSuper": "error",
+            "noUnresolvedImports": "error",
+            "useValidTypeof": "error"
+          },
+          "style": { "useConst": "error" },
+          "suspicious": {
+            "noDuplicateObjectKeys": "error",
+            "noDuplicateParameters": "error",
+            "noFunctionAssign": "error",
+            "noImportAssign": "error",
+            "noUnsafeNegation": "error",
+            "noVar": "error",
+            "useGetterReturn": "error"
+          }
+        }
+      }
+    }
+  ],
+  "assist": { "enabled": true, "actions": { "source": { "organizeImports": "on" } } }
+}

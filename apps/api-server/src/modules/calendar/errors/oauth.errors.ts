@@ -1,4 +1,3 @@
-/* eslint-disable max-classes-per-file */
 export class OAuthError extends Error {
   constructor(message: string, public readonly details: Record<string, any>) {
     super(message);

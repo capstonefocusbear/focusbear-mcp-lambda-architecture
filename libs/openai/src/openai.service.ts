@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-console */
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/suspicious/noConsole: streaming and logging
+// biome-ignore-all lint/correctness/noUnusedVariables: method signatures and callbacks
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { SentryTraced } from '@sentry/nestjs';
 import { InjectSentry, SentryService } from '@app/observability';

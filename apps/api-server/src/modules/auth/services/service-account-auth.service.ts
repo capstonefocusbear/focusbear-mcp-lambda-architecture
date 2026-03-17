@@ -87,7 +87,7 @@ export class ServiceAccountAuthService {
         action,
         aud: payload.aud,
       };
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

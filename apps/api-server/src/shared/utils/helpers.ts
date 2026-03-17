@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { ONE_HOUR_SECONDS, ONE_MINUTE_SECONDS } from './constants';
 import { NotifyLogsUploadSuccessDto } from '../../modules/app-logs/dto/notify-logs-upload-success.dto';
 
-// eslint-disable-next-line
+// biome-ignore lint/style/noCommonJs: require for dotenv
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -218,7 +218,7 @@ export const getR2FileNameFromUrl = (url: string): string => {
     const decodedUrl = decodeURIComponent(url);
     const { pathname } = new URL(decodedUrl);
     return pathname.substring(pathname.lastIndexOf('/') + 1);
-  } catch (error) {
+  } catch (_error) {
     return url;
   }
 };
@@ -231,7 +231,7 @@ export const safeDecodeURIComponent = (str: string): string => {
     // This is needed for Windows app bug reports where spaces are encoded as '+'
     const withSpaces = str.replace(/\+/g, ' ');
     return decodeURIComponent(withSpaces);
-  } catch (error) {
+  } catch (_error) {
     return str; // Return original string if decoding fails
   }
 };

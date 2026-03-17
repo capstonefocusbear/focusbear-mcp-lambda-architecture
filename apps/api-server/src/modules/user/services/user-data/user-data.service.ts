@@ -166,7 +166,7 @@ export class UserDataService {
         await manager.delete(HealthMetrics, { userId });
         await manager.delete(User, { id: userId });
       });
-    } catch (error) {
+    } catch (_error) {
       throw new InternalServerErrorException(`Failed to delete user ${userId} from database`);
     }
   }

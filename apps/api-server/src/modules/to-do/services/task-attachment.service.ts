@@ -80,7 +80,7 @@ export class TaskAttachmentService {
     try {
       const metadata = await this.r2Service.getObjectMetadata(S3_BUCKET_TASK_ATTACHMENTS, dto.file_key);
       actualFileSize = metadata.contentLength;
-    } catch (error) {
+    } catch (_error) {
       throw new BadRequestException('File not found in storage. Please upload the file first.');
     }
 

@@ -121,7 +121,7 @@ export class PlatformIntegrationsService {
               isExpired = false; // Token successfully refreshed
             }
           } catch (refreshError) {
-            // eslint-disable-next-line no-console
+            // biome-ignore lint/suspicious/noConsole: platform integration logging
             console.warn(
               `Failed to refresh token for user ${userId} (account: ${account.external_user_id}):`,
               refreshError,

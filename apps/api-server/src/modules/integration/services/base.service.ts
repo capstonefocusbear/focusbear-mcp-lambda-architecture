@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
 import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { Queue } from 'bull';
@@ -206,25 +206,22 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     let projectsResponse = [];
     if (!portals) return projectsResponse;
     for (const portal of portals) {
-      // eslint-disable-next-line no-console, no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
 
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: integration sync logging
       console.log('getAllProjects - portal: ', portal.id);
 
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: integration sync logging
       console.log('getAllProjects: ', projects);
 
-      // eslint-disable-next-line no-continue
       if (!projects?.length) continue;
       projects.forEach((project) => {
-        // eslint-disable-next-line no-param-reassign
         project.portal_id = portal.id;
       });
       projectsResponse = [...projectsResponse, ...projects];
     }
 
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: integration sync logging
     console.log('getAllProjects - response: ', projectsResponse);
     return projectsResponse;
   }
@@ -249,16 +246,14 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       if (!portals) return projectsResponse;
       const externalProjectIds: string[] = [];
       for (const portal of portals) {
-        // eslint-disable-next-line no-console, no-await-in-loop
         const projects = await this.getProjects(userId, portal.id);
 
-        // eslint-disable-next-line no-console
+        // biome-ignore lint/suspicious/noConsole: integration sync logging
         console.log('getAllUserProjects - portal: ', portal.id);
 
-        // eslint-disable-next-line no-console
+        // biome-ignore lint/suspicious/noConsole: integration sync logging
         console.log('getAllUserProjects: ', projects);
 
-        // eslint-disable-next-line no-continue
         if (!projects?.length) continue;
         projects.forEach((project) => {
           externalProjectIds.push(project.id);
@@ -308,7 +303,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         });
       }
 
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: integration sync logging
       console.log('getAllUserProjects - response: ', projectsResponse);
       return projectsResponse;
     } catch (error) {

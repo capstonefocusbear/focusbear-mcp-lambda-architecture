@@ -54,7 +54,7 @@ export const logVerboselyIfUserHasVerboseLoggingEnabled = async (
 
     const [first, ...rest] = logArgs;
     logger.log(first, ...rest);
-  } catch (error) {
+  } catch (_error) {
     // silently swallow errors to avoid taking down cron jobs due to logging issues
   }
 };

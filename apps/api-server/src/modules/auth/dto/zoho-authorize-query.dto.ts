@@ -9,6 +9,7 @@ export class ZohoAuthorizeQuery {
   location?: string;
 
   @IsOptional()
+  // biome-ignore lint/complexity/useLiteralKeys: square brackets are intentional
   ['accounts-server']?: string;
 
   @IsOptional()

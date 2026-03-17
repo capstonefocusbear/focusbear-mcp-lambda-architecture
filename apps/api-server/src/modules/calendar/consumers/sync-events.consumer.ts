@@ -1,4 +1,3 @@
-/* eslint-disable linebreak-style */
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { InjectSentry, SentryService } from '@app/observability';
@@ -119,9 +118,12 @@ export class SyncEventsConsumer extends WorkerHost {
 
           if (userId === '9884b0af-dc9f-4207-964e-e4db537a2234') {
             // Jeremy's Events
-            console.log('Events From Synced Events: ', eventsFromSyncedEvents.length); // eslint-disable-line no-console
-            console.log('Events To Sync (New): ', eventsToSync); // eslint-disable-line no-console
-            console.log('Events To Remove Ids: ', eventsToRemoveIds); // eslint-disable-line no-console
+            // biome-ignore lint/suspicious/noConsole: sync debug logging
+            console.log('Events From Synced Events: ', eventsFromSyncedEvents.length);
+            // biome-ignore lint/suspicious/noConsole: sync debug logging
+            console.log('Events To Sync (New): ', eventsToSync);
+            // biome-ignore lint/suspicious/noConsole: sync debug logging
+            console.log('Events To Remove Ids: ', eventsToRemoveIds);
           }
 
           await Promise.all(

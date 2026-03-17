@@ -66,7 +66,7 @@ export class ZohoDeskService {
       this.tokenExpiryTime = Date.now() + (tokenData.expires_in - 300) * 1000;
 
       return this.accessToken;
-    } catch (error) {
+    } catch (_error) {
       throw new Error('Failed to authenticate with Zoho API');
     }
   }

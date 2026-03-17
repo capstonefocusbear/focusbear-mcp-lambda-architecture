@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-this-alias */
+// biome-ignore-all lint/complexity/noUselessThisAlias: this alias is required for closure capture in factory pattern
 import { DynamicModule, Provider } from '@nestjs/common';
 import { IModuleAsyncOptions, IModuleOptionsFactory } from './dynamic-module.interface';
 

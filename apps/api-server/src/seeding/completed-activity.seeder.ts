@@ -35,7 +35,7 @@ export class CompletedActivitySeeder implements Seeder {
     });
 
     if (!morningActivity || !eveningActivity || !morningSequence || !eveningSequence) {
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: seeder logging
       console.warn('Test activities or sequences not found. Skipping completed activity seeding.');
       return;
     }

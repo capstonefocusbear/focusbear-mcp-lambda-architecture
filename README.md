@@ -416,7 +416,7 @@ Use API collection, make sure to update collection environment with the appropri
 
 #### 1. Docker - ms-azuretools.vscode-docker
 
-#### 2. ESLint - dbaeumer.vscode-eslint
+#### 2. Biome - biomejs.biome
 
 #### 3. Prettier - esbenp.prettier-vscode
 

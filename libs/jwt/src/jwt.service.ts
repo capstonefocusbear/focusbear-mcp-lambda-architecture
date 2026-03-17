@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-types */
+// biome-ignore-all lint/complexity/noBannedTypes: allow banned types in this file
 import { Inject, Injectable } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { IJwtOptions, IJwtService } from './interfaces';

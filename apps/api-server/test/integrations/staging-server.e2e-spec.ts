@@ -54,7 +54,6 @@ describe('endpoints', () => {
         .set({ Authorization: `Bearer ${token}` });
 
       const { morning_activities } = response.body;
-      // eslint-disable-next-line prefer-destructuring
       userFirstActivity = morning_activities[0];
       expect(response.status).toBe(200);
       expect(response.body.startup_time).toBeString();

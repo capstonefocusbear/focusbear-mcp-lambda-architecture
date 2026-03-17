@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: service logging
 import {
   BadRequestException,
   Inject,
@@ -1500,7 +1500,6 @@ export class CompletedActivityService implements OnModuleInit {
         },
       ]);
 
-      // eslint-disable-next-line no-console
       console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
       await this.pusherBeams.publishToUsers([user_id], publishRequest);
 
@@ -1585,9 +1584,8 @@ export class CompletedActivityService implements OnModuleInit {
       });
       const loqQuantityQuestionIds = logQuantityQuestions.map((question) => question.id);
       const logQuantityStats = await Promise.all(
-        loqQuantityQuestionIds.map(
-          (questionId) => this.getStatsByQuestionPerDay(questionId, { days_number, timezone: zone }),
-          // eslint-disable-next-line function-paren-newline
+        loqQuantityQuestionIds.map((questionId) =>
+          this.getStatsByQuestionPerDay(questionId, { days_number, timezone: zone }),
         ),
       );
       const stats = new CompletedActivityStats({
@@ -1915,7 +1913,6 @@ export class CompletedActivityService implements OnModuleInit {
           const isValidTime = !Number.isNaN(new Date(start_time).getDate());
           if (!isValidTime) throw new BadRequestException(`Invalid start time: ${start_time}`);
           const startOfDate = new Date(new Date(start_time).setUTCHours(0, 0, 0, 0)).toISOString();
-          // eslint-disable-next-line no-param-reassign
           group[startOfDate] ??= [];
           group[startOfDate].push(activity);
           return group;
@@ -1940,7 +1937,6 @@ export class CompletedActivityService implements OnModuleInit {
     try {
       const completedActivitiesGroupedBySequence = completedActivities.reduce((group, activity) => {
         const { activity_sequence_id } = activity;
-        // eslint-disable-next-line no-param-reassign
         group[activity_sequence_id] ??= [];
         group[activity_sequence_id].push(activity);
         return group;

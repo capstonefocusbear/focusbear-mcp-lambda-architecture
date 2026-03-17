@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../apps/api-server/src/app.module';
 import { ActivityTemplateEmbeddingSyncService } from '../apps/api-server/src/modules/activity-template/services/activity-template-embedding-sync.service';

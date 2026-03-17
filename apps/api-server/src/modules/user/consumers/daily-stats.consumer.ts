@@ -67,7 +67,7 @@ export class DailyStatsConsumer {
       }
       const dayStart = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).startOf('day').toJSDate();
       const dayEnd = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).endOf('day').toJSDate();
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: consumer logging
       console.log('Daily stats debug values: ', { startTime, startTimeAsJSDate, dayStart, dayEnd });
       const dailyStats = await this.dailyStatsRepository.orm.findOne({
         where: { user_id: user.id, date_completed: Between(dayStart, dayEnd) },
@@ -205,7 +205,7 @@ export class DailyStatsConsumer {
 
       // Log what was saved to database if verbose logging is enabled
     } catch (error) {
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: consumer logging
       console.log('Error in daily stats queued job: ', error);
       this.sentryService.instance().captureException(error, { level: 'error' });
     }

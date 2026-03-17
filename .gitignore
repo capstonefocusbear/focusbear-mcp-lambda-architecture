@@ -56,3 +56,6 @@ package-lock.json
 .cursor
 
 *.csv
+
+# Sentry Config File
+.env.sentry-build-plugin

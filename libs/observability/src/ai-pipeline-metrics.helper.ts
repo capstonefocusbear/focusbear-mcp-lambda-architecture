@@ -72,7 +72,13 @@ export async function emitAiPipelineMetrics(input: AiPipelineMetricInput): Promi
 
     if (input.emitDurationMetric !== false && Number.isFinite(input.durationMs)) {
       metricData.push(
-        createMetricDatum('AiPipelineDurationMs', input.durationMs, StandardUnit.Milliseconds, baseDimensions, timestamp),
+        createMetricDatum(
+          'AiPipelineDurationMs',
+          input.durationMs,
+          StandardUnit.Milliseconds,
+          baseDimensions,
+          timestamp,
+        ),
       );
     }
 

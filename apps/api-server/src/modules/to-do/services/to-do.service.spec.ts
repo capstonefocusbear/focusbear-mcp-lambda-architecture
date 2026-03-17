@@ -212,6 +212,32 @@ describe('toDoService', () => {
       );
     });
 
+    it('positive: should include completed todos when status is omitted', async () => {
+      const completedTodo = {
+        ...ToDoDBResponseDummy,
+        id: 'completed-todo-id',
+        status: ToDoStatus.COMPLETED,
+        subtasks: [],
+      };
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([[completedTodo], 1]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      expect(ToDoRepositoryMock.getUserToDos).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({ status: undefined }),
+      );
+      expect(response.data).toHaveLength(1);
+      expect(response.data[0]).toEqual(
+        expect.objectContaining({ id: 'completed-todo-id', status: ToDoStatus.COMPLETED }),
+      );
+    });
+
     it('positive: should filter by perspiration_gte and perspiration_lte', async () => {
       ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([[], 0]);
       ToDoRepositoryMock.addCachedStatusesToToDos.mockResolvedValueOnce([]);

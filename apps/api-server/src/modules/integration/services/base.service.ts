@@ -241,6 +241,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     });
     try {
       const portals: any = await this.getPortals(userId);
+
       const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
       const userSyncedProjectsExternalIds = userSyncedProjects.map(
         (syncedProject) => syncedProject.external_project_id,
@@ -265,12 +266,17 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
           const isSynced = userSyncedProjectsExternalIds.includes(project.id);
           let externalStatuses = [];
           let haveTasksBeenSynced = false;
+
+          let syncedAt = null;
+
           if (isSynced) {
             const linkedSyncedProject = userSyncedProjects.find(
               (syncedProject) => syncedProject.external_project_id === project.id,
             );
             externalStatuses = linkedSyncedProject.available_statuses;
             haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
+
+            syncedAt = linkedSyncedProject.updated_at ? new Date(linkedSyncedProject.updated_at).toISOString() : null;
           }
           const projectData = {
             name: project.name,
@@ -279,6 +285,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
             is_synced: isSynced,
             have_tasks_been_synced: haveTasksBeenSynced,
             external_statuses: externalStatuses,
+            synced_at: syncedAt,
           };
           projectsResponse.push(projectData);
         });

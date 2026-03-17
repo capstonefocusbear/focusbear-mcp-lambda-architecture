@@ -1,0 +1,25 @@
+meta {
+  name: todo-recent
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/to-do/recent
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~title: Task
+  ~take: 10
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

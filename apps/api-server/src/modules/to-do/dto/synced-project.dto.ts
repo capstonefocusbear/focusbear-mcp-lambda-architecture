@@ -10,4 +10,6 @@ export class SyncedProjectDto {
   is_synced: boolean;
 
   external_statuses: ExternalTaskStatus[];
+
+  synced_at?: string | null;
 }

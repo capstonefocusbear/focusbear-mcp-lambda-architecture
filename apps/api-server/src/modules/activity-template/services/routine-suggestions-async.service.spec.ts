@@ -77,6 +77,7 @@ describe('RoutineSuggestionsAsyncService', () => {
         durationMinutes: 30,
         source: 'app',
         requestHash: expect.any(String),
+        enqueuedAt: expect.any(String),
       }),
     });
 
@@ -91,6 +92,7 @@ describe('RoutineSuggestionsAsyncService', () => {
         userId: 'user-42',
         request: dto,
         requestHash: metadata.requestHash,
+        enqueuedAt: metadata.enqueuedAt,
       },
       expect.objectContaining({
         jobId: `routine-suggestions:${metadata.requestHash}`,

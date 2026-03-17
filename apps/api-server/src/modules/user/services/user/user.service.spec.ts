@@ -376,6 +376,49 @@ describe('UserService', () => {
       expect(RevenueCatServiceMock.grantTrialAccess).toHaveBeenCalledWith(userDummy.id);
       expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalled();
     });
+
+    it('recreates a deleted account as a fresh blank account on relogin', async () => {
+      const reloginDto: SyncUserAccountDto = {
+        ...syncAccountDto,
+        auth0_id: 'new-auth0-id-after-deletion',
+        email: auth0UserDummy.email,
+      };
+
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({
+        ...auth0UserDummy,
+        user_id: reloginDto.auth0_id,
+      });
+      Auth0ManagementServiceMock.getAuth0UsersWithEmail.mockResolvedValueOnce([
+        { ...auth0UserDummy, user_id: 'deleted-auth0-id' },
+        { ...auth0UserDummy, user_id: reloginDto.auth0_id },
+      ]);
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(null);
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+      UserRepositoryMock.create.mockResolvedValueOnce(userDummy);
+      DeviceRepositoryMock.orm.find.mockResolvedValue([]);
+      DeviceServiceMock.parseDeviceFromAuth0Client.mockReturnValue('MacOS');
+      RevenueCatServiceMock.getOrCreateSubscriber.mockResolvedValue(emptySubscriber.subscriber);
+
+      await userService.syncUserAccount(reloginDto);
+
+      expect(UserRepositoryMock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auth0_id: reloginDto.auth0_id,
+          stripe_customer_id: null,
+        }),
+      );
+      expect(UserSettingsServiceMock.updateSettings).toHaveBeenCalledWith(
+        { user_id: userDummy.id },
+        expect.objectContaining({
+          morning_activities: [],
+          evening_activities: [],
+          break_activities: [],
+          custom_routines: [],
+        }),
+        false,
+        { is_onboarding: true },
+      );
+    });
   });
 
   describe('getUserDetails', () => {
@@ -1602,6 +1645,82 @@ describe('UserService', () => {
         }),
         userWithoutContext.language,
         { jobDetails: null, typicalDistractions: null },
+      );
+    });
+
+    it('positive: should fall back to about:blank for blank URLs instead of throwing', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      const isUrlSafeDto = {
+        url: '   ',
+        tab_title: 'New Tab',
+        meta_description: 'Blank page',
+        focus_mode: 'work',
+        intention: 'research',
+        language: 'English',
+      };
+      const expectedResponse = {
+        allowed_probability: 0.1,
+        reason: 'Blank URL is handled safely',
+      };
+      OpenAIServiceMock.checkIfUrlIsSafeToUse.mockResolvedValueOnce(expectedResponse);
+
+      const result = await userService.checkIsUrlSafe(isUrlSafeDto, userDummy.id);
+
+      expect(OpenAIServiceMock.checkIfUrlIsSafeToUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...isUrlSafeDto,
+          url: 'about:blank',
+          justificationForThisUrl: undefined,
+        }),
+        userDummy.language,
+        { jobDetails: null, typicalDistractions: null },
+      );
+      expect(result).toEqual(expectedResponse);
+    });
+  });
+
+  describe('getRefactoredURLWithRespectToPrivacy', () => {
+    it('returns about:blank for blank URLs', () => {
+      expect(userService.getRefactoredURLWithRespectToPrivacy('   ')).toBe('about:blank');
+    });
+
+    it('preserves non-http schemes instead of throwing', () => {
+      expect(userService.getRefactoredURLWithRespectToPrivacy('about:blank')).toBe('about:blank');
+      expect(userService.getRefactoredURLWithRespectToPrivacy('chrome://newtab')).toBe('chrome://newtab');
+    });
+
+    it('strips tracking parameters from YouTube URLs', () => {
+      expect(
+        userService.getRefactoredURLWithRespectToPrivacy('https://www.youtube.com/watch?v=12345&ab_channel=test'),
+      ).toBe('https://www.youtube.com/watch?v=12345');
+      expect(
+        userService.getRefactoredURLWithRespectToPrivacy('https://www.youtube.com/watch?ab_channel=test&v=12345'),
+      ).toBe('https://www.youtube.com/watch?v=12345');
+    });
+
+    it('does not treat attacker-controlled hostnames as YouTube URLs', () => {
+      expect(
+        userService.getRefactoredURLWithRespectToPrivacy('https://youtube.com.attacker.com/watch?v=12345&token=secret'),
+      ).toBe('https://youtube.com.attacker.com/watch');
+    });
+
+    it('removes query parameters on parse fallback and avoids logging the raw URL', () => {
+      SentryServiceMock.addBreadcrumb.mockClear();
+
+      expect(userService.getRefactoredURLWithRespectToPrivacy('https://[::1?token=secret#fragment')).toBe(
+        'https://[::1',
+      );
+      expect(SentryServiceMock.addBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { sanitizedUrl: 'https://[::1' },
+        }),
+      );
+      expect(SentryServiceMock.addBreadcrumb).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            url: expect.anything(),
+          }),
+        }),
       );
     });
   });

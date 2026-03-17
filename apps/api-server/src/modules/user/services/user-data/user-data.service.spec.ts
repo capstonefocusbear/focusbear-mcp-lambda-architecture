@@ -22,6 +22,14 @@ import { UserDataService } from './user-data.service';
 import { dummyRevenueCatCustomer, QueueMock, userDummy } from '../../../../../test/dummies';
 import { LanguageOptions } from '../../../../shared/domain/language-options.enum';
 import { BullQueues, BullWorkers } from '../../../../shared/utils/constants';
+import { SurveyAnswerMetadata } from '../../../survey/entities/survey-answer-metadata.entity';
+import { SurveyAnswer } from '../../../survey/entities/survey-answer.entity';
+import { Survey } from '../../../survey/entities/survey.entity';
+import { LessonCompletion } from '../../../lesson/entities/lesson-completion.entity';
+import { Tutorial } from '../../../activity/entities/tutorial.entity';
+import { UsageData } from '../../entities/usage-data.entity';
+import { HealthMetrics } from '../../entities/health-metrics.entity';
+import { User } from '../../entities/user.entity';
 
 jest.mock('@sentry/nestjs', () => {
   const mockDecorator = (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor;
@@ -102,6 +110,10 @@ describe('UserDataService', () => {
     service = module.get<UserDataService>(UserDataService);
   });
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
@@ -121,6 +133,10 @@ describe('UserDataService', () => {
     it('positive: user should be deleted from DB and third -party services', async () => {
       const dummyEmail = 'test@mail.com';
       const dummyStripeId = 'cus_12345';
+      const managerDelete = jest.fn().mockResolvedValue(undefined);
+      UserRepositoryMock.orm.manager.transaction.mockImplementationOnce(async (callback) =>
+        callback({ delete: managerDelete }),
+      );
       UserRepositoryMock.orm.findOne.mockResolvedValueOnce({ ...userDummy, stripe_customer_id: dummyStripeId });
       Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: dummyEmail });
       RevenueCatServiceMock.getSubscriberFromRevenueCat.mockResolvedValueOnce(dummyRevenueCatCustomer);
@@ -132,7 +148,15 @@ describe('UserDataService', () => {
       expect(RevenueCatServiceMock.deleteUserFromRevenueCat).toHaveBeenCalledWith(userDummy.id);
       expect(Auth0ManagementServiceMock.deleteAuth0User).toHaveBeenCalledWith(userDummy.auth0_id);
       expect(BrevoServiceMock.deleteContactFromBrevo).toHaveBeenCalledWith(dummyEmail);
-      expect(UserRepositoryMock.orm.delete).toHaveBeenCalledWith({ id: userDummy.id });
+      expect(UserRepositoryMock.orm.manager.transaction).toHaveBeenCalled();
+      expect(managerDelete).toHaveBeenNthCalledWith(1, SurveyAnswerMetadata, { user_id: userDummy.id });
+      expect(managerDelete).toHaveBeenNthCalledWith(2, SurveyAnswer, { user_id: userDummy.id });
+      expect(managerDelete).toHaveBeenNthCalledWith(3, Survey, { creator: userDummy.id });
+      expect(managerDelete).toHaveBeenNthCalledWith(4, LessonCompletion, { user_id: userDummy.id });
+      expect(managerDelete).toHaveBeenNthCalledWith(5, Tutorial, { user_id: userDummy.id });
+      expect(managerDelete).toHaveBeenNthCalledWith(6, UsageData, { userId: userDummy.id });
+      expect(managerDelete).toHaveBeenNthCalledWith(7, HealthMetrics, { userId: userDummy.id });
+      expect(managerDelete).toHaveBeenNthCalledWith(8, User, { id: userDummy.id });
       expect(StripeServiceMock.deleteStripeCustomer).toHaveBeenCalledWith(dummyStripeId);
       expect(mockedAxios.post).toHaveBeenCalledWith(MOCK_ZOHO_CLIQ_BACKEND_BOT_WEBHOOK, {
         channel: 'channel',
@@ -140,6 +164,16 @@ describe('UserDataService', () => {
           userDummy.id
         } \n\n Message: some text \n\n Can contact: ${false} \n\n Platform: ${dummyHeaders.platform}`,
       });
+    });
+
+    it('throws if deleting the user row from the database fails', async () => {
+      UserRepositoryMock.orm.findOne.mockResolvedValueOnce(userDummy);
+      Auth0ManagementServiceMock.getAuth0User.mockResolvedValueOnce({ email: 'test@mail.com' });
+      UserRepositoryMock.orm.manager.transaction.mockRejectedValueOnce(new Error('fk violation'));
+
+      await expect(
+        service.deleteUser(userDummy.id, { can_contact: false, message: 'some text' }, { platform: 'Windows' }),
+      ).rejects.toThrow(`Failed to delete user ${userDummy.id} from database`);
     });
   });
 });

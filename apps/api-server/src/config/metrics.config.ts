@@ -21,6 +21,9 @@ export const metricsConfig = registerAs('metrics', () => {
     pollIntervalMs: Number(process.env.QUEUE_METRICS_POLL_MS) || DEFAULT_POLL_INTERVAL_MS,
     namespace: process.env.QUEUE_METRICS_NAMESPACE || 'FocusBear/Queues',
     service: process.env.QUEUE_METRICS_SERVICE || 'api',
+    aiPipelineNamespace:
+      process.env.AI_PIPELINE_METRICS_NAMESPACE || process.env.QUEUE_METRICS_NAMESPACE || 'FocusBear/Queues',
+    aiPipelineService: process.env.AI_PIPELINE_METRICS_SERVICE || process.env.QUEUE_METRICS_SERVICE || 'api',
     environment,
     logQueueFailures: resolveBoolean(process.env.LOG_QUEUE_FAILURES),
   };

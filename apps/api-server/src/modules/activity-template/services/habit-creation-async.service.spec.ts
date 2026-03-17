@@ -55,13 +55,18 @@ describe('HabitCreationAsyncService', () => {
 
     const result = await service.enqueueHabitCreation(dto, 'user-7', 'api');
 
-    expect(asyncTaskServiceMock.createAsyncTask).toHaveBeenCalled();
+    expect(asyncTaskServiceMock.createAsyncTask).toHaveBeenCalledWith({
+      metadata: expect.objectContaining({
+        enqueuedAt: expect.any(String),
+      }),
+    });
     expect(queueMock.add).toHaveBeenCalledWith(
       BullWorkers.PROCESS_HABIT_CREATION,
       expect.objectContaining({
         asyncTaskId: 'task-1',
         userId: 'user-7',
         request: dto,
+        enqueuedAt: expect.any(String),
       }),
       expect.objectContaining({
         jobId: expect.stringMatching(/^habit-creation:/),
@@ -114,6 +119,7 @@ describe('HabitCreationAsyncService', () => {
       expect.objectContaining({
         taskType: 'habit-creation',
         userId: 'user-7',
+        enqueuedAt: expect.any(String),
       }),
       expect.objectContaining({
         duplicateOfAsyncTaskId: 'task-existing-9',

@@ -1,5 +1,7 @@
 import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
+export type HabitImportRoutineType = 'morning' | 'evening' | 'break';
+
 export class HabitImportUploadedDto {
   @IsNotEmpty()
   @IsString()
@@ -18,7 +20,7 @@ export class HabitImportUploadedDto {
   @IsOptional()
   @IsString()
   @IsIn(['morning', 'evening', 'break'])
-  routineType?: 'morning' | 'evening' | 'break';
+  routineType?: HabitImportRoutineType;
 }
 
 export interface ExtractedHabit {
@@ -27,6 +29,7 @@ export interface ExtractedHabit {
   description?: string;
   estimatedDurationMinutes?: number;
   category?: string;
+  routineType?: HabitImportRoutineType;
 }
 
 export interface HabitSuggestionResult {
@@ -51,6 +54,7 @@ export interface HabitImportJobData {
   mediaKey: string;
   mediaType: 'image' | 'audio';
   routineDurationMinutes?: number;
-  routineType?: string;
+  routineType?: HabitImportRoutineType;
   requestHash: string;
+  enqueuedAt: string;
 }

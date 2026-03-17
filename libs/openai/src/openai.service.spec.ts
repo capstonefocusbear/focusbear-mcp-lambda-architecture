@@ -1434,7 +1434,12 @@ describe('OpenAIService', () => {
       // Mock the prompt cache service to return a habit adjustment prompt
       promptCacheServiceMock.getPrompt.mockImplementation((name: string) => {
         if (name === 'habit-adjustment-default') {
-          return 'You are a helpful AI assistant that helps users refine their daily habits and routines. Return ONLY a JSON array of objects with keys: id, name, duration_seconds.';
+          return [
+            'You are a helpful AI assistant that helps users refine their daily habits and routines.',
+            'Return ONLY a JSON object with either a "habits" array or a "groups" array.',
+            'Current habits: {{habits}}',
+            'User feedback: {{feedback}}',
+          ].join('\n');
         }
         return getDefaultPrompt(name);
       });
@@ -1454,7 +1459,7 @@ describe('OpenAIService', () => {
         choices: [
           {
             message: {
-              content: JSON.stringify([]),
+              content: JSON.stringify({ habits: [] }),
             },
           },
         ],
@@ -1465,6 +1470,49 @@ describe('OpenAIService', () => {
       const result = await service.adjustHabitsWithAi([], 'Add a new meditation habit for 10 minutes');
 
       expect(result).toEqual([]);
+    });
+
+    it('should return current habits when no choices are returned', async () => {
+      const mockResponse = {
+        choices: [],
+      };
+
+      const captureMessageSpy = jest.spyOn(SentryServiceMock.instance(), 'captureMessage');
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
+
+      expect(result).toEqual(currentHabits);
+      expect(captureMessageSpy).toHaveBeenCalledWith('No choices returned from AI for habit adjustment', {
+        level: 'error',
+      });
+    });
+
+    it('should return current habits when OpenAI truncates JSON mode output', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            finish_reason: 'length',
+            message: {
+              content: '[{"id":"e1c022d5-f729-45de-9e9f-a21df524a749"',
+            },
+          },
+        ],
+      };
+
+      const captureMessageSpy = jest.spyOn(SentryServiceMock.instance(), 'captureMessage');
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(currentHabits, 'Test feedback');
+
+      expect(result).toEqual(currentHabits);
+      expect(captureMessageSpy).toHaveBeenCalledWith('Incomplete response from AI for habit adjustment', {
+        level: 'warning',
+        extra: {
+          finishReason: 'length',
+          hasRefusal: false,
+        },
+      });
     });
 
     it('should generate new IDs for habits without IDs', async () => {
@@ -1482,7 +1530,7 @@ describe('OpenAIService', () => {
         choices: [
           {
             message: {
-              content: JSON.stringify(aiResponse),
+              content: JSON.stringify({ habits: aiResponse }),
             },
           },
         ],
@@ -1594,6 +1642,27 @@ describe('OpenAIService', () => {
       expect(mockCaptureException).toHaveBeenCalled();
     });
 
+    it('should extract habits array from wrapped object responses', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                status: 'ok',
+                habits: [{ id: 'e1c022d5-f729-45de-9e9f-a21df524a749', name: 'Exercise', duration_seconds: 1800 }],
+              }),
+            },
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
+
+      const result = await service.adjustHabitsWithAi(currentHabits, 'Keep it the same');
+
+      expect(result).toEqual(currentHabits);
+    });
+
     it('should return current habits when grouped response is not iterable', async () => {
       const mockResponse = {
         choices: [
@@ -1634,8 +1703,8 @@ describe('OpenAIService', () => {
       await service.adjustHabitsWithAi(currentHabits, 'Adjust my habits', ['fitness', 'wellness'], 45);
 
       const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
-      expect(systemPromptCall.content).toContain('User goals: fitness, wellness');
-      expect(systemPromptCall.content).toContain('Routine duration (minutes): 45');
+      expect(systemPromptCall.content).toContain('User goals: %%%fitness, wellness%%%');
+      expect(systemPromptCall.content).toContain('Routine duration (minutes): %%%45%%%');
     });
 
     it('should handle OpenAI API errors', async () => {
@@ -1722,12 +1791,11 @@ describe('OpenAIService', () => {
 
       // Should include activity_type for context but not extra_field
       expect(promptContent).toContain(
-        'You are a helpful AI assistant that helps users refine their daily habits and routines. Return ONLY a JSON array of objects with keys: id, name, duration_seconds.',
+        'You are a helpful AI assistant that helps users refine their daily habits and routines.',
       );
+      expect(promptContent).toContain('Return ONLY a JSON object with either a "habits" array or a "groups" array.');
       expect(promptContent).not.toContain('extra_field');
-      expect(promptContent).toContain(
-        'You are a helpful AI assistant that helps users refine their daily habits and routines. Return ONLY a JSON array of objects with keys: id, name, duration_seconds.',
-      );
+      expect(promptContent).toContain('Current habits: %%%[');
     });
 
     it('should handle null/undefined habits gracefully', async () => {
@@ -1735,7 +1803,7 @@ describe('OpenAIService', () => {
         choices: [
           {
             message: {
-              content: JSON.stringify([]),
+              content: JSON.stringify({ habits: [] }),
             },
           },
         ],
@@ -1838,6 +1906,8 @@ describe('OpenAIService', () => {
       const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
       const promptContent = systemPromptCall.content;
 
+      expect(promptContent.startsWith('%%%')).toBe(false);
+      expect(promptContent).toContain('%%%Adjust my habits%%%');
       expect(promptContent).not.toContain('User goals:');
       expect(promptContent).not.toContain('Routine duration (minutes):');
       expect(promptContent).not.toContain('Context:');
@@ -1866,7 +1936,7 @@ describe('OpenAIService', () => {
       const promptContent = systemPromptCall.content;
 
       expect(promptContent).not.toContain('User goals:');
-      expect(promptContent).toContain('Routine duration (minutes): 30');
+      expect(promptContent).toContain('Routine duration (minutes): %%%30%%%');
       expect(promptContent).toContain('Context:');
     });
 
@@ -1892,7 +1962,7 @@ describe('OpenAIService', () => {
       const systemPromptCall = (mockFn.mock.calls[0][0] as any[]).find((msg: any) => msg.role === 'system');
       const promptContent = systemPromptCall.content;
 
-      expect(promptContent).toContain('User goals: fitness');
+      expect(promptContent).toContain('User goals: %%%fitness%%%');
       expect(promptContent).not.toContain('Routine duration (minutes):');
     });
 
@@ -1909,7 +1979,7 @@ describe('OpenAIService', () => {
         choices: [
           {
             message: {
-              content: JSON.stringify(aiGroupedResponse),
+              content: JSON.stringify({ groups: aiGroupedResponse }),
             },
           },
         ],
@@ -1938,7 +2008,7 @@ describe('OpenAIService', () => {
         { goal: 'fitness', habits: [{ id: 'h1', name: 'Exercise', duration_seconds: 1800, emoji: '3' }] },
       ];
       const mockResponse = {
-        choices: [{ message: { content: JSON.stringify(aiGroupedResponse) } }],
+        choices: [{ message: { content: JSON.stringify({ groups: aiGroupedResponse }) } }],
       };
       jest.spyOn(service as any, 'getOpenAIChatCompletionsNonStreaming').mockResolvedValueOnce(mockResponse);
 
@@ -1964,7 +2034,7 @@ describe('OpenAIService', () => {
         choices: [
           {
             message: {
-              content: JSON.stringify(aiFlatResponse),
+              content: JSON.stringify({ habits: aiFlatResponse }),
             },
           },
         ],

@@ -68,6 +68,7 @@ describe('HabitImportAsyncService', () => {
           routineDurationMinutes: 30,
           routineType: 'morning',
           source: 'api',
+          enqueuedAt: expect.any(String),
         }),
       });
 
@@ -80,6 +81,7 @@ describe('HabitImportAsyncService', () => {
           mediaType: 'image',
           routineDurationMinutes: 30,
           routineType: 'morning',
+          enqueuedAt: expect.any(String),
         }),
         expect.objectContaining({
           jobId: expect.stringMatching(/^habit-import:/),
@@ -115,6 +117,7 @@ describe('HabitImportAsyncService', () => {
           routineDurationMinutes: null,
           routineType: null,
           source: 'mobile',
+          enqueuedAt: expect.any(String),
         }),
       });
 

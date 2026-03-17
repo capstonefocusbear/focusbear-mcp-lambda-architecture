@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import axios from 'axios';
 import { Queue } from 'bull';
@@ -13,6 +13,14 @@ import { LanguageOptions } from '../../../../shared/domain/language-options.enum
 import { DeleteUserQueryParamDto } from '../../dto/delete-user-query-params.dto';
 import { maskEmail } from '../../../../shared/utils/helpers';
 import { BullQueues, BullWorkers, EMAIL_SUBJECTS, FOCUS_BEAR_EMAILS } from '../../../../shared/utils/constants';
+import { User } from '../../entities/user.entity';
+import { SurveyAnswerMetadata } from '../../../survey/entities/survey-answer-metadata.entity';
+import { SurveyAnswer } from '../../../survey/entities/survey-answer.entity';
+import { Survey } from '../../../survey/entities/survey.entity';
+import { LessonCompletion } from '../../../lesson/entities/lesson-completion.entity';
+import { Tutorial } from '../../../activity/entities/tutorial.entity';
+import { UsageData } from '../../entities/usage-data.entity';
+import { HealthMetrics } from '../../entities/health-metrics.entity';
 
 @Injectable()
 export class UserDataService {
@@ -68,17 +76,21 @@ export class UserDataService {
       });
 
       if (!user) throw new NotFoundException(`User with id: ${user_id} does not exists!`);
-      const promises: any[] = [this.userRepository.orm.delete({ id: user_id })];
 
       const auth0user = await this.auth0ManagementService.getAuth0User(user.auth0_id);
       if (auth0user) {
-        const auth0Promise = this.auth0ManagementService.deleteAuth0User(user.auth0_id);
-        promises.push(auth0Promise);
+        await this.auth0ManagementService.deleteAuth0User(user.auth0_id);
       }
 
+      await this.deleteUserDataFromDatabase(user_id);
+
+      const cleanupTasks: Array<{ label: string; promise: Promise<unknown> }> = [];
       const revenueCatUser = await this.revenueCatService.getSubscriberFromRevenueCat(user_id);
       if (revenueCatUser) {
-        promises.push(this.revenueCatService.deleteUserFromRevenueCat(user_id));
+        cleanupTasks.push({
+          label: 'RevenueCat user deletion',
+          promise: this.revenueCatService.deleteUserFromRevenueCat(user_id),
+        });
       }
 
       // Check if this is an internal test account
@@ -97,7 +109,10 @@ export class UserDataService {
         };
 
         // send email payload
-        promises.push(this.emailService.sendEmail(emailPayload));
+        cleanupTasks.push({
+          label: 'Delete notification email',
+          promise: this.emailService.sendEmail(emailPayload),
+        });
       }
 
       // Cliq message included user's plaform
@@ -111,23 +126,66 @@ export class UserDataService {
             can_contact ?? false
           } \n\n Platform: ${appPlatform}`,
         };
-        promises.push(axios.post(cliqUrl, body));
+        cleanupTasks.push({
+          label: 'Cliq delete notification',
+          promise: axios.post(cliqUrl, body),
+        });
       }
 
       // conditionally delete in stripe because of issue with stripe IDs being cleared
       if (user.stripe_customer_id) {
-        const deleteStripePromise = this.stripeService.deleteStripeCustomer(user.stripe_customer_id);
-        promises.push(deleteStripePromise);
+        cleanupTasks.push({
+          label: 'Stripe customer deletion',
+          promise: this.stripeService.deleteStripeCustomer(user.stripe_customer_id),
+        });
       }
 
       if (auth0user?.email) {
-        promises.push(this.brevoService.deleteContactFromBrevo(auth0user.email));
+        cleanupTasks.push({
+          label: 'Brevo contact deletion',
+          promise: this.brevoService.deleteContactFromBrevo(auth0user.email),
+        });
       }
 
-      await Promise.allSettled(promises);
+      await this.runBestEffortCleanup(cleanupTasks, user_id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       throw error;
     }
+  }
+
+  private async deleteUserDataFromDatabase(userId: string) {
+    try {
+      await this.userRepository.orm.manager.transaction(async (manager) => {
+        await manager.delete(SurveyAnswerMetadata, { user_id: userId });
+        await manager.delete(SurveyAnswer, { user_id: userId });
+        await manager.delete(Survey, { creator: userId });
+        await manager.delete(LessonCompletion, { user_id: userId });
+        await manager.delete(Tutorial, { user_id: userId });
+        await manager.delete(UsageData, { userId });
+        await manager.delete(HealthMetrics, { userId });
+        await manager.delete(User, { id: userId });
+      });
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to delete user ${userId} from database`);
+    }
+  }
+
+  private async runBestEffortCleanup(tasks: Array<{ label: string; promise: Promise<unknown> }>, userId: string) {
+    if (!tasks.length) return;
+
+    const results = await Promise.allSettled(tasks.map((task) => task.promise));
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.sentryService.instance().captureException(result.reason, {
+          level: 'error',
+          extra: {
+            userId,
+            task: tasks[index].label,
+          },
+        });
+      }
+    });
   }
 }

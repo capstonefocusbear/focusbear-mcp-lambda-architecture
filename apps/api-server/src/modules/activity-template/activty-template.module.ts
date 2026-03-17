@@ -69,6 +69,7 @@ import { HabitImportConsumer } from './consumers/habit-import.consumer';
   ],
   controllers: [ActivityLibraryController],
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([ActivityTemplate, ActivityTemplateEmbedding, HabitLibraryRequest]),
     forwardRef(() => UserModule),
     ActivityModule,

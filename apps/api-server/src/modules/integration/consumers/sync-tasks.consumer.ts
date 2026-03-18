@@ -64,10 +64,10 @@ export class SyncTasksConsumer {
           tags: [...(projectAsFocusModeTag ? [projectAsFocusModeTag] : [])],
         });
       });
-      await Promise.all([
-        this.toDoRepository.orm.save(tasksAsToDos),
-        this.syncedProjectsService.markSyncedProjectTasksAsSynced(syncedProjectRecord.id),
-      ]);
+
+      await this.toDoRepository.orm.save(tasksAsToDos);
+
+      await this.syncedProjectsService.markSyncedProjectTasksAsSynced(syncedProjectRecord.id);
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
       console.error('Error in sync-project-tasks queued job: ', error);

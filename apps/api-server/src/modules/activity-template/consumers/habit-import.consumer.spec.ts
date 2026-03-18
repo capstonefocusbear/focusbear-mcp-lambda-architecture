@@ -47,7 +47,7 @@ jest.mock('sharp', () => {
 describe('HabitImportConsumer', () => {
   let consumer: HabitImportConsumer;
 
-  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   const asyncTaskServiceMock = {
     updateStatusWithMetadata: jest.fn(),
@@ -270,7 +270,7 @@ describe('HabitImportConsumer', () => {
       );
       expect(result[1]).toEqual(
         expect.objectContaining({
-          id: expect.stringMatching(UUID_REGEX),
+          id: expect.stringMatching(UUID_V4_REGEX),
           name: 'Exercise',
           duration_seconds: 1800,
           activity_type: 'morning',
@@ -374,7 +374,51 @@ describe('HabitImportConsumer', () => {
       expect(firstRun).toHaveLength(1);
       expect(secondRun).toHaveLength(1);
       expect(firstRun[0].id).toEqual(secondRun[0].id);
-      expect(firstRun[0].id).toMatch(UUID_REGEX);
+      expect(firstRun[0].id).toMatch(UUID_V4_REGEX);
+    });
+
+    it('replaces matched template ids that are not UUIDv4', async () => {
+      const job = buildJob({ mediaType: 'image' });
+      const matchedWithNonV4TemplateId: HabitSuggestionResult[] = [
+        {
+          extractedHabit: mockExtractedHabits[0],
+          matched: true,
+          matchedTemplate: {
+            id: 'c3550628-65e2-5b01-8b15-fd9b6836ca22',
+            name: 'Mindfulness Meditation',
+            description: 'Guided meditation',
+            activityType: 'morning',
+            durationSeconds: 600,
+            matchScore: 0.9,
+            justification: 'Similar meditation activity',
+          },
+        },
+      ];
+
+      r2ServiceMock.getPresignedUrl.mockResolvedValueOnce('https://r2.example.com/image.png');
+      mockedAxios.get.mockResolvedValueOnce({
+        data: Buffer.from('fake-image-data'),
+      });
+      habitImportExtractionServiceMock.extractHabitsFromImage.mockResolvedValueOnce([mockExtractedHabits[0]]);
+      habitImportExtractionServiceMock.matchExtractedHabitsWithTelemetry.mockResolvedValueOnce({
+        results: matchedWithNonV4TemplateId,
+        telemetry: {
+          embeddingBatchCalls: 1,
+          ragRetrieveMs: 10,
+          ragTemplateFetchMs: 5,
+          ragRerankMs: 8,
+          rerankLlmCalls: 1,
+          rerankShortcutAccepts: 0,
+          rerankShortcutRejects: 0,
+        },
+      });
+      habitImportExtractionServiceMock.logUnmatchedHabits.mockResolvedValueOnce(undefined);
+
+      const result = await consumer.processHabitImport(job);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toMatch(UUID_V4_REGEX);
+      expect(result[0].id).not.toBe('c3550628-65e2-5b01-8b15-fd9b6836ca22');
     });
 
     it('overrides matched activity type when routineType is provided', async () => {

@@ -454,7 +454,7 @@ export class HabitImportConsumer {
 
         const rawId = template?.id;
         let resolvedId: string;
-        if (rawId && isUUID(rawId)) {
+        if (rawId && isUUID(rawId, '4')) {
           resolvedId = rawId;
         } else if (!result.matched) {
           resolvedId = this.buildDeterministicUnmatchedHabitId(requestHash, sourceHabit, index);
@@ -523,7 +523,7 @@ export class HabitImportConsumer {
     const hash = createHash('sha256').update(seed).digest('hex');
     const part1 = hash.slice(0, 8);
     const part2 = hash.slice(8, 12);
-    const part3 = `5${hash.slice(13, 16)}`; // UUIDv5-compatible version nibble
+    const part3 = `4${hash.slice(13, 16)}`; // Deterministic UUIDv4-compatible version nibble
     const variantSource = hash.slice(16, 17).toLowerCase();
     const variantMap: Record<string, string> = {
       0: '8',

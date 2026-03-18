@@ -1,14 +1,14 @@
 const { sentryWebpackPlugin } = require("@sentry/webpack-plugin");
 
-module.exports = {
-  // ... other options
-  devtool: "source-map", // Source map generation must be turned on
+module.exports = (options) => ({
+  ...options,
+  devtool: "hidden-source-map",
   plugins: [
-    // Put the Sentry Webpack plugin after all other plugins
+    ...(options.plugins || []),
     sentryWebpackPlugin({
       authToken: process.env.SENTRY_AUTH_TOKEN,
       org: "focus-bear",
       project: "backend",
     }),
   ],
-}
+});

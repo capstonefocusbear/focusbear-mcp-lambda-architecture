@@ -565,6 +565,189 @@ describe('ActivityLibraryService', () => {
       expect(response).toEqual([]);
     });
 
+    it('falls back to RAG when predefined direct matches do not cover all selected goals', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: [
+          { goal: 'Boost productivity', isCustom: false },
+          { goal: 'Strengthen relationships', isCustom: false },
+        ],
+        routine_duration: 20,
+      };
+
+      const directMatchTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: '64b9a83b-5f38-4811-9f5a-79889274e4e1',
+        tags: [new ActivityTemplateTag({ tags: ['Boost productivity'] })],
+        activity_data: {
+          ...dummyActivityTemplatesWithTags[0].activity_data,
+          name: 'Top 3 priorities',
+        },
+      } as any;
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([directMatchTemplate]);
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockImplementation((goal: string) => {
+        if (goal === 'Boost productivity') {
+          return Promise.resolve([{ activityTemplateId: directMatchTemplate.id, similarity: 0.91 }]);
+        }
+        if (goal === 'Strengthen relationships') {
+          return Promise.resolve([]);
+        }
+        return Promise.resolve([]);
+      });
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([directMatchTemplate]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [
+          {
+            habitId: directMatchTemplate.id,
+            name: 'Top 3 priorities',
+            justification: 'Creates a clear focus target for the day.',
+            matchScore: 0.91,
+            template: directMatchTemplate,
+            description: 'Choose the three highest-impact tasks for the day before you start working.',
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockImplementation((goal: string) => {
+        if (goal === 'Strengthen relationships') {
+          return Promise.resolve([
+            {
+              name: 'Plan quality time',
+              description: 'Schedule a call, walk, meal, or shared activity with someone you care about.',
+              routineType: ActivityType.evening,
+              durationMinutes: 5,
+              justification: 'Turns good intentions into concrete connection.',
+            },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id)) as any[];
+
+      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Boost productivity', 20, {
+        routineType: undefined,
+      });
+      expect(ActivityTemplateRetrieverServiceMock.retrieveByGoal).toHaveBeenCalledWith('Strengthen relationships', 20, {
+        routineType: undefined,
+      });
+      expect(RoutineSuggestionGeneratorServiceMock.generateNewHabits).toHaveBeenCalledWith(
+        'Strengthen relationships',
+        expect.objectContaining({
+          limit: 10,
+          routineDurationSeconds: dto.routine_duration * ONE_MINUTE_SECONDS,
+        }),
+      );
+      expect(response).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'Top 3 priorities',
+            ai_generated: false,
+            ai_goals: expect.arrayContaining(['Boost productivity']),
+          }),
+          expect.objectContaining({
+            name: 'Plan quality time',
+            ai_generated: true,
+            ai_goals: expect.arrayContaining(['Strengthen relationships']),
+          }),
+        ]),
+      );
+    });
+
+    it('returns grouped results for all predefined goals when only some have direct matches', async () => {
+      UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
+
+      const dto = {
+        ...dummyGetRoutineSuggestionsDto,
+        user_goals: [
+          { goal: 'Boost productivity', isCustom: false },
+          { goal: 'Strengthen relationships', isCustom: false },
+        ],
+        routine_duration: 20,
+        groupByGoals: true,
+      };
+
+      const directMatchTemplate = {
+        ...dummyActivityTemplatesWithTags[0],
+        id: '64b9a83b-5f38-4811-9f5a-79889274e4e1',
+        tags: [new ActivityTemplateTag({ tags: ['Boost productivity'] })],
+        activity_data: {
+          ...dummyActivityTemplatesWithTags[0].activity_data,
+          name: 'Top 3 priorities',
+        },
+      } as any;
+
+      ActivityTemplateRepositoryMock.getActivityTemplatesWithGoalsMatched.mockResolvedValueOnce([directMatchTemplate]);
+      ActivityTemplateRetrieverServiceMock.retrieveByGoal.mockImplementation((goal: string) => {
+        if (goal === 'Boost productivity') {
+          return Promise.resolve([{ activityTemplateId: directMatchTemplate.id, similarity: 0.91 }]);
+        }
+        if (goal === 'Strengthen relationships') {
+          return Promise.resolve([]);
+        }
+        return Promise.resolve([]);
+      });
+      ActivityTemplateRepositoryMock.orm.find.mockResolvedValueOnce([directMatchTemplate]);
+      RoutineSuggestionGeneratorServiceMock.generateSuggestions.mockResolvedValueOnce({
+        accepted: [
+          {
+            habitId: directMatchTemplate.id,
+            name: 'Top 3 priorities',
+            justification: 'Creates a clear focus target for the day.',
+            matchScore: 0.91,
+            template: directMatchTemplate,
+            description: 'Choose the three highest-impact tasks for the day before you start working.',
+          },
+        ],
+        rejectedCount: 0,
+        parsedCount: 1,
+        minScoreApplied: 0.5,
+      });
+      RoutineSuggestionGeneratorServiceMock.generateNewHabits.mockImplementation((goal: string) => {
+        if (goal === 'Strengthen relationships') {
+          return Promise.resolve([
+            {
+              name: 'Plan quality time',
+              description: 'Schedule a call, walk, meal, or shared activity with someone you care about.',
+              routineType: ActivityType.evening,
+              durationMinutes: 5,
+              justification: 'Turns good intentions into concrete connection.',
+            },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      const response = (await activityLibraryService.getActivitiesRelatedToUserGoals(dto, userDummy.id)) as Record<
+        string,
+        any[]
+      >;
+
+      expect(Object.keys(response)).toEqual(['Boost productivity', 'Strengthen relationships']);
+      expect(response['Boost productivity']).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'Top 3 priorities',
+            ai_goals: expect.arrayContaining(['Boost productivity']),
+          }),
+        ]),
+      );
+      expect(response['Strengthen relationships']).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'Plan quality time',
+            ai_generated: true,
+            ai_goals: expect.arrayContaining(['Strengthen relationships']),
+          }),
+        ]),
+      );
+    });
+
     it('prioritizes custom goals when custom has no direct matches', async () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValueOnce(userDummy);
 

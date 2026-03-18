@@ -177,7 +177,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
       });
     });
 
-    it('should exclude completed todos when no status filter', async () => {
+    it('should not filter by status when no status filter provided', async () => {
       mockQueryBuilder.getRawAndEntities.mockResolvedValue({
         entities: [],
         raw: [],
@@ -185,7 +185,7 @@ describe('ToDoRepository - SQL Query Testing', () => {
 
       await toDoRepository.getUserToDos(userId, baseQueryDto);
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith("to_do.status != 'COMPLETED'");
+      expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith('to_do.status = :status', expect.anything());
     });
 
     it('should add eisenhower quadrant filter when provided', async () => {

@@ -101,6 +101,22 @@ describe('BaseIntegrationService', () => {
   describe('getAllUserProjects', () => {
     const mockProjectId = 'mock_project_123';
 
+    beforeEach(() => {
+      jest.spyOn(service as any, 'getPortals').mockResolvedValue([
+        {
+          id: 'mock-portal-id',
+          platform: 'trello',
+        },
+      ]);
+
+      jest.spyOn(service as any, 'getProjects').mockResolvedValue([
+        {
+          id: 'mock_project_123',
+          name: 'Test Project',
+        },
+      ]);
+    });
+
     it('positive: should properly map and format the synced_at date to an ISO string', async () => {
       const mockDate = new Date('2026-03-18T10:00:00.000Z');
 

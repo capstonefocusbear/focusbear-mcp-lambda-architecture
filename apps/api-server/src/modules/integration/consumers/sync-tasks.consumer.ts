@@ -111,8 +111,15 @@ export class SyncTasksConsumer {
         await Promise.all([
           this.deleteRemovedTasks(userId, tasksFromProject, syncedTasksFromProject),
           this.saveNewTasks(userId, syncedProjects, syncedTasksFromProject, tasksFromProject, platform),
-          this.syncedProjectsRepository.orm.update({ id: syncedProject.id }, { synced_at: new Date() }),
         ]);
+
+        await this.syncedProjectsRepository.orm.update(
+          { id: syncedProject.id },
+          {
+            synced_at: new Date(),
+            have_tasks_been_synced: true,
+          },
+        );
       }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

@@ -54,4 +54,7 @@ export class SyncedProject extends BaseEntity {
 
   @OneToMany(() => ToDo, (toDo) => toDo.synced_project)
   to_dos?: ToDo[];
+
+  @Column({ type: 'timestamptz', nullable: true })
+  synced_at: Date;
 }

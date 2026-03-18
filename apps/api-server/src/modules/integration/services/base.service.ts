@@ -246,38 +246,35 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       const userSyncedProjectsExternalIds = userSyncedProjects.map(
         (syncedProject) => syncedProject.external_project_id,
       );
+
       const projectsResponse = [];
       if (!portals) return projectsResponse;
+
       const externalProjectIds: string[] = [];
+
       for (const portal of portals) {
-        // eslint-disable-next-line no-console, no-await-in-loop
         const projects = await this.getProjects(userId, portal.id);
 
-        // eslint-disable-next-line no-console
-        console.log('getAllUserProjects - portals: ', portal.id);
-
-        // eslint-disable-next-line no-console
-        console.log('getAllUserProjects: ', projects);
-
-        // eslint-disable-next-line no-continue
         if (!projects?.length) continue;
+
         projects.forEach((project) => {
           externalProjectIds.push(project.id);
           const isSynced = userSyncedProjectsExternalIds.includes(project.id);
           let externalStatuses = [];
           let haveTasksBeenSynced = false;
-
           let syncedAt = null;
 
           if (isSynced) {
             const linkedSyncedProject = userSyncedProjects.find(
               (syncedProject) => syncedProject.external_project_id === project.id,
             );
+
             externalStatuses = linkedSyncedProject.available_statuses;
             haveTasksBeenSynced = linkedSyncedProject.have_tasks_been_synced;
 
-            syncedAt = linkedSyncedProject.updated_at ? new Date(linkedSyncedProject.updated_at).toISOString() : null;
+            syncedAt = linkedSyncedProject.synced_at ? new Date(linkedSyncedProject.synced_at).toISOString() : null;
           }
+
           const projectData = {
             name: project.name,
             project_id: project.id,
@@ -291,10 +288,10 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         });
       }
 
-      // Remove unrelated projects that were previously synced
       const projectsToRemove = userSyncedProjects.filter(
         (syncedProject) => !externalProjectIds.includes(syncedProject.external_project_id),
       );
+
       if (projectsToRemove.length > 0) {
         const toDosToRemove = await this.toDoRepository.orm.find({
           where: {
@@ -315,8 +312,6 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         });
       }
 
-      // eslint-disable-next-line no-console
-      console.log('getAllUserProjects - response: ', projectsResponse);
       return projectsResponse;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

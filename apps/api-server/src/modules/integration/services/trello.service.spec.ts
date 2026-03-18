@@ -612,4 +612,68 @@ describe('trelloService', () => {
       expect(mockedAxios.put).toHaveBeenCalledWith(url, null, { params });
     });
   });
+
+  describe('getAllUserProjects', () => {
+    const mockUserId = '2636a216-f363-493e-aeb8-d275a0a9016d';
+    const mockProjectId = 'trello_board_123';
+
+    beforeEach(() => {
+      jest.spyOn(trelloService as any, 'getPortals').mockResolvedValue(null);
+      jest.spyOn(trelloService as any, 'getPlatformIntegrationRecord').mockResolvedValue({
+        client_id: 'fake_client',
+        access_token: 'fake_token',
+      });
+      jest
+        .spyOn(trelloService as any, 'tryGetUserProjects')
+        .mockResolvedValue([{ id: mockProjectId, name: 'Test Trello Board' }]);
+    });
+
+    it('positive: should properly map and format the synced_at date to an ISO string', async () => {
+      const mockDate = new Date('2026-03-18T10:00:00.000Z');
+
+      SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          user_id: mockUserId,
+          external_project_id: mockProjectId,
+          available_statuses: [],
+          have_tasks_been_synced: true,
+          synced_at: mockDate,
+        },
+      ]);
+
+      const result = await trelloService.getAllUserProjects(mockUserId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].is_synced).toBe(true);
+      expect(result[0].synced_at).toBe('2026-03-18T10:00:00.000Z');
+    });
+
+    it('positive: should return null for synced_at if the database value is null', async () => {
+      SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([
+        {
+          user_id: mockUserId,
+          external_project_id: mockProjectId,
+          available_statuses: [],
+          have_tasks_been_synced: false,
+          synced_at: null,
+        },
+      ]);
+
+      const result = await trelloService.getAllUserProjects(mockUserId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].is_synced).toBe(true);
+      expect(result[0].synced_at).toBeNull();
+    });
+
+    it('positive: should return null for synced_at if the project is not synced yet', async () => {
+      SyncedProjectsRepositoryMock.orm.find.mockResolvedValueOnce([]);
+
+      const result = await trelloService.getAllUserProjects(mockUserId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].is_synced).toBe(false);
+      expect(result[0].synced_at).toBeNull();
+    });
+  });
 });

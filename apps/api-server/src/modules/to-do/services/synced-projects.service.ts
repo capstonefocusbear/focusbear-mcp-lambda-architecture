@@ -67,6 +67,9 @@ export class SyncedProjectsService {
     console.log(syncedProject);
 
     syncedProject.have_tasks_been_synced = true;
+
+    syncedProject.synced_at = new Date();
+
     await this.syncedProjectsRepository.orm.save(syncedProject);
   }
 }

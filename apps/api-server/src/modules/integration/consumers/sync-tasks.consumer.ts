@@ -111,6 +111,7 @@ export class SyncTasksConsumer {
         await Promise.all([
           this.deleteRemovedTasks(userId, tasksFromProject, syncedTasksFromProject),
           this.saveNewTasks(userId, syncedProjects, syncedTasksFromProject, tasksFromProject, platform),
+          this.syncedProjectsRepository.orm.update({ id: syncedProject.id }, { synced_at: new Date() }),
         ]);
       }
     } catch (error) {

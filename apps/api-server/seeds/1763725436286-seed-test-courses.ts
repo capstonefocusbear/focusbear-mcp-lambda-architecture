@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class seedTestCourses1763725436286 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const testUserId = '47b8f555-d20a-4f2a-9b42-cba89900f52f';
+    const testUserId = '2636a216-f363-493e-aeb8-d275a0a9016d';
     const now = new Date().toISOString();
 
     // Seed test courses

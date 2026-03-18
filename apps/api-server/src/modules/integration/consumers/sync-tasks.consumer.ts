@@ -53,8 +53,6 @@ export class SyncTasksConsumer {
         : await service.getTasks(userId, portalId, projectId);
       const syncedProjectRecord = await this.syncedProjectsService.getSyncedProject(projectId, userId);
 
-      console.log(syncedProjectRecord);
-
       const tasksAsToDos = tasksFromProject.map((task) => {
         return new ToDo({
           user_id: userId,
@@ -96,30 +94,34 @@ export class SyncTasksConsumer {
         select: ['id', 'external_task_id', 'external_task_metadata', 'title', 'details'],
       });
       const allTasksFromPlatform = await this.getTasksFromSyncedProjects(userId, platform);
-      for await (const syncedProject of syncedProjects) {
-        // Filter out tasks not belonging to this project
-        const tasksFromProject = allTasksFromPlatform.filter(
-          (externalTask) => externalTask.external_metadata.project_id === syncedProject.external_project_id,
-        );
-        // Get local tasks that are from this project only
-        const syncedTasksFromProject = allUserExternalTasks.filter(({ external_task_metadata }) => {
-          return (
-            external_task_metadata?.platform === platform &&
-            external_task_metadata?.task_data?.project_id === syncedProject.external_project_id
+      for (const syncedProject of syncedProjects) {
+        try {
+          // Filter out tasks not belonging to this project
+          const tasksFromProject = allTasksFromPlatform.filter(
+            (externalTask) => externalTask.external_metadata.project_id === syncedProject.external_project_id,
           );
-        });
-        await Promise.all([
-          this.deleteRemovedTasks(userId, tasksFromProject, syncedTasksFromProject),
-          this.saveNewTasks(userId, syncedProjects, syncedTasksFromProject, tasksFromProject, platform),
-        ]);
 
-        await this.syncedProjectsRepository.orm.update(
-          { id: syncedProject.id },
-          {
-            synced_at: new Date(),
-            have_tasks_been_synced: true,
-          },
-        );
+          // Get local tasks that are from this project only
+          const syncedTasksFromProject = allUserExternalTasks.filter(({ external_task_metadata }) => {
+            return (
+              external_task_metadata?.platform === platform &&
+              external_task_metadata?.task_data?.project_id === syncedProject.external_project_id
+            );
+          });
+
+          await Promise.all([
+            this.deleteRemovedTasks(userId, tasksFromProject, syncedTasksFromProject),
+            this.saveNewTasks(userId, syncedProjects, syncedTasksFromProject, tasksFromProject, platform),
+          ]);
+
+          await this.syncedProjectsRepository.orm.update(
+            { id: syncedProject.id },
+            { synced_at: new Date(), have_tasks_been_synced: true },
+          );
+        } catch (error) {
+          this.sentryService.instance().captureException(error, { level: 'error' });
+          console.error(`Error syncing project ${syncedProject.id}: `, error);
+        }
       }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

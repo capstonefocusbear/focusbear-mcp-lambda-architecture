@@ -63,8 +63,6 @@ export class SyncedProjectsService {
   async markSyncedProjectTasksAsSynced(syncedProjectRecordId: string) {
     const syncedProject = await this.syncedProjectsRepository.orm.findOneBy({ id: syncedProjectRecordId });
 
-    console.log(syncedProject);
-
     syncedProject.have_tasks_been_synced = true;
 
     syncedProject.synced_at = new Date();

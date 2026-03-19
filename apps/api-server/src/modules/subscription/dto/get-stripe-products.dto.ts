@@ -1,4 +1,3 @@
-// biome-ignore-all lint/style/noInferrableTypes: explicit types for API clarity
 export class GetStripeProductsDto {
   ending_before?: string;
 

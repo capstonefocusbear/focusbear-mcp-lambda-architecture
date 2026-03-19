@@ -492,14 +492,12 @@ export class UserSettingsService {
     const differenceSeconds = cutoffDateTime.diff(shutdownDateTime, 'seconds').seconds;
     if (differenceSeconds > 0) {
       // @Description: Check for any high priority activities
-      // biome-ignore-start lint/style/noParameterAssign: intentional mutation in reduce
       const eveningRoutineHighPriorityActivitiesDuration = eveningActivities.reduce((totalDuration, activity) => {
         if (activity.priority === ActivityPriority.HIGH) {
           totalDuration += activity.duration_seconds;
         }
         return totalDuration;
       }, 0);
-      // biome-ignore-end lint/style/noParameterAssign: intentional mutation in reduce
 
       const remainingDuration = differenceSeconds - eveningRoutineHighPriorityActivitiesDuration;
       return remainingDuration > 0 ? remainingDuration : 0;

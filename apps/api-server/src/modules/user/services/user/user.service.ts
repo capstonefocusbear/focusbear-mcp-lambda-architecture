@@ -1235,11 +1235,9 @@ export class UserService {
   }
 
   isValidURL(string: string) {
-    // biome-ignore-start lint/suspicious/noMisleadingCharacterClass: regex requires escaped character class
     const validUrl = /^(https?|ftp):\/\/[a-zA-Z0-9-\\.]+\.[a-zA-Z]{2,6}(\/\S*)?$/;
     const validUrlWithoutProtocol =
       /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]*(\.[a-zA-Z]{2,3})?(\/[a-zA-Z0-9@:%_\+.~#?&//=]*)?$/;
-    // biome-ignore-end lint/suspicious/noMisleadingCharacterClass: regex requires escaped character class
     return validUrl.test(string) || validUrlWithoutProtocol.test(string);
   }
 

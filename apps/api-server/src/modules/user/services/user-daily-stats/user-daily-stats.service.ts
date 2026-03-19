@@ -1,4 +1,3 @@
-/* eslint-disable default-case */
 import { Inject, Injectable, UnauthorizedException, forwardRef } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';

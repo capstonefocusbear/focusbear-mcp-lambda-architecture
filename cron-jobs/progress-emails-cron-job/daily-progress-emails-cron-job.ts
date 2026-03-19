@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
 import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -41,6 +41,7 @@ async function runDailyProgressEmailsCronJob() {
     let skip = 0;
     let batchNum = 1;
     while (true) {
+      // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
       const batch = await userRepository.getUsersForDailyEmailsBatch(skip, BATCH_SIZE, 30);
       if (batch.length === 0) break;
       usersConsidered += batch.length;

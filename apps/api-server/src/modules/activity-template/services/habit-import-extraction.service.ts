@@ -95,7 +95,7 @@ export class HabitImportExtractionService {
       let retrievalFailed = false;
       try {
         const retrieveStartedAt = Date.now();
-        // eslint-disable-next-line no-await-in-loop
+        // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
         matchesByHabit = await this.retrieveMatchesForBatch(searchQueries, routineType);
         telemetry.ragRetrieveMs += Date.now() - retrieveStartedAt;
         if (searchQueries.length > 0) {
@@ -122,7 +122,6 @@ export class HabitImportExtractionService {
       }
 
       if (!retrievalFailed) {
-        // eslint-disable-next-line no-await-in-loop
         const batchResults = await Promise.all(
           batch.map(async (habit, index) => {
             try {

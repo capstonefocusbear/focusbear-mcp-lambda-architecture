@@ -77,6 +77,19 @@ describe('ExternalMcpTasksService', () => {
       expect(mockToDoRepository.getAgentAssignedToDos).toHaveBeenCalledWith(mockUserId, mockTokenId, query);
     });
 
+    it('should include completed tasks when status is omitted', async () => {
+      const mockTasks = [
+        { id: mockTaskId, title: 'Completed task', assigned_mcp_token_id: mockTokenId, status: ToDoStatus.COMPLETED },
+      ];
+      mockToDoRepository.getAgentAssignedToDos.mockResolvedValueOnce([mockTasks, 1]);
+
+      const result = await service.listTasks(mockUserId, mockTokenId, [McpScope.TASKS_READ], query);
+
+      expect(mockToDoRepository.getAgentAssignedToDos).toHaveBeenCalledWith(mockUserId, mockTokenId, query);
+      expect(result.data).toEqual(mockTasks);
+      expect(result.data[0]).toEqual(expect.objectContaining({ status: ToDoStatus.COMPLETED }));
+    });
+
     it('should throw UnauthorizedException when tasks:read scope is missing', async () => {
       await expect(service.listTasks(mockUserId, mockTokenId, [McpScope.TASKS_WRITE], query)).rejects.toThrow(
         UnauthorizedException,

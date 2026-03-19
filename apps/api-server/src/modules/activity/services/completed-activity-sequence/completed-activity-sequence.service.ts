@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: service logging
 import { BadRequestException, Injectable, NotAcceptableException, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';

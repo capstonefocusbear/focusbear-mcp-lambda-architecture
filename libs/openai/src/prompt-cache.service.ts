@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: cache logging
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import * as fs from 'fs/promises';

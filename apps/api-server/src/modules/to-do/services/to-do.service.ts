@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: service logging
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';

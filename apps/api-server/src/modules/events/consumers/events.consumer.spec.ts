@@ -1,4 +1,3 @@
-/* eslint-disable global-require */
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { SENTRY_TOKEN, SentryService } from '@app/observability';
@@ -40,7 +39,7 @@ import { EventsConsumer } from './events.consumer';
 import { EventsService } from '../services/events.service';
 
 jest.mock('ioredis', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // biome-ignore lint/style/noCommonJs: test uses require for mock
   const RedisMock = require('ioredis-mock');
   if (typeof RedisMock === 'function') {
     // ioredis-mock exports a constructor function

@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: service logging
 import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -72,7 +72,6 @@ export class StudyParticipantService {
       );
 
       // Find the group with the lowest count for this specific combination
-      // eslint-disable-next-line no-confusing-arrow
       const minCharacteristicGroup = characteristicGroupCounts.reduce((min, current) =>
         current.count < min.count ? current : min,
       );

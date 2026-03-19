@@ -4,15 +4,14 @@ import { runCronWithTelemetry } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { CronJobDataSource } from '../data-source';
-import {
-  logVerboselyIfUserHasVerboseLoggingEnabled,
-} from '../utils/verbose-logging';
+import { logVerboselyIfUserHasVerboseLoggingEnabled } from '../utils/verbose-logging';
 
-/* eslint-disable @typescript-eslint/no-var-requires */
+// biome-ignore-start lint/style/noCommonJs: cron script uses require for pg, pusher, dotenv, luxon
 const { Pool } = require('pg');
 const PushNotifications = require('@pusher/push-notifications-server');
 const dotenv = require('dotenv');
 const { DateTime } = require('luxon');
+// biome-ignore-end lint/style/noCommonJs: cron script uses require for pg, pusher, dotenv, luxon
 
 dotenv.config();
 
@@ -41,7 +40,6 @@ const fetchNotifications = async () => {
     return res.rows;
   } finally {
     await pool.end().catch((error) => {
-      // eslint-disable-next-line no-console
       console.error('Failed to close PG pool', error);
     });
   }
@@ -106,7 +104,7 @@ async function runPusherCronJob() {
 
   try {
     const notificationsToSend = await fetchNotifications();
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: cron job progress logging
     console.log(`Ran for ${notificationsToSend.length} notification(s).`);
     if (notificationsToSend.length === 0) {
       return { notificationsSent: 0 };
@@ -129,7 +127,6 @@ async function runPusherCronJob() {
   } finally {
     if (CronJobDataSource.isInitialized) {
       await CronJobDataSource.destroy().catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to destroy CronJobDataSource', error);
       });
     }

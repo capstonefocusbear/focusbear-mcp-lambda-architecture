@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
 import { DateTime } from 'luxon';
 import { DummyTasksStreaksResponse } from '../../apps/api-server/test/dummies';
 import { TasksStreaksResponse } from '../../apps/api-server/src/modules/user/domain/tasks-streaks-response.model';
@@ -223,11 +224,16 @@ describe('helpers', () => {
 
     const runTest = (dailyStats, expected, userSignupDaysAgo: number) => {
       const userCreatedAt = DateTime.local().minus({ days: userSignupDaysAgo }).toJSDate();
-      const result = calculateStreaks(dailyStats, timeZone, {
-        morningRoutineDailyDurations,
-        eveningRoutineDailyDurations,
-        microBreaksDailyDurations,
-      }, userCreatedAt);
+      const result = calculateStreaks(
+        dailyStats,
+        timeZone,
+        {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        },
+        userCreatedAt,
+      );
       expect(result).toEqual(expected);
     };
 
@@ -332,9 +338,27 @@ describe('helpers', () => {
       const userSignupDaysAgo = 30; // User signed up 30 days ago
       const { userDailyStats, expected } = setupTest(
         [
-          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 0, secondsSpentDoingBreaks: 1 },
-          { date: DateTime.local().minus({ days: 20 }).toISODate(), focusModes: 0, morning: 0, evening: 100, secondsSpentDoingBreaks: 0 },
+          {
+            date: DateTime.local().minus({ days: 5 }).toISODate(),
+            focusModes: 1,
+            morning: 100,
+            evening: 100,
+            secondsSpentDoingBreaks: 100,
+          },
+          {
+            date: DateTime.local().minus({ days: 10 }).toISODate(),
+            focusModes: 1,
+            morning: 100,
+            evening: 0,
+            secondsSpentDoingBreaks: 1,
+          },
+          {
+            date: DateTime.local().minus({ days: 20 }).toISODate(),
+            focusModes: 0,
+            morning: 0,
+            evening: 100,
+            secondsSpentDoingBreaks: 0,
+          },
         ],
         userSignupDaysAgo, // 30 days
         3, // 3 days with any activity
@@ -351,8 +375,20 @@ describe('helpers', () => {
       const userSignupDaysAgo = 90; // Boundary case
       const { userDailyStats, expected } = setupTest(
         [
-          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
-          { date: DateTime.local().minus({ days: 50 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 1 },
+          {
+            date: DateTime.local().minus({ days: 5 }).toISODate(),
+            focusModes: 1,
+            morning: 100,
+            evening: 100,
+            secondsSpentDoingBreaks: 100,
+          },
+          {
+            date: DateTime.local().minus({ days: 50 }).toISODate(),
+            focusModes: 1,
+            morning: 100,
+            evening: 100,
+            secondsSpentDoingBreaks: 1,
+          },
         ],
         userSignupDaysAgo,
         2,
@@ -416,10 +452,16 @@ describe('helpers', () => {
       const userSignupDaysAgo = 100; // User signed up > 90 days ago
       const { userDailyStats, expected } = setupTest(
         [
-          { date: DateTime.local().minus({ days: 5 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
+          {
+            date: DateTime.local().minus({ days: 5 }).toISODate(),
+            focusModes: 1,
+            morning: 100,
+            evening: 100,
+            secondsSpentDoingBreaks: 100,
+          },
         ],
         userSignupDaysAgo,
-        1,   // Only 1 day with activity
+        1, // Only 1 day with activity
         1, // 1/90 = 1.11% ≈ 1% (1 completed day out of 90 possible)
         1,
         1,
@@ -482,16 +524,34 @@ describe('helpers', () => {
       const { userDailyStats, expected } = setupTest(
         [
           // Day 1: Full completion
-          { date: DateTime.local().minus({ days: 10 }).toISODate(), focusModes: 1, morning: 100, evening: 100, secondsSpentDoingBreaks: 100 },
+          {
+            date: DateTime.local().minus({ days: 10 }).toISODate(),
+            focusModes: 1,
+            morning: 100,
+            evening: 100,
+            secondsSpentDoingBreaks: 100,
+          },
           // Day 2: Partial completion (morning above threshold)
-          { date: DateTime.local().minus({ days: 20 }).toISODate(), focusModes: 1, morning: 40, evening: 100, secondsSpentDoingBreaks: 100 },
+          {
+            date: DateTime.local().minus({ days: 20 }).toISODate(),
+            focusModes: 1,
+            morning: 40,
+            evening: 100,
+            secondsSpentDoingBreaks: 100,
+          },
           // Day 3: No completion
-          { date: DateTime.local().minus({ days: 30 }).toISODate(), focusModes: 0, morning: 0, evening: 0, secondsSpentDoingBreaks: 0 },
+          {
+            date: DateTime.local().minus({ days: 30 }).toISODate(),
+            focusModes: 0,
+            morning: 0,
+            evening: 0,
+            secondsSpentDoingBreaks: 0,
+          },
         ],
         userSignupDaysAgo,
         2, // Only 2 days had any meaningful activity
         2, // 2/90 = 2.22% ≈ 2% (2 completed morning routines out of 90 possible days)
-        2, // 2/90 = 2.22% ≈ 2% (2 completed evening routines out of 90 possible days)  
+        2, // 2/90 = 2.22% ≈ 2% (2 completed evening routines out of 90 possible days)
         2, // 2/90 = 2.22% ≈ 2% (2 completed micro breaks out of 90 possible days)
       );
 
@@ -502,21 +562,38 @@ describe('helpers', () => {
       const userSignupDaysAgo = 7;
       const userCreatedAt = DateTime.local().minus({ days: userSignupDaysAgo }).toJSDate();
       const userDailyStats = Array.from({ length: 7 }, (_, i) => ({
-        date_completed: new Date(DateTime.local().minus({ days: 6 - i }).toISODate()),
+        date_completed: new Date(
+          DateTime.local()
+            .minus({ days: 6 - i })
+            .toISODate(),
+        ),
         focus_modes_completed: 1,
         morning_routine_completion_percentage: 100,
         evening_routine_completion_percentage: 100,
         micro_breaks_routine_completion_percentage: 0,
         seconds_spent_doing_breaks: 100,
-        created_at: new Date(DateTime.local().minus({ days: 6 - i }).toISODate()).toISOString(),
-        updated_at: new Date(DateTime.local().minus({ days: 6 - i }).toISODate()).toISOString(),
+        created_at: new Date(
+          DateTime.local()
+            .minus({ days: 6 - i })
+            .toISODate(),
+        ).toISOString(),
+        updated_at: new Date(
+          DateTime.local()
+            .minus({ days: 6 - i })
+            .toISODate(),
+        ).toISOString(),
       }));
 
-      const result = calculateStreaks(userDailyStats, timeZone, {
-        morningRoutineDailyDurations,
-        eveningRoutineDailyDurations,
-        microBreaksDailyDurations,
-      }, userCreatedAt);
+      const result = calculateStreaks(
+        userDailyStats,
+        timeZone,
+        {
+          morningRoutineDailyDurations,
+          eveningRoutineDailyDurations,
+          microBreaksDailyDurations,
+        },
+        userCreatedAt,
+      );
 
       expect(result.morning_number_days_completed).toBe(7);
       expect(result.evening_number_days_completed).toBe(7);
@@ -535,22 +612,23 @@ describe('helpers', () => {
         const userSignupDaysAgo = 100;
 
         const now = DateTime.now().setZone(userTimezone);
+
         console.log(`CURRENT SERVER TIME, ${DateTime.now().toISO()}`);
         console.log(`CURRENT USER TIME, ${now.toISO()}`);
 
         // Create activities with specific times in UTC-10 timezone
         const activities = [
-          { daysAgo: 4, hour: 15, minute: 0 },  // 4 days ago at 15:00 user local time (UTC: 01:00, same day as 3 days ago)
-          { daysAgo: 3, hour: 5, minute: 0 },   // 3 days ago at 05:00 user local time (UTC: 15:00)
-          { daysAgo: 2, hour: 7, minute: 0 },   // 2 days ago at 07:00 user local time (UTC: 17:00)
-          { daysAgo: 1, hour: 10, minute: 5 },  // 1 day ago at 10:05 user local time (UTC: 20:05)
+          { daysAgo: 4, hour: 15, minute: 0 }, // 4 days ago at 15:00 user local time (UTC: 01:00, same day as 3 days ago)
+          { daysAgo: 3, hour: 5, minute: 0 }, // 3 days ago at 05:00 user local time (UTC: 15:00)
+          { daysAgo: 2, hour: 7, minute: 0 }, // 2 days ago at 07:00 user local time (UTC: 17:00)
+          { daysAgo: 1, hour: 10, minute: 5 }, // 1 day ago at 10:05 user local time (UTC: 20:05)
         ];
 
         const userDailyStats = activities.map((activity) => {
           const localTime = now.minus({ days: activity.daysAgo }).set({
             hour: activity.hour,
             minute: activity.minute,
-            second: 0
+            second: 0,
           });
 
           return {
@@ -566,11 +644,16 @@ describe('helpers', () => {
         });
 
         const userCreatedAt = now.minus({ days: userSignupDaysAgo }).startOf('day').toJSDate();
-        const result = calculateStreaks(userDailyStats, userTimezone, {
-          morningRoutineDailyDurations,
-          eveningRoutineDailyDurations,
-          microBreaksDailyDurations,
-        }, userCreatedAt);
+        const result = calculateStreaks(
+          userDailyStats,
+          userTimezone,
+          {
+            morningRoutineDailyDurations,
+            eveningRoutineDailyDurations,
+            microBreaksDailyDurations,
+          },
+          userCreatedAt,
+        );
 
         // Should count all 4 activities
         expect(result.number_days_completed).toBe(4);
@@ -590,4 +673,3 @@ describe('helpers', () => {
     });
   });
 });
-

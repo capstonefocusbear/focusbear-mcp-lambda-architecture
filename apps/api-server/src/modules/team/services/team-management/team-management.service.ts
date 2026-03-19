@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectSentry, SentryService } from '@app/observability';
 import { RevenueCatService } from '@app/revenue-cat';
@@ -50,6 +50,8 @@ import { CreateBatchJoinCodesDto } from '../../dto/create-batch-join-codes.dto';
  */
 @Injectable()
 export class TeamManagementService {
+  private readonly logger = new Logger(TeamManagementService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly teamRepository: TeamRepository,
@@ -1189,7 +1191,6 @@ export class TeamManagementService {
   }
 
   // @Description: This method is used to add bulk students to a team (dev use only)
-  /* eslint-disable */
   async addBulkStudents(adminId: string, addBulkStudentsDto: { team_id: string; students: string[] }) {
     const { team_id, students } = addBulkStudentsDto;
     try {
@@ -1233,7 +1234,7 @@ export class TeamManagementService {
               const user = await this.userRepository.orm.findOne({ where: { auth0_id: auth0User?.user_id } });
               userId = user?.id || '';
               if (!userId) {
-                console.log(`Student ${email} is not registered in the system`);
+                this.logger.warn(`Student ${email} is not registered in the system`);
               }
             }
             const parsedName = parseNameFromEmail(email);
@@ -1256,6 +1257,7 @@ export class TeamManagementService {
           }
         });
 
+        // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
         const batchResults = await Promise.allSettled(batchPromises);
 
         batchResults.forEach((result) => {
@@ -1280,6 +1282,7 @@ export class TeamManagementService {
       for (let i = 0; i < studentInfo.length; i += VALIDATION_BATCH_SIZE) {
         const validationBatch = studentInfo.slice(i, i + VALIDATION_BATCH_SIZE);
 
+        // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
         const validationResults = await Promise.allSettled(
           validationBatch.map(async (student) => {
             try {
@@ -1332,6 +1335,7 @@ export class TeamManagementService {
         }
 
         try {
+          // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
           const [memberRecordResult, membershipResult] = await Promise.allSettled([
             this.ensureTeamMemberRecord(
               team.id,
@@ -1356,7 +1360,7 @@ export class TeamManagementService {
                 // Rollback: delete the member record that was just created
                 const memberIdentifier = memberId ? { member_id: memberId } : { email };
                 await this.teamToMemberRepository.orm.delete({ team_id: team.id, ...memberIdentifier });
-                console.log(`Rolled back newly created member record for ${email} after membership grant failure`);
+                this.logger.warn(`Rolled back newly created member record for ${email} after membership grant failure`);
               } catch (rollbackError) {
                 console.error(`Failed to rollback member record for ${email}:`, rollbackError);
               }
@@ -1366,13 +1370,13 @@ export class TeamManagementService {
             let failureReason = '';
             if (memberRecordResult.status === 'rejected') {
               failureReason = `Failed to create team member record: ${memberRecordResult.reason}`;
-              console.error(`Failed to create team member record for ${email}:`, memberRecordResult.reason);
+              this.logger.error(`Failed to create team member record for ${email}`, String(memberRecordResult.reason));
             }
             if (membershipResult.status === 'rejected') {
               failureReason = failureReason
                 ? `${failureReason}; Failed to grant membership: ${membershipResult.reason}`
                 : `Failed to grant membership: ${membershipResult.reason}`;
-              console.error(`Failed to grant membership for ${email}:`, membershipResult.reason);
+              this.logger.error(`Failed to grant membership for ${email}`, String(membershipResult.reason));
             }
             failedStudents.push({ student, reason: failureReason });
           }
@@ -1404,5 +1408,4 @@ export class TeamManagementService {
       console.error(`Failed to add bulk students:`, error);
     }
   }
-  /* eslint-enable */
 }

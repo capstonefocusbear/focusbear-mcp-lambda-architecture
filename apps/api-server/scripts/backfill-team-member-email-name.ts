@@ -84,6 +84,7 @@ class BackfillTeamMemberEmailNameScript {
     const counts: BatchCounts = { successCount: 0, skipCount: 0, errorCount: 0 };
 
     for (const [batchIndex, batch] of batches.entries()) {
+      // biome-ignore lint/performance/noAwaitInLoops: batches are intentionally throttled for Auth0 rate limits
       const batchCounts = await this.processBatch(batch, teamToMemberRepository);
       counts.successCount += batchCounts.successCount;
       counts.skipCount += batchCounts.skipCount;

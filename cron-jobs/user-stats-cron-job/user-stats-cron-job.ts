@@ -73,9 +73,7 @@ async function getSequenceDurationForCurrentDay(routineLog: CompletedActivitySeq
   const user = await CronJobDataSource.manager.findOne(User, { where: { id: userId } });
   const userTimeZone = user?.timezone || 'UTC';
 
-  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time)
-    .setZone(userTimeZone)
-    .weekdayShort;
+  const currentDayOfWeek = DateTime.fromJSDate(routineLog.start_time).setZone(userTimeZone).weekdayShort;
   const { morningRoutineDailyDurations, eveningRoutineDailyDurations, microBreaksDailyDurations } =
     await getUserRoutineDailyDurations(userId);
   const sequenceType = routineLog.activity_sequence.type;
@@ -130,6 +128,7 @@ async function calculateRoutineCompletionPercentage(
     !Number.isFinite(totalDurationOfCompletedActivities) ||
     totalDurationOfCompletedActivities <= 0
   ) {
+    // biome-ignore lint/suspicious/noConsole: cron job logging
     console.warn(
       `Invalid sequenceDurationForCurrentDay or totalDurationOfCompletedActivities for user_id: ${user_id}, completed_activity_log_id: ${completed_activity_log_id}.`,
     );
@@ -169,6 +168,7 @@ async function calculateOfflineActivitiesCompletionPercentage() {
     const dailyStats = await CronJobDataSource.manager.find(DailyStats, { where: { should_recalculate: true } });
     for (const dailyStat of dailyStats) {
       try {
+        // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
         await recalculateDailyStatRoutineCompletions(dailyStat);
       } catch (error) {
         console.error(`Failed to recalculate for dailyStat id ${dailyStat.id}:`, error);
@@ -231,7 +231,9 @@ async function runUserStatsCronJob() {
         evening_routines_streak,
         micro_breaks_streak,
       });
-      const currentTime = DateTime.now().setZone(user.timezone || 'UTC').toJSDate();
+      const currentTime = DateTime.now()
+        .setZone(user.timezone || 'UTC')
+        .toJSDate();
       await CronJobDataSource.manager.update(
         User,
         { id: user.id },
@@ -261,13 +263,12 @@ async function runUserStatsCronJob() {
         },
       );
     }
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: cron job progress logging
     console.log(`Recalculated daily stats for ${usersWhoseStatsAreOutOfDate.length} users`);
     return { usersUpdated: usersWhoseStatsAreOutOfDate.length };
   } finally {
     if (CronJobDataSource.isInitialized) {
       await CronJobDataSource.destroy().catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to destroy CronJobDataSource', error);
       });
     }

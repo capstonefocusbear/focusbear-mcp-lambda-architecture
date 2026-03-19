@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { InjectQueue } from '@nestjs/bull';
@@ -366,6 +365,7 @@ export class TrelloService extends BaseIntegrationService {
       }
 
       for (const portal of portals) {
+        // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
         const projects = await this.getProjects(userId, portal.id);
         if (!projects?.length) continue;
         projects.forEach((project) => checkProject(project, portal));

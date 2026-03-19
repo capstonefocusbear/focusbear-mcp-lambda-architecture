@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: auth service logging
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bull';

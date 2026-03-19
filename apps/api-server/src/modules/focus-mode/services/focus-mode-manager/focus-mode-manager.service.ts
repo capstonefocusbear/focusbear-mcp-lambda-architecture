@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { DateTime } from 'luxon';
 import { PusherService } from '@app/pusher';
@@ -26,6 +26,8 @@ import { WebhookEventType } from '../../../webhook/domain/webhook-event-type.enu
 
 @Injectable()
 export class FocusModeManagerService {
+  private readonly logger = new Logger(FocusModeManagerService.name);
+
   constructor(
     private readonly focusModeRepository: FocusModeRepository,
     private readonly completedFocusBlockRepository: CompletedFocusBlockRepository,
@@ -124,8 +126,7 @@ export class FocusModeManagerService {
         },
       ]);
 
-      // eslint-disable-next-line no-console
-      console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
+      this.logger.debug(`Beams Request for debugging: ${JSON.stringify(publishRequest)}`);
 
       try {
         await this.pusherBeamsService.publishToUsers([user_id], publishRequest);

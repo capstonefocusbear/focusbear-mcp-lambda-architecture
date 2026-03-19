@@ -30,7 +30,6 @@ export class NotificationService {
       });
       const user = await this.userRepository.orm.findOneBy({ id: user_id });
       if (!user) throw new NotFoundException(`User with ID: ${user_id} does not exist!`);
-      // eslint-disable-next-line prettier/prettier
       const {
         id,
         summary,

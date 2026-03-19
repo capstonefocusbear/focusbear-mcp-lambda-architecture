@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
 import { Injectable, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { Queue } from 'bull';

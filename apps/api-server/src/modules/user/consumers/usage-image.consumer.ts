@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: consumer logging
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@app/observability';
 import { Job } from 'bull';
@@ -97,7 +97,7 @@ export class UsageImageConsumer {
             imageKey,
           });
         }
-      } catch (crossCheckError) {
+      } catch (_crossCheckError) {
         await this.asyncTaskService.updateStatusWithMetadata(asyncTaskId, AsyncTaskStatus.FAILED, baseMetadata, {
           processingFailed: new Date(),
           openAiResponse: usageData,

@@ -45,7 +45,7 @@ export abstract class BaseCalendarService implements ICalendarService {
   }
 
   async getEvents(userId: string, account: string) {
-    // for avoiding an eslint error
+    // Explicit undefined for optional callback; TypeScript strictness
     const data = { userId, account };
     if (data) {
       return [];

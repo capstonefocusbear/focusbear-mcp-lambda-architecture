@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { BaseCRUDService } from '../../../shared/services/base-crud.service';

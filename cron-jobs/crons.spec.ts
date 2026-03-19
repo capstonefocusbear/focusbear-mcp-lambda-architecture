@@ -36,7 +36,8 @@ describe('Cron Job Wrapper Integration', () => {
   let exitMock: jest.SpyInstance;
   beforeAll(() => {
     originalProcessExit = process.exit;
-    exitMock = jest.spyOn(process, 'exit').mockImplementation((() => { }) as any);
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
+    exitMock = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
   });
   afterAll(() => {
     exitMock.mockRestore();
@@ -69,7 +70,9 @@ describe('Cron Job Wrapper Integration', () => {
 
   it('should handle errors and report to Sentry', async () => {
     const error = new Error('fail');
-    const failingJob = async () => { throw error; };
+    const failingJob = async () => {
+      throw error;
+    };
     await expect(sentryModule.withSentry(() => withTimeout(failingJob(), CRON_JOB_TIMEOUT_MS))).rejects.toThrow('fail');
     expect(Sentry.captureException).toHaveBeenCalledWith(error);
     expect(exitMock).toHaveBeenCalled();
@@ -91,4 +94,4 @@ describe('Cron Job Wrapper Integration', () => {
     await expect(promise).resolves.toBe('ok');
     expect(jest.getTimerCount()).toBe(0);
   });
-}); 
+});

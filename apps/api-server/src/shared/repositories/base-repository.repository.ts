@@ -35,7 +35,7 @@ export class BaseRepository<T> {
       const item_id = updateResult.raw[0].id;
       return this.orm.findOneBy({ id: item_id } as FindOptionsWhere<T>);
     }
-    // eslint-disable-next-line no-console
+    // biome-ignore lint/suspicious/noConsole: repository error logging
     console.info(`No record was updated! ID: ${id}, Entity: ${this.Entity}, Values: ${JSON.stringify(values)}`);
   }
 

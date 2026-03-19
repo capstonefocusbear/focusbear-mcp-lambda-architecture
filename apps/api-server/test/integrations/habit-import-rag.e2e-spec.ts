@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: e2e test logging
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, TestingModule } from '@nestjs/testing';
 import axios from 'axios';

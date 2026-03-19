@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
 import { BadRequestException, Injectable, ValidationError } from '@nestjs/common';
 import internal, { Stream } from 'stream';
 import OpenAI from 'openai';
@@ -109,7 +109,7 @@ export class AiService {
         }
 
         return await fastifyResponse.send(stream);
-      } catch (error) {
+      } catch {
         retryCount++;
       }
     }

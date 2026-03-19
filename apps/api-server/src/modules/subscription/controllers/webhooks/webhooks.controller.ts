@@ -64,7 +64,7 @@ export class WebhooksController {
               }
             }
           }
-        } catch (lookupError) {
+        } catch (_lookupError) {
           this.rcLogger.warn(`Failed to resolve user for Stripe customer ${payload.customer}`);
         }
       }

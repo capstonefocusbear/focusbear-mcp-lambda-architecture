@@ -30,7 +30,6 @@ export class TimeLogsConsumer {
       for await (const timeLog of toDoTimeLogs) {
         const toDoRecord = toDos.find((toDo) => toDo.id === timeLog.id);
         if (!toDoRecord) {
-          // eslint-disable-next-line no-continue
           continue;
         }
         const portalId = toDoRecord.external_task_metadata.task_data.portal_id;

@@ -269,7 +269,7 @@ export class ActivityLibraryService {
         (activityTemplateA, activityTemplateB) =>
           activityTemplateA.duration_seconds - activityTemplateB.duration_seconds,
       );
-      const { metadata: directMatchMetadata, matchedCustomGoalLowerSet } = this.buildDirectMatchMetadata(
+      const { metadata: directMatchMetadata, matchedGoalLowerSet } = this.buildDirectMatchMetadata(
         orderedMatches,
         normalizedGoals,
       );
@@ -281,11 +281,11 @@ export class ActivityLibraryService {
       );
       telemetry.stageDurations.durationFilterMs += Date.now() - directDurationFilterStartedAt;
 
-      const customGoalsWithoutMatches = normalizedGoals.customGoalStrings.filter(
-        (goal) => !matchedCustomGoalLowerSet.has(goal.toLowerCase()),
+      const goalsWithoutDirectMatches = normalizedGoals.goalStrings.filter(
+        (goal) => !matchedGoalLowerSet.has(goal.toLowerCase()),
       );
 
-      if (directTemplates.length && (!normalizedGoals.hasCustomGoals || customGoalsWithoutMatches.length === 0)) {
+      if (directTemplates.length && goalsWithoutDirectMatches.length === 0) {
         this.logger.debug(
           `RoutineSuggestions:directMatches ${JSON.stringify({
             userId: user_id,
@@ -452,15 +452,15 @@ export class ActivityLibraryService {
    * Direct tag-matches are "high confidence" and should always be eligible, but we still need to know whether
    * a direct match is supporting a custom goal vs a predefined goal so we can keep ordering deterministic.
    *
-   * This builds a metadata map for the direct-match templates and also tracks which custom goals were actually matched.
+   * This builds a metadata map for the direct-match templates and also tracks which goals were actually matched.
    */
   private buildDirectMatchMetadata(
     templates: ActivityTemplate[],
     normalizedGoals: NormalizedGoals,
-  ): { metadata: Map<string, ActivityMetadata>; matchedCustomGoalLowerSet: Set<string> } {
+  ): { metadata: Map<string, ActivityMetadata>; matchedGoalLowerSet: Set<string> } {
     const customGoalMap = new Map(normalizedGoals.customGoalStrings.map((goal) => [goal.toLowerCase(), goal]));
     const predefinedGoalMap = new Map(normalizedGoals.predefinedGoalStrings.map((goal) => [goal.toLowerCase(), goal]));
-    const matchedCustomGoalLowerSet = new Set<string>();
+    const matchedGoalLowerSet = new Set<string>();
     const metadata = new Map<string, ActivityMetadata>();
 
     templates.forEach((template) => {
@@ -473,12 +473,13 @@ export class ActivityLibraryService {
           const canonicalCustom = customGoalMap.get(tagLower);
           if (canonicalCustom) {
             matchedCustom = true;
-            matchedCustomGoalLowerSet.add(tagLower);
+            matchedGoalLowerSet.add(tagLower);
             matchedGoals.push(canonicalCustom);
             return;
           }
           const canonicalPredefined = predefinedGoalMap.get(tagLower);
           if (canonicalPredefined) {
+            matchedGoalLowerSet.add(tagLower);
             matchedGoals.push(canonicalPredefined);
           }
         });
@@ -492,7 +493,7 @@ export class ActivityLibraryService {
       });
     });
 
-    return { metadata, matchedCustomGoalLowerSet };
+    return { metadata, matchedGoalLowerSet };
   }
 
   /**

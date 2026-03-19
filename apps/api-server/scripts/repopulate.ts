@@ -1,4 +1,5 @@
-/* eslint-disable no-await-in-loop, no-console */
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this script
+// biome-ignore-all lint/suspicious/noConsole: script logging
 import 'dotenv/config';
 import { In } from 'typeorm';
 import { AppDataSource } from '../ormconfig';

@@ -31,7 +31,7 @@
     "cron:monthly": "node -r ./dist/cron-jobs/register-dist-paths.js dist/cron-jobs/progress-emails-cron-job/monthly-progress-emails-cron-job.js",
     "cron:no-progress": "node -r ./dist/cron-jobs/register-dist-paths.js dist/cron-jobs/progress-emails-cron-job/no-progress-emails-cron-job.js",
     "cron:activity-template-embedding-sync": "ts-node -r tsconfig-paths/register ./cron-jobs/activity-template-embedding-sync.ts",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "biome lint --write --max-diagnostics=10000",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -123,6 +123,7 @@
     "typeorm-extension": "^3.6.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.7",
     "@commitlint/config-angular": "^13.1.0",
     "@commitlint/config-conventional": "^13.1.0",
     "@faker-js/faker": "^8.4.1",
@@ -137,15 +138,7 @@
     "@types/pg": "^8.6.5",
     "@types/semver": "^7.7.1",
     "@types/supertest": "^2.0.11",
-    "@typescript-eslint/eslint-plugin": "^5.62.0",
-    "@typescript-eslint/parser": "^5.62.0",
     "commitlint": "^18.4.3",
-    "eslint": "^8.57.1",
-    "eslint-config-airbnb-typescript": "^17.1.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-jsx-a11y": "^6.8.0",
-    "eslint-plugin-prettier": "^4.2.1",
     "husky": "^1.3.1",
     "jest": "^30.2.0",
     "jest-extended": "^4.0.2",
@@ -270,10 +263,10 @@
     }
   },
   "lint-staged": {
-    "{apps,libs,test}/**/*.ts": [
+    "{apps,libs,cron-jobs,test}/**/*.ts": [
       "npm audit --production --audit-level=critical",
       "prettier --write",
-      "eslint --fix"
+      "biome lint --write --max-diagnostics=10000"
     ]
   },
   "jest": {

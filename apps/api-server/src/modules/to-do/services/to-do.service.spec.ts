@@ -157,7 +157,7 @@ describe('toDoService', () => {
 
       try {
         await toDoService.upsertToDo(userDummy.id, { ...toDoDummy, id: toDoId });
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -209,6 +209,32 @@ describe('toDoService', () => {
           [],
           new PaginationMetaDto({ paginationOptionsDto: { page: 1, skip: 0, take: 50 }, itemCount: 0 }),
         ),
+      );
+    });
+
+    it('positive: should include completed todos when status is omitted', async () => {
+      const completedTodo = {
+        ...ToDoDBResponseDummy,
+        id: 'completed-todo-id',
+        status: ToDoStatus.COMPLETED,
+        subtasks: [],
+      };
+      ToDoRepositoryMock.getUserToDos.mockResolvedValueOnce([[completedTodo], 1]);
+
+      const response = await toDoService.getToDos(userDummy.id, {
+        page: 1,
+        take: 10,
+        skip: 0,
+        should_use_cache: true,
+      });
+
+      expect(ToDoRepositoryMock.getUserToDos).toHaveBeenCalledWith(
+        userDummy.id,
+        expect.objectContaining({ status: undefined }),
+      );
+      expect(response.data).toHaveLength(1);
+      expect(response.data[0]).toEqual(
+        expect.objectContaining({ id: 'completed-todo-id', status: ToDoStatus.COMPLETED }),
       );
     });
 
@@ -702,7 +728,7 @@ describe('toDoService', () => {
 
       try {
         await toDoService.deleteToDo(userDummy.id, toDoId);
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 

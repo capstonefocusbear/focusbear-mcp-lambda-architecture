@@ -40,7 +40,7 @@ export class ActivityTemplateEmbeddingSyncService {
     for (let offset = 0; offset < templates.length; offset += ActivityTemplateEmbeddingSyncService.BATCH_SIZE) {
       const batch = templates.slice(offset, offset + ActivityTemplateEmbeddingSyncService.BATCH_SIZE);
       // Process each batch in parallel, but batches sequentially to respect external rate limits
-      // eslint-disable-next-line no-await-in-loop
+      // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
       const batchResults = await Promise.all(
         batch.map(async (template) => {
           try {

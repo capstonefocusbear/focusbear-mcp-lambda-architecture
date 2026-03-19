@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Controller, Body, UseGuards, Post } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { InjectQueue } from '@nestjs/bullmq';

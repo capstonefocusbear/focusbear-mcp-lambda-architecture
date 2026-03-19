@@ -601,10 +601,8 @@ export class UserSettingsService {
             fixed_shutdown_time: '22:00',
           },
         });
-        // biome-ignore-start lint/style/noParameterAssign: intentional mutation
         startupTime = '06:00';
         shutdownTime = '22:00';
-        // biome-ignore-end lint/style/noParameterAssign: intentional mutation
       } else {
         throw new BadRequestException('Startup and shutdown times cannot be identical');
       }

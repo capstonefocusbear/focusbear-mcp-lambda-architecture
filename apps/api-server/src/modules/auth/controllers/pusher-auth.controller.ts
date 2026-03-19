@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Post, UseGuards } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { PusherService } from '@app/pusher';
 import { AuthContext } from '../../../shared/decorators/passport.decorator';
@@ -15,6 +15,8 @@ const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';
 @UseGuards(IsAuth)
 @ApiSecurity('Auth0AccessToken')
 export class PusherAuthController {
+  private readonly logger = new Logger(PusherAuthController.name);
+
   constructor(
     private readonly pusher: PusherService,
     private readonly pusherBeamsAuthService: PusherBeamsAuthService,
@@ -28,8 +30,7 @@ export class PusherAuthController {
   @Get('beams-auth')
   getPusherBeamsToken(@AuthContext() { user }: Passport): Promise<PusherBeamsAuthResponse> {
     if (user?.id === JEREMYS_USER_ID) {
-      // biome-ignore lint/suspicious/noConsole: auth debug logging
-      console.log({ userId: user.id }, 'Jeremy requested Beams token');
+      this.logger.debug(`Jeremy requested Beams token for userId=${user.id}`);
     }
     return this.pusherBeamsAuthService.getPusherBeamsToken(user.id);
   }
@@ -37,8 +38,7 @@ export class PusherAuthController {
   @Get('beams-unsubscribe')
   unsubscribeFromBeams(@AuthContext() { user }: Passport): Promise<void> {
     if (user?.id === JEREMYS_USER_ID) {
-      // biome-ignore lint/suspicious/noConsole: auth debug logging
-      console.log({ userId: user.id }, 'Jeremy requested Beams unsubscribe');
+      this.logger.debug(`Jeremy requested Beams unsubscribe for userId=${user.id}`);
     }
     return this.pusherBeamsAuthService.unsubscribeFromBeams(user.id);
   }

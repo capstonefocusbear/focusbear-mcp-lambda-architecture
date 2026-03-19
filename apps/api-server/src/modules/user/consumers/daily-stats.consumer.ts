@@ -1,4 +1,5 @@
 import { Process, Processor } from '@nestjs/bull';
+import { Logger } from '@nestjs/common';
 import { InjectSentry, SentryService } from '@app/observability';
 import { Job } from 'bull';
 import { DateTime } from 'luxon';
@@ -15,6 +16,8 @@ import { UserService } from '../services/user/user.service';
 
 @Processor(BullQueues.STATS)
 export class DailyStatsConsumer {
+  private readonly logger = new Logger(DailyStatsConsumer.name);
+
   constructor(
     @InjectSentry() private readonly sentryService: SentryService,
     private readonly dailyStatsRepository: DailyStatsRepository,
@@ -67,8 +70,9 @@ export class DailyStatsConsumer {
       }
       const dayStart = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).startOf('day').toJSDate();
       const dayEnd = DateTime.fromJSDate(startTimeToUse).setZone(timeZone).endOf('day').toJSDate();
-      // biome-ignore lint/suspicious/noConsole: consumer logging
-      console.log('Daily stats debug values: ', { startTime, startTimeAsJSDate, dayStart, dayEnd });
+      this.logger.debug(
+        `Daily stats debug values: ${JSON.stringify({ startTime, startTimeAsJSDate, dayStart, dayEnd })}`,
+      );
       const dailyStats = await this.dailyStatsRepository.orm.findOne({
         where: { user_id: user.id, date_completed: Between(dayStart, dayEnd) },
       });
@@ -205,8 +209,7 @@ export class DailyStatsConsumer {
 
       // Log what was saved to database if verbose logging is enabled
     } catch (error) {
-      // biome-ignore lint/suspicious/noConsole: consumer logging
-      console.log('Error in daily stats queued job: ', error);
+      this.logger.error('Error in daily stats queued job', error?.stack ?? JSON.stringify(error));
       this.sentryService.instance().captureException(error, { level: 'error' });
     }
   }

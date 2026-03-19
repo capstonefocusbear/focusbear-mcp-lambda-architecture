@@ -1,5 +1,13 @@
 // biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
-import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UseGuards,
+  Inject,
+  forwardRef,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { Queue } from 'bull';
 import { InjectSentry, SentryService } from '@app/observability';
@@ -28,6 +36,8 @@ import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/
 @Injectable()
 @UseGuards(IsAuth)
 export abstract class BaseIntegrationService implements IBaseIntegrationService {
+  private readonly logger = new Logger(BaseIntegrationService.name);
+
   constructor(
     protected readonly userRepository: UserRepository,
     protected readonly focusModeTagRepository: FocusModeTagRepository,
@@ -208,11 +218,8 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     for (const portal of portals) {
       const projects = await this.getProjects(userId, portal.id);
 
-      // biome-ignore lint/suspicious/noConsole: integration sync logging
-      console.log('getAllProjects - portal: ', portal.id);
-
-      // biome-ignore lint/suspicious/noConsole: integration sync logging
-      console.log('getAllProjects: ', projects);
+      this.logger.debug(`getAllProjects - portal: ${portal.id}`);
+      this.logger.debug(`getAllProjects: ${JSON.stringify(projects)}`);
 
       if (!projects?.length) continue;
       projects.forEach((project) => {
@@ -221,8 +228,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       projectsResponse = [...projectsResponse, ...projects];
     }
 
-    // biome-ignore lint/suspicious/noConsole: integration sync logging
-    console.log('getAllProjects - response: ', projectsResponse);
+    this.logger.debug(`getAllProjects - response: ${JSON.stringify(projectsResponse)}`);
     return projectsResponse;
   }
 
@@ -248,11 +254,8 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       for (const portal of portals) {
         const projects = await this.getProjects(userId, portal.id);
 
-        // biome-ignore lint/suspicious/noConsole: integration sync logging
-        console.log('getAllUserProjects - portal: ', portal.id);
-
-        // biome-ignore lint/suspicious/noConsole: integration sync logging
-        console.log('getAllUserProjects: ', projects);
+        this.logger.debug(`getAllUserProjects - portal: ${portal.id}`);
+        this.logger.debug(`getAllUserProjects: ${JSON.stringify(projects)}`);
 
         if (!projects?.length) continue;
         projects.forEach((project) => {
@@ -303,8 +306,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         });
       }
 
-      // biome-ignore lint/suspicious/noConsole: integration sync logging
-      console.log('getAllUserProjects - response: ', projectsResponse);
+      this.logger.debug(`getAllUserProjects - response: ${JSON.stringify(projectsResponse)}`);
       return projectsResponse;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

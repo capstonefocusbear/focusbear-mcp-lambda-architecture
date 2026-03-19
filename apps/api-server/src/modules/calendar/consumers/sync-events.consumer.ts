@@ -118,12 +118,9 @@ export class SyncEventsConsumer extends WorkerHost {
 
           if (userId === '9884b0af-dc9f-4207-964e-e4db537a2234') {
             // Jeremy's Events
-            // biome-ignore lint/suspicious/noConsole: sync debug logging
-            console.log('Events From Synced Events: ', eventsFromSyncedEvents.length);
-            // biome-ignore lint/suspicious/noConsole: sync debug logging
-            console.log('Events To Sync (New): ', eventsToSync);
-            // biome-ignore lint/suspicious/noConsole: sync debug logging
-            console.log('Events To Remove Ids: ', eventsToRemoveIds);
+            this.logger.debug(`Events From Synced Events: ${eventsFromSyncedEvents.length}`);
+            this.logger.debug(`Events To Sync (New): ${JSON.stringify(eventsToSync)}`);
+            this.logger.debug(`Events To Remove Ids: ${JSON.stringify(eventsToRemoveIds)}`);
           }
 
           await Promise.all(

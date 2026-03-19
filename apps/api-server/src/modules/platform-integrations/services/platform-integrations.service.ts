@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { FindOptionsWhere, UpdateResult } from 'typeorm';
 import { PlatformIntegrationRepository } from '../repositories/platform-integration.repository';
@@ -9,6 +9,8 @@ import { GoogleAuthService } from '../../auth/services/google-auth.service';
 
 @Injectable()
 export class PlatformIntegrationsService {
+  private readonly logger = new Logger(PlatformIntegrationsService.name);
+
   constructor(
     private readonly platformIntegrationsRepository: PlatformIntegrationRepository,
     @Inject(forwardRef(() => GoogleAuthService))
@@ -121,10 +123,10 @@ export class PlatformIntegrationsService {
               isExpired = false; // Token successfully refreshed
             }
           } catch (refreshError) {
-            // biome-ignore lint/suspicious/noConsole: platform integration logging
-            console.warn(
-              `Failed to refresh token for user ${userId} (account: ${account.external_user_id}):`,
-              refreshError,
+            this.logger.warn(
+              `Failed to refresh token for user ${userId} (account: ${account.external_user_id}): ${
+                refreshError instanceof Error ? refreshError.message : JSON.stringify(refreshError)
+              }`,
             );
           }
         }

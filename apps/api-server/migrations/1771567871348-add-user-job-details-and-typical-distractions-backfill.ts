@@ -13,7 +13,6 @@ export class AddUserJobDetailsAndTypicalDistractionsBackfill1771567871348 implem
     `);
   }
 
-  // biome-ignore lint/correctness/noUnusedVariables: migration API requires method signature
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Intentionally no-op: keep rollback safe across environments where these
     // columns may have already been introduced by a previously applied migration.

@@ -64,8 +64,7 @@ export class WebhooksController {
               }
             }
           }
-          // biome-ignore lint/correctness/noUnusedVariables: the lookupError variable is intentionally unused
-        } catch (lookupError) {
+        } catch (_lookupError) {
           this.rcLogger.warn(`Failed to resolve user for Stripe customer ${payload.customer}`);
         }
       }

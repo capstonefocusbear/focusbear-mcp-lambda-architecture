@@ -1,4 +1,3 @@
-// biome-ignore-all lint: do not lint this file
 import { MigrationInterface, QueryRunner, DataSource } from 'typeorm';
 import { User } from '../src/modules/user/entities/user.entity';
 import { Activity } from '../src/modules/activity/entities/activity.entity';

@@ -14,7 +14,13 @@
     "bracketSpacing": true,
     "expand": "auto",
     "useEditorconfig": true,
-    "includes": ["apps/**/*.ts", "libs/**/*.ts"]
+    "includes": [
+      "apps/**/*.ts",
+      "libs/**/*.ts",
+      "cron-jobs/**/*.ts",
+      "!apps/api-server/migrations/**",
+      "!apps/api-server/data_migrations/**"
+    ]
   },
   "linter": {
     "enabled": true,
@@ -69,7 +75,13 @@
         "noAwaitInLoops": "error"
       }
     },
-    "includes": ["apps/api-server/src/**/*.ts", "apps/api-server/test/**/*.ts", "libs/**/*.ts", "cron-jobs/**/*.ts"]
+    "includes": [
+      "apps/**/*.ts",
+      "libs/**/*.ts",
+      "cron-jobs/**/*.ts",
+      "!apps/api-server/migrations/**",
+      "!apps/api-server/data_migrations/**"
+    ]
   },
   "javascript": {
     "formatter": {

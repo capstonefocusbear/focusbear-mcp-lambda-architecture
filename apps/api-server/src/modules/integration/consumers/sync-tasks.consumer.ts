@@ -110,6 +110,7 @@ export class SyncTasksConsumer {
             );
           });
 
+          // biome-ignore lint/performance/noAwaitInLoops: parallel ops per project
           await Promise.all([
             this.deleteRemovedTasks(userId, tasksFromProject, syncedTasksFromProject),
             this.saveNewTasks(userId, syncedProjects, syncedTasksFromProject, tasksFromProject, platform),

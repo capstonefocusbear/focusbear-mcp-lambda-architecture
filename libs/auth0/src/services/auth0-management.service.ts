@@ -146,7 +146,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
       }
 
       return result;
-    } catch (_error) {
+    } catch {
       throw new HttpException('Failed to verify email in Auth0', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -160,7 +160,7 @@ export class Auth0ManagementService extends ManagementClient implements IManagem
           connection: 'Username-Password-Authentication',
         },
       );
-    } catch (_error) {
+    } catch {
       throw new HttpException('Failed to update password in Auth0', HttpStatus.BAD_REQUEST);
     }
   }

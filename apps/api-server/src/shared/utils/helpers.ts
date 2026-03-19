@@ -218,7 +218,7 @@ export const getR2FileNameFromUrl = (url: string): string => {
     const decodedUrl = decodeURIComponent(url);
     const { pathname } = new URL(decodedUrl);
     return pathname.substring(pathname.lastIndexOf('/') + 1);
-  } catch (_error) {
+  } catch {
     return url;
   }
 };
@@ -231,7 +231,7 @@ export const safeDecodeURIComponent = (str: string): string => {
     // This is needed for Windows app bug reports where spaces are encoded as '+'
     const withSpaces = str.replace(/\+/g, ' ');
     return decodeURIComponent(withSpaces);
-  } catch (_error) {
+  } catch {
     return str; // Return original string if decoding fails
   }
 };

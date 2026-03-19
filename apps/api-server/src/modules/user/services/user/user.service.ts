@@ -774,7 +774,7 @@ export class UserService {
       try {
         const { email } = await this.auth0ManagementService.getAuth0User(user.auth0_id);
         return { ...user, email };
-      } catch (_error) {
+      } catch {
         return { ...user, email: null };
       }
     };
@@ -899,7 +899,7 @@ export class UserService {
     let metadata: { contentLength: number; contentType: string };
     try {
       metadata = await this.r2Service.getObjectMetadata(S3_BUCKET_PROFILE_IMAGES, profileImageKey);
-    } catch (_error) {
+    } catch {
       throw new BadRequestException('Profile image not found in storage. Please upload the image first.');
     }
 
@@ -942,7 +942,7 @@ export class UserService {
 
       const key = decodeURIComponent(imageUrl.pathname.slice(expectedPrefix.length));
       return key || null;
-    } catch (_error) {
+    } catch {
       return null;
     }
   }
@@ -1189,7 +1189,7 @@ export class UserService {
         const [firstArg, ...restArgs] = logArgs;
         this.verboseLogger.log(firstArg, ...restArgs);
       }
-    } catch (_error) {
+    } catch {
       // Silently fail if we can't check verbose logging status
     }
   }
@@ -1277,7 +1277,7 @@ export class UserService {
       }
 
       return oldURL.origin + oldURL.pathname;
-    } catch (_error) {
+    } catch {
       const sanitizedFallbackUrl = sanitizedUrl.replace(/[?#].*$/, '');
 
       this.sentryService.instance().addBreadcrumb({

@@ -395,7 +395,7 @@ export class EmailTemplateCompilerService {
           return a === b ? options.fn(this) : options.inverse(this);
         }
         return a === b;
-      } catch (_error) {
+      } catch {
         return false;
       }
     });

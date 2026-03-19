@@ -73,7 +73,7 @@ export const isPublicWebhookUrl = (url: string): boolean => {
     }
 
     return isPublicHostname(parsedUrl.hostname);
-  } catch (_error) {
+  } catch {
     return false;
   }
 };
@@ -96,7 +96,7 @@ export const resolvesToPublicAddress = async (hostname: string): Promise<boolean
     if (!addresses.length) return false;
 
     return !addresses.some((address) => isPrivateIp(address.address));
-  } catch (_error) {
+  } catch {
     return false;
   }
 };

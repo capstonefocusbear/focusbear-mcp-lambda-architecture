@@ -109,7 +109,7 @@ export class AiService {
         }
 
         return await fastifyResponse.send(stream);
-      } catch (_error) {
+      } catch {
         retryCount++;
       }
     }

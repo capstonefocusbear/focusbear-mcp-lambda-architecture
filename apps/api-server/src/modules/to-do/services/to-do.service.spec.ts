@@ -157,7 +157,7 @@ describe('toDoService', () => {
 
       try {
         await toDoService.upsertToDo(userDummy.id, { ...toDoDummy, id: toDoId });
-      } catch (_error) {
+      } catch {
         // Expected to throw
       }
 
@@ -728,7 +728,7 @@ describe('toDoService', () => {
 
       try {
         await toDoService.deleteToDo(userDummy.id, toDoId);
-      } catch (_error) {
+      } catch {
         // Expected to throw
       }
 

@@ -1,8 +1,8 @@
-/* eslint-disable no-console */
 import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleInit,
   UnauthorizedException,
@@ -83,6 +83,7 @@ import {
 @Injectable()
 export class CompletedActivityService implements OnModuleInit {
   private redisClient: Redis;
+  private readonly logger = new Logger(CompletedActivityService.name);
 
   constructor(
     private readonly completedActivityRepository: CompletedActivityRepository,
@@ -137,11 +138,13 @@ export class CompletedActivityService implements OnModuleInit {
         throw new Error('Pusher Beams service not available');
       }
 
-      console.log('Pusher services initialized successfully:', {
-        pusher: !!this.pusher,
-        pusherBeams: !!this.pusherBeams,
-        timestamp: new Date().toISOString(),
-      });
+      this.logger.log(
+        `Pusher services initialised successfully: ${JSON.stringify({
+          pusher: !!this.pusher,
+          pusherBeams: !!this.pusherBeams,
+          timestamp: new Date().toISOString(),
+        })}`,
+      );
 
       this.sentryService.instance().addBreadcrumb({
         category: 'Service',
@@ -162,11 +165,13 @@ export class CompletedActivityService implements OnModuleInit {
         },
       });
 
-      console.error('Pusher services configuration validation failed:', {
-        error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-      });
+      this.logger.error(
+        `Pusher services configuration validation failed: ${JSON.stringify({
+          error: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString(),
+        })}`,
+      );
     }
   }
 
@@ -241,11 +246,13 @@ export class CompletedActivityService implements OnModuleInit {
       );
 
       if (completedActivity.log_quantity_answers?.length > 0) {
-        console.log('Log-quantity debug data:', {
-          headers,
-          completedActivity,
-          log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
-        });
+        this.logger.debug(
+          `Log-quantity debug data: ${JSON.stringify({
+            headers,
+            completedActivity,
+            log_quantity_answers: completedActivity.log_quantity_answers,
+          })}`,
+        );
         logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, completedActivity.log_quantity_answers);
       }
 
@@ -391,14 +398,16 @@ export class CompletedActivityService implements OnModuleInit {
     completingSequenceLog: any,
   ) {
     if (IDS_TO_LOG_FOR.includes(user.id)) {
-      console.log("User's completed activity data: ", {
-        completingSequenceLog,
-        completedActivity,
-        user,
-        activity,
-        choice,
-        sequence,
-      });
+      this.logger.debug(
+        `User's completed activity data: ${JSON.stringify({
+          completingSequenceLog,
+          completedActivity,
+          user,
+          activity,
+          choice,
+          sequence,
+        })}`,
+      );
     }
   }
 
@@ -437,10 +446,12 @@ export class CompletedActivityService implements OnModuleInit {
     );
     let logQuantityAnswers = [];
     if (log_quantity_answers?.length > 0) {
-      console.log('Log-quantity debug data for break activity:', {
-        completedActivity,
-        log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
-      });
+      this.logger.debug(
+        `Log-quantity debug data for break activity: ${JSON.stringify({
+          completedActivity,
+          log_quantity_answers: completedActivity.log_quantity_answers,
+        })}`,
+      );
       logQuantityAnswers = await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
     }
     await this.userDailyStatsService.updateTimeSpentInBreaks(user_id, startTimeToUse, timeZone, duration_logged);
@@ -634,10 +645,12 @@ export class CompletedActivityService implements OnModuleInit {
       );
 
       if (log_quantity_answers?.length > 0) {
-        console.log('Log-quantity debug data for offline activity:', {
-          completedActivity,
-          log_quantity_answers: JSON.stringify(completedActivity.log_quantity_answers),
-        });
+        this.logger.debug(
+          `Log-quantity debug data for offline activity: ${JSON.stringify({
+            completedActivity,
+            log_quantity_answers: completedActivity.log_quantity_answers,
+          })}`,
+        );
         await this.saveLogQuantityAnswers(createdItem, log_quantity_answers);
       }
 
@@ -723,7 +736,7 @@ export class CompletedActivityService implements OnModuleInit {
   }
 
   handleSyncActivityError(error: Error): boolean {
-    console.error('Error syncing offline activity: ', error);
+    this.logger.error('Error syncing offline activity', error?.stack ?? JSON.stringify(error));
     this.sentryService.instance().captureException(error, { level: 'error' });
 
     if (
@@ -848,8 +861,8 @@ export class CompletedActivityService implements OnModuleInit {
 
     if (!nextActivityId) {
       if (IDS_TO_LOG_FOR.includes(user_id)) {
-        console.log('Completing sequence - updateUserAndSequence');
-        console.log({ currentState, nextActivityId, activityData });
+        this.logger.debug('Completing sequence - updateUserAndSequence');
+        this.logger.debug(JSON.stringify({ currentState, nextActivityId, activityData }));
       }
       await this.completedActivitySequenceService.completeActivitySequence(completingSequenceLog.id, user_id);
     }
@@ -916,7 +929,9 @@ export class CompletedActivityService implements OnModuleInit {
 
     if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
       if (IDS_TO_LOG_FOR.includes(id)) {
-        console.log('Completing user routine from validateCompletingActivity function - shouldCompleteRoutine: TRUE');
+        this.logger.debug(
+          'Completing user routine from validateCompletingActivity function - shouldCompleteRoutine: TRUE',
+        );
       }
       await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, user);
     }
@@ -1015,15 +1030,17 @@ export class CompletedActivityService implements OnModuleInit {
     );
 
     if (IDS_TO_LOG_FOR.includes(user.id) && !nextActivityId) {
-      console.log('Data in defineNextCurrentActivity function: ', {
-        nextActivityId,
-        currentState,
-        hasCutoffTimeBeenReached,
-        sortedIdsForCurrentDayActivities,
-        completedActivityIndexInCurrentDaySequence,
-        idsForTodaysActivities,
-        currentDay,
-      });
+      this.logger.debug(
+        `Data in defineNextCurrentActivity function: ${JSON.stringify({
+          nextActivityId,
+          currentState,
+          hasCutoffTimeBeenReached,
+          sortedIdsForCurrentDayActivities,
+          completedActivityIndexInCurrentDaySequence,
+          idsForTodaysActivities,
+          currentDay,
+        })}`,
+      );
     }
     return { nextActivityId, currentState };
   }
@@ -1106,20 +1123,22 @@ export class CompletedActivityService implements OnModuleInit {
 
     if (this.shouldCompleteRoutine(sequence, userTimes, currentActivityAssignedDate)) {
       if (IDS_TO_LOG_FOR.includes(id)) {
-        console.log('Completing user routine from recalculateCurrentActivity function - shouldCompleteRoutine: TRUE');
-        console.log({ current_activity_assigned_at });
+        this.logger.debug(
+          'Completing user routine from recalculateCurrentActivity function - shouldCompleteRoutine: TRUE',
+        );
+        this.logger.debug(JSON.stringify({ current_activity_assigned_at }));
       }
       await this.completeRoutineAndNullifyProps(current_completing_sequence_log_id, id, partialUser);
       return { activity: null, shouldRefetchUser: true };
     }
 
     if (this.isCutoffTimeReached(partialUser)) {
-      console.log('Completing user routine from recalculateCurrentActivity function - isCutoffTimeReached: TRUE');
+      this.logger.debug('Completing user routine from recalculateCurrentActivity function - isCutoffTimeReached: TRUE');
       return this.handleActivitiesAfterCutoffTime(partialUser, sequence);
     }
 
     if (IDS_TO_LOG_FOR.includes(id)) {
-      console.log('Log data - recalculateCurrentActivity - no change in current activity');
+      this.logger.debug('Log data - recalculateCurrentActivity - no change in current activity');
     }
 
     return {
@@ -1309,8 +1328,8 @@ export class CompletedActivityService implements OnModuleInit {
     }
 
     if (IDS_TO_LOG_FOR.includes(partialUser.id)) {
-      console.log('Log data - handleActivitiesAfterCutoffTime triggered');
-      console.log({ nextHighPriorityActivity });
+      this.logger.debug('Log data - handleActivitiesAfterCutoffTime triggered');
+      this.logger.debug(JSON.stringify({ nextHighPriorityActivity }));
     }
 
     const shouldRefetchUser = current_activity !== nextHighPriorityActivity;
@@ -1500,8 +1519,7 @@ export class CompletedActivityService implements OnModuleInit {
         },
       ]);
 
-      // eslint-disable-next-line no-console
-      console.log('Beams Request for debugging: ', JSON.stringify(publishRequest));
+      this.logger.debug(`Beams Request for debugging: ${JSON.stringify(publishRequest)}`);
       await this.pusherBeams.publishToUsers([user_id], publishRequest);
 
       await this.userService.logVerboselyIfUserHasVerboseLoggingEnabled(user_id, [
@@ -1585,9 +1603,8 @@ export class CompletedActivityService implements OnModuleInit {
       });
       const loqQuantityQuestionIds = logQuantityQuestions.map((question) => question.id);
       const logQuantityStats = await Promise.all(
-        loqQuantityQuestionIds.map(
-          (questionId) => this.getStatsByQuestionPerDay(questionId, { days_number, timezone: zone }),
-          // eslint-disable-next-line function-paren-newline
+        loqQuantityQuestionIds.map((questionId) =>
+          this.getStatsByQuestionPerDay(questionId, { days_number, timezone: zone }),
         ),
       );
       const stats = new CompletedActivityStats({
@@ -1915,7 +1932,6 @@ export class CompletedActivityService implements OnModuleInit {
           const isValidTime = !Number.isNaN(new Date(start_time).getDate());
           if (!isValidTime) throw new BadRequestException(`Invalid start time: ${start_time}`);
           const startOfDate = new Date(new Date(start_time).setUTCHours(0, 0, 0, 0)).toISOString();
-          // eslint-disable-next-line no-param-reassign
           group[startOfDate] ??= [];
           group[startOfDate].push(activity);
           return group;
@@ -1940,7 +1956,6 @@ export class CompletedActivityService implements OnModuleInit {
     try {
       const completedActivitiesGroupedBySequence = completedActivities.reduce((group, activity) => {
         const { activity_sequence_id } = activity;
-        // eslint-disable-next-line no-param-reassign
         group[activity_sequence_id] ??= [];
         group[activity_sequence_id].push(activity);
         return group;

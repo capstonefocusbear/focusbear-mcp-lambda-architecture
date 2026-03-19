@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: service logging
 import {
   BadRequestException,
   ConflictException,
@@ -774,7 +774,7 @@ export class UserService {
       try {
         const { email } = await this.auth0ManagementService.getAuth0User(user.auth0_id);
         return { ...user, email };
-      } catch (error) {
+      } catch {
         return { ...user, email: null };
       }
     };
@@ -899,7 +899,7 @@ export class UserService {
     let metadata: { contentLength: number; contentType: string };
     try {
       metadata = await this.r2Service.getObjectMetadata(S3_BUCKET_PROFILE_IMAGES, profileImageKey);
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Profile image not found in storage. Please upload the image first.');
     }
 
@@ -942,7 +942,7 @@ export class UserService {
 
       const key = decodeURIComponent(imageUrl.pathname.slice(expectedPrefix.length));
       return key || null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -1189,7 +1189,7 @@ export class UserService {
         const [firstArg, ...restArgs] = logArgs;
         this.verboseLogger.log(firstArg, ...restArgs);
       }
-    } catch (error) {
+    } catch {
       // Silently fail if we can't check verbose logging status
     }
   }
@@ -1216,7 +1216,6 @@ export class UserService {
     // Set a default response after 15 seconds
     const timeoutPromise = new Promise<{ allowed: boolean }>((resolve) => {
       timeoutId = setTimeout(async () => {
-        // eslint-disable-next-line no-console
         console.log(`Error: OpenAI username validation timed out - user ID: ${user_id}, username: ${username} `);
         resolve({ allowed: true });
       }, USERNAME_VALIDATION_TIMEOUT);
@@ -1236,11 +1235,9 @@ export class UserService {
   }
 
   isValidURL(string: string) {
-    /* eslint-disable no-useless-escape */
     const validUrl = /^(https?|ftp):\/\/[a-zA-Z0-9-\\.]+\.[a-zA-Z]{2,6}(\/\S*)?$/;
     const validUrlWithoutProtocol =
       /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]*(\.[a-zA-Z]{2,3})?(\/[a-zA-Z0-9@:%_\+.~#?&//=]*)?$/;
-    /* eslint-enable no-useless-escape */
     return validUrl.test(string) || validUrlWithoutProtocol.test(string);
   }
 
@@ -1280,7 +1277,7 @@ export class UserService {
       }
 
       return oldURL.origin + oldURL.pathname;
-    } catch (error) {
+    } catch {
       const sanitizedFallbackUrl = sanitizedUrl.replace(/[?#].*$/, '');
 
       this.sentryService.instance().addBreadcrumb({

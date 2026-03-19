@@ -5,7 +5,6 @@ import {
   PutMetricDataCommand,
   StandardUnit,
 } from '@aws-sdk/client-cloudwatch';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import * as Sentry from '@sentry/nestjs';
 
 const DEFAULT_ENVIRONMENT_DIMENSION = 'prod';

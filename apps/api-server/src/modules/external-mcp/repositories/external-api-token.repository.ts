@@ -33,6 +33,7 @@ export class ExternalApiTokenRepository extends BaseRepository<ExternalApiToken>
     const candidates = await this.orm.find({ where: { token_prefix: prefix } });
 
     for (const candidate of candidates) {
+      // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
       const isMatch = await this.scryptService.verify(rawToken, candidate.token_hash);
       if (isMatch) {
         return candidate;

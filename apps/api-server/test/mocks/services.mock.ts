@@ -264,7 +264,6 @@ export const ServiceMock = {
 };
 
 export const IntegrationFactoryMock = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   get: jest.fn((platform: IntegrationPlatforms) => ServiceMock),
 };
 
@@ -307,6 +306,7 @@ export const ClickUpAuthServiceMock = {
 
 export const ClickUpServiceMock = {
   syncUserProjectsAndTasks: jest.fn(),
+  // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
   getAllUserTasks: jest.fn(() => {}),
   getAllUserProjects: jest.fn(),
   syncProjectAndChildTasks: jest.fn(),

@@ -4,7 +4,6 @@ export class UserGoalDto {
   @IsNotEmpty()
   @IsString()
   @MaxLength(200, { message: 'Each goal must be at most 200 characters' })
-  // eslint-disable-next-line no-misleading-character-class
   @Matches(/^[\p{L}\p{N}\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\s,.'&!?()\-:;]+$/u, {
     message:
       'Goal contains invalid characters. Only letters, numbers, emojis, spaces, and basic punctuation are allowed.',

@@ -1,4 +1,3 @@
-/* eslint-disable linebreak-style */
 import { Queue } from 'bullmq';
 import { BullQueues, BullWorkers, CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
 import { CronJobDataSource } from '../data-source';
@@ -7,8 +6,7 @@ import { CalendarPlatforms } from '../../apps/api-server/src/modules/platform-in
 import { captureErrorWithContext, runCronWithTelemetry } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 
-/* eslint-disable @typescript-eslint/no-var-requires */
-
+// biome-ignore lint/style/noCommonJs: cron script uses require for dotenv
 require('dotenv').config();
 
 let cleanupCalendarEventCronResources: (() => Promise<void>) | undefined;
@@ -69,12 +67,10 @@ async function runEventCronJob() {
     didCleanup = true;
 
     await syncQueue.close().catch((error) => {
-      // eslint-disable-next-line no-console
       console.error('Failed to close BullMQ queue', error);
     });
     if (CronJobDataSource.isInitialized) {
       await CronJobDataSource.destroy().catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to destroy CronJobDataSource', error);
       });
     }

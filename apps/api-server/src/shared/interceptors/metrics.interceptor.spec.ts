@@ -17,6 +17,7 @@ describe('MetricsInterceptor', () => {
 
   const buildContext = (userId?: string): ExecutionContext =>
     ({
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
       getHandler: () => function getSettings() {},
       switchToHttp: () => ({
         getRequest: () => ({

@@ -1,4 +1,3 @@
-/* eslint-disable max-classes-per-file */
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -29,7 +28,6 @@ export class NotIdenticalTimesConstraint implements ValidatorConstraintInterface
     return shutdownTime !== object.startup_time;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   defaultMessage(args: ValidationArguments) {
     return 'Shutdown time cannot be the same as startup time';
   }

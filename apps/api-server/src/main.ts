@@ -56,11 +56,10 @@ async function bootstrap(): Promise<void> {
 
   AppDataSource.initialize()
     .then(() => {
-      // eslint-disable-next-line no-console
+      // biome-ignore lint/suspicious/noConsole: startup error logging
       console.log('Connected to Data Source');
     })
     .catch((err) => {
-      // eslint-disable-next-line no-console
       console.error('Error during Data Source initialization', err);
     });
 

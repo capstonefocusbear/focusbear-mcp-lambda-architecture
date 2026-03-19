@@ -91,7 +91,6 @@ export function calculateRoutineStatsIn90Days(userDailyStats: DailyStats[], user
     return statDay >= timeWindowStart; // Filter out stats outside the time window
   });
 
-
   // 2) Deduplicate / aggregate only the filtered rows, keying by local (user) date
   const distinctUserDailyStatObject = statsInWindow.reduce((acc, current) => {
     const localDateTime = DateTime.fromJSDate(current.date_completed).setZone(timeZone); // for date_completed value
@@ -275,12 +274,7 @@ export function calculateStreakForMicroBreaks(userDailyStats: DailyStats[], time
 }
 
 /** Clamps streak to at least daysCompleted when user completed every day in the window (fixes UI inconsistency). */
-function clampStreak(
-  streak: number,
-  daysCompleted: number,
-  completedIn90: number,
-  windowSize: number,
-): number {
+function clampStreak(streak: number, daysCompleted: number, completedIn90: number, windowSize: number): number {
   return windowSize > 0 && completedIn90 >= windowSize ? Math.max(streak, daysCompleted) : streak;
 }
 
@@ -290,7 +284,6 @@ export function calculateStreaks(
   {
     morningRoutineDailyDurations,
     eveningRoutineDailyDurations,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     microBreaksDailyDurations, // Not used in simplified micro break logic
   }: {
     morningRoutineDailyDurations: DailySequenceDurations;
@@ -440,4 +433,3 @@ export function isValidUUID(value: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(value);
 }
-

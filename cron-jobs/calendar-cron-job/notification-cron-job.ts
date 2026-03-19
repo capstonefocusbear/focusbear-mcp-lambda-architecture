@@ -1,4 +1,4 @@
-/* eslint-disable linebreak-style */
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
 import { BeamsPublishRequest } from '@app/pusher-beams/domains/pusher-beams-publish-request.model';
 import { Between } from 'typeorm';
 import { DateTime } from 'luxon';
@@ -11,7 +11,7 @@ import { Calendar } from '../../apps/api-server/src/modules/calendar/entities/ca
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 import { CRON_JOB_TIMEOUT_MS } from '../../apps/api-server/src/shared/utils/constants';
-/* eslint-disable @typescript-eslint/no-var-requires */
+// biome-ignore lint/style/noCommonJs: cron script uses require for dotenv
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -54,6 +54,7 @@ async function fetchEvents() {
       );
     });
     if (userCalendars.length === 0) {
+      // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
       await logVerboselyIfUserHasVerboseLoggingEnabled(event.user_id, [
         'Skipping calendar notification because no calendars were selected',
         {
@@ -70,6 +71,7 @@ async function fetchEvents() {
       for (const element of excludedKeywords) {
         if (element.intitle && event.summary.includes(element.keyword)) {
           canNotify = false;
+          // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
           await logVerboselyIfUserHasVerboseLoggingEnabled(event.user_id, [
             'Skipping calendar notification because of excluded title keyword',
             {
@@ -178,7 +180,6 @@ async function runNotificationCronJob() {
   await CronJobDataSource.initialize();
   try {
     const calendarEventsToSend = await fetchEvents();
-    // eslint-disable-next-line no-console
     console.log(`Ran for ${calendarEventsToSend.length} notification(s).`);
     if (calendarEventsToSend.length === 0) {
       return { notificationsSent: 0 };
@@ -202,7 +203,6 @@ async function runNotificationCronJob() {
   } finally {
     if (CronJobDataSource.isInitialized) {
       await CronJobDataSource.destroy().catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to destroy CronJobDataSource', error);
       });
     }

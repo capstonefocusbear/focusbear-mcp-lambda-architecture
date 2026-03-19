@@ -108,7 +108,7 @@ export class CommentAttachmentService {
     try {
       const metadata = await this.r2Service.getObjectMetadata(S3_BUCKET_COMMENT_ATTACHMENTS, dto.file_key);
       actualFileSize = metadata.contentLength;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('File not found in storage. Please upload the file first.');
     }
 

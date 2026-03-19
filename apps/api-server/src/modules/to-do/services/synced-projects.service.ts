@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: service logging
 import { Injectable } from '@nestjs/common';
 import { In } from 'typeorm';
 import { SyncedProjectsRepository } from '../repositories/synced-projects.repository';

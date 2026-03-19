@@ -43,7 +43,6 @@ export class TabKeywordsService {
         for (let j = 0; j < words.length; j++) {
           // Ignore common words
           if (IGNORE_WORDS.includes(words[j].toLowerCase())) {
-            // eslint-disable-next-line no-continue
             continue;
           }
           // Loop through each subsequent word up to 5 words long

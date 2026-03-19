@@ -1,4 +1,4 @@
-/* eslint-disable */
+// biome-ignore-all lint: do not lint this file
 import axios from 'axios';
 import { load } from 'cheerio';
 import { URL } from 'url';

@@ -274,7 +274,7 @@ describe('NoteService', () => {
 
       try {
         await noteService.upsertNote(userId, { id: noteId, ...noteDummy });
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -395,7 +395,7 @@ describe('NoteService', () => {
 
       try {
         await noteService.deleteNote(userId, noteId);
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 

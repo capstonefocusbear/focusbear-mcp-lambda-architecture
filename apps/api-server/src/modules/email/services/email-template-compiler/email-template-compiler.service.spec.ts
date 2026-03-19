@@ -6,7 +6,7 @@ jest.mock('fs/promises');
 jest.mock('mjml', () => jest.fn());
 
 const mockFs = fs as jest.Mocked<typeof fs>;
-// eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+// biome-ignore lint/style/noCommonJs: test uses require for fixture
 const mockMjml = require('mjml') as jest.MockedFunction<any>;
 
 describe('EmailTemplateCompilerService', () => {

@@ -124,6 +124,7 @@ describe('GoogleAuthService', () => {
       UserRepositoryMock.orm.findOneBy.mockResolvedValue(null);
       mockedAxios.get.mockResolvedValueOnce({ data: userInfoResponseDummy });
       jest.spyOn(googleAuthService as any, 'requestAuthorize').mockResolvedValue(validAuthData);
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await googleAuthService.authorize(userDummy.id, authorizeQuery);
@@ -142,6 +143,7 @@ describe('GoogleAuthService', () => {
       const authorizeQuery = { code: 'valid-code' };
 
       jest.spyOn(googleAuthService as any, 'requestAuthorize').mockResolvedValue(invalidAuthData);
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await googleAuthService.authorize(userDummy.id, authorizeQuery);
@@ -160,6 +162,7 @@ describe('GoogleAuthService', () => {
       const authorizeQuery = { code: 'valid-code' };
 
       jest.spyOn(googleAuthService as any, 'requestAuthorize').mockResolvedValue(invalidAuthData);
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await googleAuthService.authorize(userDummy.id, authorizeQuery);
@@ -178,6 +181,7 @@ describe('GoogleAuthService', () => {
       const authorizeQuery = { code: 'valid-code' };
 
       jest.spyOn(googleAuthService as any, 'requestAuthorize').mockResolvedValue(expiredAuthData);
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: this empty block statement is intentional
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await googleAuthService.authorize(userDummy.id, authorizeQuery);

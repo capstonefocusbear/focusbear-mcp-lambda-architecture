@@ -13,7 +13,6 @@ export class AddUserJobDetailsAndTypicalDistractionsBackfill1771567871348 implem
     `);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Intentionally no-op: keep rollback safe across environments where these
     // columns may have already been introduced by a previously applied migration.

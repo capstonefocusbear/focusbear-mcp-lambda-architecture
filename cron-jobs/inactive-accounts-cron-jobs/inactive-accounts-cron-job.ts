@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: cron job logging
 import { NestFactory } from '@nestjs/core';
 import { getQueueToken } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -119,6 +119,7 @@ async function sendEnhancedInactivityWarningEmails(users: { email: string; user:
       }
     });
 
+    // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
     await Promise.all(emailPromises);
 
     if (i + BATCH_SIZE < users.length) {
@@ -129,6 +130,7 @@ async function sendEnhancedInactivityWarningEmails(users: { email: string; user:
   return emailsQueued;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: this function is kept for future use
 async function sendEnhancedNoProgressEmails(users: { email: string; user: User }[], emailQueue: Queue) {
   let emailsQueued = 0;
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
@@ -162,6 +164,7 @@ async function sendEnhancedNoProgressEmails(users: { email: string; user: User }
       }
     });
 
+    // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
     await Promise.all(emailPromises);
 
     if (i + BATCH_SIZE < users.length) {
@@ -221,6 +224,7 @@ async function sendEnhancedProgressEmails(
       }
     });
 
+    // biome-ignore lint/performance/noAwaitInLoops: await in loops is required here
     await Promise.all(emailPromises);
 
     // Delay between batches
@@ -241,6 +245,7 @@ async function updateUsersInactivityWarningFields(users: { user: User }[]) {
   await CronJobDataSource.manager.save(User, updatedUsers);
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: this function is kept for future use
 function logInactiveUsers(users: { user: User }[]) {
   console.log('Users that have been inactive for 5 months or longer:');
   for (const user of users) {
@@ -416,7 +421,6 @@ async function runInactiveAccountsCronJob() {
   } finally {
     if (CronJobDataSource.isInitialized) {
       await CronJobDataSource.destroy().catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to destroy CronJobDataSource', error);
       });
     }

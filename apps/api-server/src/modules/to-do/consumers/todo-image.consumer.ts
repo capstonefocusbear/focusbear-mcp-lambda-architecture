@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+// biome-ignore-all lint/suspicious/noConsole: consumer logging
 import { Process, Processor } from '@nestjs/bull';
 import { InjectSentry, SentryService } from '@app/observability';
 import { Job } from 'bull';

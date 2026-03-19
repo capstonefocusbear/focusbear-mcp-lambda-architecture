@@ -355,11 +355,11 @@ Access via `BaseCRUDService.softDelete(id)` method.
 ## Code Style
 
 - TypeScript with ES2017 target
-- Prettier + ESLint (Airbnb TypeScript config)
+- Prettier + Biome (lint and format)
 - Files must end with newline (`eol-last: always`)
 - DTOs suffix with `Dto`, tests with `.spec.ts` or `.e2e-spec.ts`
 - Commit messages follow Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
-- Pre-commit hooks run npm audit, Prettier, and ESLint via Husky
+- Pre-commit hooks run npm audit, Prettier, and Biome via Husky
 
 ## Testing
 

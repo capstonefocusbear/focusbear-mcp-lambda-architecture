@@ -1,5 +1,13 @@
-/* eslint-disable no-await-in-loop */
-import { BadRequestException, Injectable, UseGuards, Inject, forwardRef, UnauthorizedException } from '@nestjs/common';
+// biome-ignore-all lint/performance/noAwaitInLoops: await in loops is required in this file
+import {
+  BadRequestException,
+  Injectable,
+  UseGuards,
+  Inject,
+  forwardRef,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
 import { AxiosResponse } from 'axios';
 import { Queue } from 'bull';
 import { InjectSentry, SentryService } from '@app/observability';
@@ -28,6 +36,8 @@ import { PlatformIntegrationMetadataDto } from '../../platform-integrations/dto/
 @Injectable()
 @UseGuards(IsAuth)
 export abstract class BaseIntegrationService implements IBaseIntegrationService {
+  private readonly logger = new Logger(BaseIntegrationService.name);
+
   constructor(
     protected readonly userRepository: UserRepository,
     protected readonly focusModeTagRepository: FocusModeTagRepository,
@@ -206,26 +216,19 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     let projectsResponse = [];
     if (!portals) return projectsResponse;
     for (const portal of portals) {
-      // eslint-disable-next-line no-console, no-await-in-loop
       const projects = await this.getProjects(userId, portal.id);
 
-      // eslint-disable-next-line no-console
-      console.log('getAllProjects - portal: ', portal.id);
+      this.logger.debug(`getAllProjects - portal: ${portal.id}`);
+      this.logger.debug(`getAllProjects: ${JSON.stringify(projects)}`);
 
-      // eslint-disable-next-line no-console
-      console.log('getAllProjects: ', projects);
-
-      // eslint-disable-next-line no-continue
       if (!projects?.length) continue;
       projects.forEach((project) => {
-        // eslint-disable-next-line no-param-reassign
         project.portal_id = portal.id;
       });
       projectsResponse = [...projectsResponse, ...projects];
     }
 
-    // eslint-disable-next-line no-console
-    console.log('getAllProjects - response: ', projectsResponse);
+    this.logger.debug(`getAllProjects - response: ${JSON.stringify(projectsResponse)}`);
     return projectsResponse;
   }
 
@@ -249,16 +252,11 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
       if (!portals) return projectsResponse;
       const externalProjectIds: string[] = [];
       for (const portal of portals) {
-        // eslint-disable-next-line no-console, no-await-in-loop
         const projects = await this.getProjects(userId, portal.id);
 
-        // eslint-disable-next-line no-console
-        console.log('getAllUserProjects - portal: ', portal.id);
+        this.logger.debug(`getAllUserProjects - portal: ${portal.id}`);
+        this.logger.debug(`getAllUserProjects: ${JSON.stringify(projects)}`);
 
-        // eslint-disable-next-line no-console
-        console.log('getAllUserProjects: ', projects);
-
-        // eslint-disable-next-line no-continue
         if (!projects?.length) continue;
         projects.forEach((project) => {
           externalProjectIds.push(project.id);
@@ -308,8 +306,7 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
         });
       }
 
-      // eslint-disable-next-line no-console
-      console.log('getAllUserProjects - response: ', projectsResponse);
+      this.logger.debug(`getAllUserProjects - response: ${JSON.stringify(projectsResponse)}`);
       return projectsResponse;
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });

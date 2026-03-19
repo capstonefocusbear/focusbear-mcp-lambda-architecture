@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { IsInt, IsNotEmpty, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class GetCompletedActivityStatsQueryDto {

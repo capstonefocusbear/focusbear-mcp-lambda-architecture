@@ -1,5 +1,3 @@
-/* eslint-disable max-classes-per-file */
-/* eslint-disable @typescript-eslint/no-inferrable-types */
 export class GetStripePricesDto {
   ending_before?: string;
 

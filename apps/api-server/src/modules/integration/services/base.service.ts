@@ -242,7 +242,9 @@ export abstract class BaseIntegrationService implements IBaseIntegrationService 
     try {
       const portals: any = await this.getPortals(userId);
 
-      const userSyncedProjects = await this.syncedProjectsRepository.orm.find({ where: { user_id: userId } });
+      const userSyncedProjects = await this.syncedProjectsRepository.orm.find({
+        where: { user_id: userId, platform: this.platform },
+      });
       const userSyncedProjectsExternalIds = userSyncedProjects.map(
         (syncedProject) => syncedProject.external_project_id,
       );

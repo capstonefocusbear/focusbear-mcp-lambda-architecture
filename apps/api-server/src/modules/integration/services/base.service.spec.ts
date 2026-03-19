@@ -137,7 +137,7 @@ describe('BaseIntegrationService', () => {
       expect(result[0].have_tasks_been_synced).toBe(true);
       expect(result[0].synced_at).toBe('2026-03-18T10:00:00.000Z');
       expect(SyncedProjectsRepositoryMock.orm.find).toHaveBeenCalledWith({
-        where: { user_id: userDummy.id },
+        where: { user_id: userDummy.id, platform: 'clickup' },
       });
     });
 

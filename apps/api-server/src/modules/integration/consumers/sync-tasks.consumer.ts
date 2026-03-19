@@ -84,24 +84,25 @@ export class SyncTasksConsumer {
     const {
       data: { userId, platform },
     } = job;
+
+    const failedProjects: { id: string; error: any }[] = [];
+
     try {
       const syncedProjects = await this.syncedProjectsRepository.orm.find({
         where: { user_id: userId, platform },
       });
-      // Get all user local tasks saved from external platforms
       const allUserExternalTasks = await this.toDoRepository.orm.find({
         where: { user_id: userId, external_task_id: Not(IsNull()) },
         select: ['id', 'external_task_id', 'external_task_metadata', 'title', 'details'],
       });
       const allTasksFromPlatform = await this.getTasksFromSyncedProjects(userId, platform);
+
       for (const syncedProject of syncedProjects) {
         try {
-          // Filter out tasks not belonging to this project
           const tasksFromProject = allTasksFromPlatform.filter(
             (externalTask) => externalTask.external_metadata.project_id === syncedProject.external_project_id,
           );
 
-          // Get local tasks that are from this project only
           const syncedTasksFromProject = allUserExternalTasks.filter(({ external_task_metadata }) => {
             return (
               external_task_metadata?.platform === platform &&
@@ -120,12 +121,18 @@ export class SyncTasksConsumer {
           );
         } catch (error) {
           this.sentryService.instance().captureException(error, { level: 'error' });
-          console.error(`Error syncing project ${syncedProject.id}: `, error);
+
+          failedProjects.push({ id: syncedProject.id, error });
         }
+      }
+      if (failedProjects.length > 0) {
+        const failedIds = failedProjects.map((f) => f.id).join(', ');
+        throw new Error(`Sync completed with partial failures. Failed project IDs: ${failedIds}`);
       }
     } catch (error) {
       this.sentryService.instance().captureException(error, { level: 'error' });
-      console.error('Error in manually-sync-platform-tasks queued job: ', error);
+
+      throw error;
     }
   }
 

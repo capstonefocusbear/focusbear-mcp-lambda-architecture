@@ -53,10 +53,11 @@ export class SyncedProjectsService {
     ]);
   }
 
-  async getSyncedProject(externalProjectId: string, userId: string) {
+  async getSyncedProject(externalProjectId: string, userId: string, platform: string) {
     return this.syncedProjectsRepository.orm.findOneBy({
       external_project_id: externalProjectId,
       user_id: userId,
+      platform,
     });
   }
 

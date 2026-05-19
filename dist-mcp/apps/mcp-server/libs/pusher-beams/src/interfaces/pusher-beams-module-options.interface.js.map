@@ -1,0 +1,1 @@
+{"version":3,"file":"pusher-beams-module-options.interface.js","sourceRoot":"/","sources":["libs/pusher-beams/src/interfaces/pusher-beams-module-options.interface.ts"],"names":[],"mappings":"","sourcesContent":["import * as PusherBeams from '@pusher/push-notifications-server';\n\nexport type IPusherBeamsOptions = PusherBeams.Options;\n"]}

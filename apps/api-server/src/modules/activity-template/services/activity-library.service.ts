@@ -28,12 +28,12 @@ import {
 } from './routine-suggestion-generator.service';
 import { HabitLibraryRequestRepository } from '../repository/habit-library-request.repository';
 import { CreateHabitWithAiDto } from '../dto/create-habit-with-ai.dto';
-import { MetricsConfig } from '../../../config/metrics.config';
+import { MetricsConfig } from '../../../../../../libs/config/src/metrics.config';
 import {
   DEFAULT_AI_PIPELINE_METRICS_NAMESPACE,
   DEFAULT_METRICS_SERVICE,
   DEFAULT_QUEUE_METRICS_NAMESPACE,
-} from '../../../config/metrics.config';
+} from '../../../../../../libs/config/src/metrics.config';
 import { MAX_WORD_LENGTH } from '@app/openai/openai.constants';
 import { PREDEFINED_GOAL_FALLBACKS } from './predefined-goal-fallbacks.data';
 

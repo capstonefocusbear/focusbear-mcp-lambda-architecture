@@ -1,0 +1,1 @@
+{"version":3,"file":"revenue-cat.constants.js","sourceRoot":"/","sources":["libs/revenue-cat/src/revenue-cat.constants.ts"],"names":[],"mappings":";;;AAAa,QAAA,0BAA0B,GAAG,MAAM,CAAC,4BAA4B,CAAC,CAAC","sourcesContent":["export const REVENUE_CAT_MODULE_OPTIONS = Symbol('REVENUE_CAT_MODULE_OPTIONS');\n"]}

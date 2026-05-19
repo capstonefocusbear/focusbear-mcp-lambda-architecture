@@ -1,0 +1,1 @@
+{"version":3,"file":"sentry.constants.js","sourceRoot":"/","sources":["libs/observability/src/sentry.constants.ts"],"names":[],"mappings":";;;AAAa,QAAA,YAAY,GAAG,cAAc,CAAC","sourcesContent":["export const SENTRY_TOKEN = 'SENTRY_TOKEN';\n"]}

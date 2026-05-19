@@ -1,0 +1,67 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TeamToAdmin = void 0;
+const openapi = require("@nestjs/swagger");
+const typeorm_1 = require("typeorm");
+const user_entity_1 = require("../../user/entities/user.entity");
+const team_entity_1 = require("./team.entity");
+const base_entity_entity_1 = require("../../../shared/entities/base-entity.entity");
+let TeamToAdmin = class TeamToAdmin extends base_entity_entity_1.BaseEntity {
+    constructor(_a = {}, options) {
+        var { id } = _a, teamToAdmin = __rest(_a, ["id"]);
+        if (options === void 0) { options = { generateId: false }; }
+        super(id, options);
+        Object.assign(this, Object.assign({}, teamToAdmin));
+    }
+    static _OPENAPI_METADATA_FACTORY() {
+        return { team_id: { required: true, type: () => String }, admin_id: { required: true, type: () => String }, admin: { required: true, type: () => require("../../user/entities/user.entity").User }, team: { required: true, type: () => require("./team.entity").Team } };
+    }
+};
+exports.TeamToAdmin = TeamToAdmin;
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'uuid',
+        nullable: false,
+        unique: false,
+    }),
+    __metadata("design:type", String)
+], TeamToAdmin.prototype, "team_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'uuid', nullable: false, unique: false }),
+    __metadata("design:type", String)
+], TeamToAdmin.prototype, "admin_id", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, (admin) => admin.teamToAdmin, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'admin_id' }),
+    __metadata("design:type", user_entity_1.User)
+], TeamToAdmin.prototype, "admin", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => team_entity_1.Team, (team) => team.teamToAdmin, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'team_id' }),
+    __metadata("design:type", team_entity_1.Team)
+], TeamToAdmin.prototype, "team", void 0);
+exports.TeamToAdmin = TeamToAdmin = __decorate([
+    (0, typeorm_1.Entity)(),
+    __metadata("design:paramtypes", [Object, Object])
+], TeamToAdmin);
+//# sourceMappingURL=team-to-admin.entity.js.map

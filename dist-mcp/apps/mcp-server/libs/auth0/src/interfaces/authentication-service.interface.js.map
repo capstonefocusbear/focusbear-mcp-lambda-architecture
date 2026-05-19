@@ -1,0 +1,1 @@
+{"version":3,"file":"authentication-service.interface.js","sourceRoot":"/","sources":["libs/auth0/src/interfaces/authentication-service.interface.ts"],"names":[],"mappings":"","sourcesContent":["export interface IAuthenticationService {\n  validateAccessToken(token: string): Promise<[boolean, { payload?: any; declineReason?: string }]>;\n}\n"]}

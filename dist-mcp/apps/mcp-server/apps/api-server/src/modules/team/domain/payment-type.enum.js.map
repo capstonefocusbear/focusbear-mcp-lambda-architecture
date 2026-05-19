@@ -1,0 +1,1 @@
+{"version":3,"file":"payment-type.enum.js","sourceRoot":"/","sources":["apps/api-server/src/modules/team/domain/payment-type.enum.ts"],"names":[],"mappings":";;;AAAA,IAAY,WAGX;AAHD,WAAY,WAAW;IACrB,gCAAiB,CAAA;IACjB,kCAAmB,CAAA;AACrB,CAAC,EAHW,WAAW,2BAAX,WAAW,QAGtB","sourcesContent":["export enum PaymentType {\n  STRIPE = 'stripe',\n  OFFLINE = 'offline',\n}\n"]}

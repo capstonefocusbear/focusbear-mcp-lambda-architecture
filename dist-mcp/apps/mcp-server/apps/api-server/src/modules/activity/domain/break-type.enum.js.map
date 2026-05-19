@@ -1,0 +1,1 @@
+{"version":3,"file":"break-type.enum.js","sourceRoot":"/","sources":["apps/api-server/src/modules/activity/domain/break-type.enum.ts"],"names":[],"mappings":";;;AAAA,IAAY,SAGX;AAHD,WAAY,SAAS;IACnB,4BAAe,CAAA;IACf,kCAAqB,CAAA;AACvB,CAAC,EAHW,SAAS,yBAAT,SAAS,QAGpB","sourcesContent":["export enum BreakType {\n  MICRO = 'micro',\n  POMODORO = 'pomodoro',\n}\n"]}

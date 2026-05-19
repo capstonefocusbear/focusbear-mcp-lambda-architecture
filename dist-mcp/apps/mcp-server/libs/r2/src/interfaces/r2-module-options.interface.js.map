@@ -1,0 +1,1 @@
+{"version":3,"file":"r2-module-options.interface.js","sourceRoot":"/","sources":["libs/r2/src/interfaces/r2-module-options.interface.ts"],"names":[],"mappings":"","sourcesContent":["export interface IR2Options {\n  endpoint: string;\n  accessKeyId: string;\n  secretAccessKey: string;\n  signatureVersion: string;\n  region: string;\n  publicUrl?: string;\n}\n"]}

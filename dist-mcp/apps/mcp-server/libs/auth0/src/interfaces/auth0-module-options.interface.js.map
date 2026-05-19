@@ -1,0 +1,1 @@
+{"version":3,"file":"auth0-module-options.interface.js","sourceRoot":"/","sources":["libs/auth0/src/interfaces/auth0-module-options.interface.ts"],"names":[],"mappings":"","sourcesContent":["export interface IAuth0Options {\n  clientId: string;\n  clientSecret: string;\n  domain: string;\n  connection: string;\n  identifier: string;\n  actionSecret?: string;\n}\n"]}

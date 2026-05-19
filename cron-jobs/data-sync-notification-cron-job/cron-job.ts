@@ -18,7 +18,7 @@ import { FOCUS_BEAR_EMAILS } from '../../apps/api-server/src/shared/utils/consta
 import { captureErrorWithContext, runCronWithTelemetry } from '../sentry';
 import { ZohoDeskService } from '../../apps/api-server/src/modules/zoho-desk/services/zoho-desk.service';
 import { ZohoDeskModule } from '../../apps/api-server/src/modules/zoho-desk/zoho-desk.module';
-import { zohoConfig } from '../../apps/api-server/src/config/zoho.config';
+import { zohoConfig } from '../../libs/config/src/zoho.config';
 
 dotenv.config();
 

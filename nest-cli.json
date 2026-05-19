@@ -6,11 +6,11 @@
   "compilerOptions": {
     "webpack": true,
     "tsConfigPath": "apps/api-server/tsconfig.app.json",
-      "plugins": [
-        {
-          "name": "@nestjs/swagger",
-          "options": {
-            "classValidatorShim": true,
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
           "introspectComments": true,
           "dtoFileNameSuffix": [".dto.ts", ".entity.ts", ".model.ts"]
         }
@@ -30,9 +30,29 @@
       "compilerOptions": {
         "tsConfigPath": "apps/api-server/tsconfig.app.json",
         "assets": [
-          { "include": "src/shared/i18n/**/*", "watchAssets": true },
-          { "include": "src/modules/email/templates/**/*", "watchAssets": true }
+          {
+            "include": "shared/i18n/**/*",
+            "flat": false,
+            "watchAssets": true
+          },
+          {
+            "include": "modules/email/templates/**/*",
+            "flat": false,
+            "watchAssets": true
+          }
         ]
+      }
+    },
+    "mcp-server": {
+      "type": "application",
+      "root": "apps/mcp-server",
+      "entryFile": "main",
+      "sourceRoot": "apps/mcp-server/src",
+      "compilerOptions": {
+        "outputPath": "dist-mcp/apps/mcp-server",
+        "webpack": false,
+        "tsConfigPath": "apps/mcp-server/tsconfig.app.json",
+        "assets": []
       }
     },
     "observability": {
@@ -150,6 +170,15 @@
       "sourceRoot": "libs/openai/src",
       "compilerOptions": {
         "tsConfigPath": "libs/openai/tsconfig.lib.json"
+      }
+    },
+    "config": {
+      "type": "library",
+      "root": "libs/config",
+      "entryFile": "index",
+      "sourceRoot": "libs/config/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/config/tsconfig.lib.json"
       }
     }
   }

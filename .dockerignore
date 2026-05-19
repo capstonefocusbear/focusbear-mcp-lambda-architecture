@@ -4,3 +4,6 @@ dist
 .github
 coverage
 tmp
+
+.dbdata
+localstack_data

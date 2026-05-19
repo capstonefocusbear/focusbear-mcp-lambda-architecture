@@ -4,7 +4,7 @@ import { IRevenueCatOptions, RevenueCatModule } from '@app/revenue-cat';
 import { IStripeOptions, StripeModule } from '@app/stripe';
 import { Auth0Module } from '@app/auth0';
 import { BullModule } from '@nestjs/bull';
-import { constants, revenueCatConfig, stripeConfig } from '../../config';
+import { constants, revenueCatConfig, stripeConfig } from '../../../../../libs/config/src';
 import { TeamModule } from '../team/team.module';
 import { UserModule } from '../user/user.module';
 import { WebhooksController } from './controllers/webhooks/webhooks.controller';

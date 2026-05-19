@@ -1,0 +1,1 @@
+{"version":3,"file":"user-consent-metadate.model.js","sourceRoot":"/","sources":["apps/api-server/src/modules/user/domain/user-consent-metadate.model.ts"],"names":[],"mappings":";;;;AAAA,MAAa,mBAAmB;;;;CAE/B;AAFD,kDAEC","sourcesContent":["export class UserConsentMetadata {\n  // structure not distinguished yet\n}\n"]}

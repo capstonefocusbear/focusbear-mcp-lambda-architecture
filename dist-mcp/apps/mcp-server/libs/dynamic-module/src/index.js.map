@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"/","sources":["libs/dynamic-module/src/index.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;AAAA,2DAAyC;AACzC,6DAA2C","sourcesContent":["export * from './dynamic-module.factory';\nexport * from './dynamic-module.interface';\n"]}

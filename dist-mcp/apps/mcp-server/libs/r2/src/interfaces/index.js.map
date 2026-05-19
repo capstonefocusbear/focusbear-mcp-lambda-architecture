@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"/","sources":["libs/r2/src/interfaces/index.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;AAAA,gEAA8C","sourcesContent":["export * from './r2-module-options.interface';\n"]}

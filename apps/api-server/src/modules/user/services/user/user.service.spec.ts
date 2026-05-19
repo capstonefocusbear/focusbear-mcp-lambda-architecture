@@ -19,7 +19,7 @@ import { getQueueToken } from '@nestjs/bull';
 import { SendGridService } from '@app/send-grid';
 import { R2Service } from '@app/r2';
 import axios from 'axios';
-import { configsArray } from '../../../../config/index';
+import { configsArray } from '../../../../../../../libs/config/src/index';
 import {
   ActivityDummy,
   CompletedFocusBlockDummy,

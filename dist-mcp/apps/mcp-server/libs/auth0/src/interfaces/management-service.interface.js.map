@@ -1,0 +1,1 @@
+{"version":3,"file":"management-service.interface.js","sourceRoot":"/","sources":["libs/auth0/src/interfaces/management-service.interface.ts"],"names":[],"mappings":"","sourcesContent":["import { ManagementClient } from 'auth0';\n\nexport type IManagementService = ManagementClient;\n"]}

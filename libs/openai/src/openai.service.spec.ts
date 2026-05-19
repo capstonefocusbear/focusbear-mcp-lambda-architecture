@@ -11,7 +11,7 @@ import { Stream } from 'stream';
 import OpenAI from 'openai';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { SentryServiceMock } from '../../../apps/api-server/test/mocks';
-import { configsArray } from '../../../apps/api-server/src/config';
+import { configsArray } from '../../config/src';
 import { DeviceType } from '../../../apps/api-server/src/modules/user/domain/device-type.enum';
 import { IOpenAIOptions } from './interfaces';
 import {

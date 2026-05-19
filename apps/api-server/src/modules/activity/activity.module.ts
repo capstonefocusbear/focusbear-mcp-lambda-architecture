@@ -6,7 +6,7 @@ import { IStripeOptions, StripeModule } from '@app/stripe';
 import { IPusherBeamsOptions, PusherBeamsModule } from '@app/pusher-beams';
 import { OpenAIModule } from '@app/openai';
 import { R2Module } from '@app/r2';
-import { configsArray } from '../../config';
+import { configsArray } from '../../../../../libs/config/src';
 import { DeviceModule } from '../device/device.module';
 import { UserModule } from '../user/user.module';
 import { WebhookModule } from '../webhook/webhook.module';

@@ -1,6 +1,6 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { configsArray } from '../../../apps/api-server/src/config';
+import { configsArray } from '../../config/src';
 import { IPusherOptions } from './interfaces';
 import { PusherModule } from './pusher.module';
 import { PusherService } from './pusher.service';

@@ -1,0 +1,1 @@
+{"version":3,"file":"user-types.enum.js","sourceRoot":"/","sources":["apps/api-server/src/modules/user/domain/user-types.enum.ts"],"names":[],"mappings":";;;AAAA,IAAY,SAGX;AAHD,WAAY,SAAS;IACnB,kCAAqB,CAAA;IACrB,4BAAe,CAAA;AACjB,CAAC,EAHW,SAAS,yBAAT,SAAS,QAGpB","sourcesContent":["export enum UserTypes {\n  STANDARD = 'STANDARD',\n  ADMIN = 'ADMIN',\n}\n"]}

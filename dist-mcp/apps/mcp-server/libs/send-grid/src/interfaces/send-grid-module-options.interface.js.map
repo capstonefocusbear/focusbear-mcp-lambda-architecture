@@ -1,0 +1,1 @@
+{"version":3,"file":"send-grid-module-options.interface.js","sourceRoot":"/","sources":["libs/send-grid/src/interfaces/send-grid-module-options.interface.ts"],"names":[],"mappings":"","sourcesContent":["export interface ISendGridOptions {\n  apiKey: string;\n}\n"]}

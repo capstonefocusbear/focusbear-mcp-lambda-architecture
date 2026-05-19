@@ -46,7 +46,11 @@
       "@app/gemini": ["libs/gemini/src"],
       "@app/gemini/*": ["libs/gemini/src/*"],
       "@app/observability": ["libs/observability/src"],
-      "@app/observability/*": ["libs/observability/src/*"]
+      "@app/observability/*": ["libs/observability/src/*"],
+      "@app/config": ["libs/config/src"],
+      "@app/config/*": ["libs/config/src/*"],
+      "@app/database": ["libs/database/src"],
+      "@app/database/*": ["libs/database/src/*"]
     },
 
     "inlineSources": true,

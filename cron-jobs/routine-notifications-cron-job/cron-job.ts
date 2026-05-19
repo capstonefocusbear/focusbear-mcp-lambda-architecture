@@ -10,7 +10,7 @@ import { BeamsPublishRequest } from '../../libs/pusher-beams/src/domains/pusher-
 import { CronJobDataSource } from '../data-source';
 import { User } from '../../apps/api-server/src/modules/user/entities/user.entity';
 import { ActivityType } from '../../apps/api-server/src/modules/activity/domain/activity-type.enum';
-import { openAiConfig } from '../../apps/api-server/src/config';
+import { openAiConfig } from '../../libs/config/src';
 import { runCronWithTelemetry, captureErrorWithContext } from '../sentry';
 import { withTimeout } from '../../apps/api-server/src/shared/utils/helpers';
 // biome-ignore lint/style/noCommonJs: cron script uses require for dotenv

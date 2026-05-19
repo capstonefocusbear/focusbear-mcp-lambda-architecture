@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { allEntities } from '../apps/api-server/src/config/all-entities';
+import { allEntities } from '../libs/config/src/all-entities';
 
 export const CronJobDataSource = new DataSource({
   type: 'postgres',
@@ -13,5 +13,6 @@ export const CronJobDataSource = new DataSource({
   entities: allEntities,
   subscribers: [],
   migrations: [],
-  ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+  // ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'development' ? false : (process.env.AWS_REGION ? { rejectUnauthorized: false } : false),
 });

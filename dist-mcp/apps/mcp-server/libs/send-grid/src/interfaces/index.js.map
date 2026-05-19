@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"/","sources":["libs/send-grid/src/interfaces/index.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;AAAA,uEAAqD;AACrD,gEAA8C","sourcesContent":["export * from './send-grid-module-options.interface';\nexport * from './send-grid-service.interface';\n"]}

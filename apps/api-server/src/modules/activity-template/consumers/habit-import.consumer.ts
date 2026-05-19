@@ -22,7 +22,7 @@ import { BullQueues, BullWorkers, S3_BUCKET_HABIT_IMPORTS } from '../../../share
 import { normalizeSingleEmoji } from '../../../shared/utils/emoji';
 import { UpdateActivityDto } from '../../activity/dto/update-activity.dto';
 import { ActivityType, normalizeRoutineTypeToActivityType } from '../../activity/domain/activity-type.enum';
-import { MetricsConfig } from '../../../config/metrics.config';
+import { MetricsConfig } from '../../../../../../libs/config/src/metrics.config';
 import { ActivityLibraryService } from '../services/activity-library.service';
 import { getActivityTemplateMetricsConfig, parseMetricsTimestamp } from '../utils/ai-pipeline-metrics.util';
 

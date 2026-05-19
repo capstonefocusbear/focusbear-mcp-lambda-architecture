@@ -1,0 +1,1 @@
+{"version":3,"file":"mcp-scopes.enum.js","sourceRoot":"/","sources":["apps/mcp-server/src/auth/domain/mcp-scopes.enum.ts"],"names":[],"mappings":";;;AAAA,IAAY,QAGX;AAHD,WAAY,QAAQ;IAClB,qCAAyB,CAAA;IACzB,uCAA2B,CAAA;AAC7B,CAAC,EAHW,QAAQ,wBAAR,QAAQ,QAGnB","sourcesContent":["export enum McpScope {\n  TASKS_READ = 'tasks:read',\n  TASKS_WRITE = 'tasks:write',\n}\n"]}

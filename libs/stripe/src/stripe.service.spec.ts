@@ -10,7 +10,7 @@ import { SentryService } from '@app/observability';
 import { Auth0ManagementService } from '@app/auth0';
 import { UserRepository } from '../../../apps/api-server/src/modules/user/repositories/user.repository';
 import { prettyJson } from '../../../apps/api-server/src/shared/utils/helpers';
-import { configsArray } from '../../../apps/api-server/src/config';
+import { configsArray } from '../../config/src';
 import { IStripeOptions } from './interfaces';
 import { StripeModule } from './stripe.module';
 import { StripeService } from './stripe.service';

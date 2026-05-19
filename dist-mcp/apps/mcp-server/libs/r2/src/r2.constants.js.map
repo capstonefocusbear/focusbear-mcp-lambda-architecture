@@ -1,0 +1,1 @@
+{"version":3,"file":"r2.constants.js","sourceRoot":"/","sources":["libs/r2/src/r2.constants.ts"],"names":[],"mappings":";;;AAAa,QAAA,iBAAiB,GAAG,MAAM,CAAC,mBAAmB,CAAC,CAAC","sourcesContent":["export const R2_MODULE_OPTIONS = Symbol('R2_MODULE_OPTIONS');\n"]}

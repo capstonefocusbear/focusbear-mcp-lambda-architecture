@@ -1,0 +1,1 @@
+{"version":3,"file":"device-metadata.model.js","sourceRoot":"/","sources":["apps/api-server/src/modules/device/domain/device-metadata.model.ts"],"names":[],"mappings":";;;;AAAA,MAAa,cAAc;;;;CAE1B;AAFD,wCAEC","sourcesContent":["export class DeviceMetadata {\n  // ...\n}\n"]}

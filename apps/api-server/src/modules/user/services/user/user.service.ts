@@ -88,7 +88,7 @@ import {
   DEFAULT_METRICS_SERVICE,
   DEFAULT_QUEUE_METRICS_NAMESPACE,
   MetricsConfig,
-} from '../../../../config/metrics.config';
+} from '../../../../../../../libs/config/src/metrics.config';
 import { AccountabilityBuddyService } from '../../../accountability-buddy/services/accountability-buddy.service';
 
 const JEREMYS_USER_ID = '9884b0af-dc9f-4207-964e-e4db537a2234';

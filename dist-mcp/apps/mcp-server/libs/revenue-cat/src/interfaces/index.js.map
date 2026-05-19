@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"/","sources":["libs/revenue-cat/src/interfaces/index.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;AAAA,yEAAuD","sourcesContent":["export * from './revenue-cat-module-options.interface';\n"]}

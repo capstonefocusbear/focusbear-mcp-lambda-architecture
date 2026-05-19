@@ -22,8 +22,8 @@ const connectionString =
 
 const poolConfig = {
   connectionString,
-  ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 10000,
+  // ssl: process.env.AWS_REGION ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'development' ? false : (process.env.AWS_REGION ? { rejectUnauthorized: false } : false),
   idleTimeoutMillis: 30000,
   max: 10,
 };

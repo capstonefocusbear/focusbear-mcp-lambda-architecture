@@ -1,6 +1,6 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { configsArray } from '../../../apps/api-server/src/config';
+import { configsArray } from '../../config/src';
 import { IRevenueCatOptions } from './interfaces';
 import { RevenueCatModule } from './revenue-cat.module';
 import { RevenueCatService } from './revenue-cat.service';

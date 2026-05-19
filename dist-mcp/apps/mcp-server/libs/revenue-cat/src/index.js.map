@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"/","sources":["libs/revenue-cat/src/index.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;AAAA,uDAAqC;AACrC,wDAAsC;AACtC,+CAA6B","sourcesContent":["export * from './revenue-cat.module';\nexport * from './revenue-cat.service';\nexport * from './interfaces';\n"]}

@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { finalize, tap } from 'rxjs/operators';
 import { ConfigService } from '@nestjs/config';
 import { emitUserActivityMetric } from '@app/observability';
-import { MetricsConfig } from '../../config/metrics.config';
+import { MetricsConfig } from '../../../../../libs/config/src/metrics.config';
 
 @Injectable()
 export class MetricsInterceptor implements NestInterceptor {

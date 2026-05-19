@@ -32,8 +32,10 @@ async function bootstrap(): Promise<void> {
   type RegisterParams = Parameters<typeof app.register>;
 
   const configService: ConfigService = app.get(ConfigService);
-  const PORT = configService.get('server.port');
-  const HOST: string = configService.get('server.host');
+  // const PORT = configService.get('server.port');
+  const PORT = process.env.PORT || configService.get('server.port') || 4000;
+  // const HOST: string = configService.get('server.host');
+  const HOST = '0.0.0.0';
   const HELMET: unknown = configService.get('helmet');
   const VALIDATION_PIPE: ValidationPipeOptions = configService.get('validation-pipe');
 

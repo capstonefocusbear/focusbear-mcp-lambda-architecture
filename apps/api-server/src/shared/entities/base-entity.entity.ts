@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Column, PrimaryGeneratedColumn } from 'typeorm';
 import { EncryptionTransformer, JSONEncryptionTransformer } from 'typeorm-encrypted';
-import { typeormEncryptionConfig } from '../../config/typeorm-encryption.config';
+import { typeormEncryptionConfig } from '../../../../../libs/config/src/typeorm-encryption.config';
 
 export class BaseEntity {
   constructor(id?: string, { generateId } = { generateId: false }) {

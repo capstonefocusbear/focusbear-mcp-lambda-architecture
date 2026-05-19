@@ -1,0 +1,1 @@
+{"version":3,"file":"log-summary-type.enum.js","sourceRoot":"/","sources":["apps/api-server/src/modules/activity/domain/log-summary-type.enum.ts"],"names":[],"mappings":";;;AAAA,IAAY,cAGX;AAHD,WAAY,cAAc;IACxB,6BAAW,CAAA;IACX,iCAAe,CAAA;AACjB,CAAC,EAHW,cAAc,8BAAd,cAAc,QAGzB","sourcesContent":["export enum LogSummaryType {\n  SUM = 'SUM',\n  AVERAGE = 'AVG',\n}\n"]}

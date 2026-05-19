@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { URLSearchParams } from 'url';
-import { auth0Config } from '../../src/config';
+import { auth0Config } from '../../../../libs/config/src';
 
 interface ILoginData {
   access_token: string;

@@ -1,6 +1,54 @@
-version: "3.9"
+version: '3.9'
 
 services:
+  api-server:
+    build:
+      context: .
+      dockerfile: ./apps/api-server/Dockerfile.api
+    ports:
+      - '4000:4000'
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - SERVER_PORT=4000
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_HOSTNAME=redis
+      - AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE=1
+      - REDIS_PORT=6379
+    depends_on:
+      - db
+      - redis
+      # - localstack
+    volumes:
+      - .:/app
+      # - /app/node_modules
+    command: npx nest start api-server --watch
+
+  # mcp-server:
+  # build:
+  # context: .
+  # dockerfile: ./apps/mcp-server/Dockerfile.mcp
+  # ports:
+  # - '5038:5038'
+  # env_file:
+  # - .env
+  # environment:
+  # - NODE_ENV=development
+  # - PORT=5038
+  # - MAIN_API_URL=http://api-server:4000
+  # depends_on:
+  # - api-server
+  # - redis
+  # - localstack
+  # volumes:
+  # - .:/app
+  # - /app/node_modules
+  # command: npx nest start mcp-server --watch
+  # command: npm run simulate
+
   db:
     image: pgvector/pgvector:pg16-trixie
     restart: unless-stopped
@@ -11,7 +59,7 @@ services:
     volumes:
       - .dbdata:/var/lib/postgresql/data
     ports:
-      - "54322:5432"
+      - '54322:5432'
 
   # GUI for DB
   adminer:
@@ -24,7 +72,7 @@ services:
     image: redis:6.2-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
 
   # s3:
   #   image: minio/minio

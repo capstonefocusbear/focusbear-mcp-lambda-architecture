@@ -2,7 +2,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { runSeeders, SeederOptions } from 'typeorm-extension';
 import { UserFactory } from './user.factory';
 import { MainSeeder } from './main.seeder';
-import { typeormConfig } from '../config/typeorm.config';
+import { typeormConfig } from '../../../../libs/config/src/typeorm.config';
 import { ActivityFactory } from './activity.factory';
 import { DailyStatsFactory } from './daily-stats.factory';
 import { ActivitySequenceFactory } from './activity-sequence.factory';

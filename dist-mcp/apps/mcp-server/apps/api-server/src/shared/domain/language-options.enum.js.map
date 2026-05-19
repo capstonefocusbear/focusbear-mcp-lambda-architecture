@@ -1,0 +1,1 @@
+{"version":3,"file":"language-options.enum.js","sourceRoot":"/","sources":["apps/api-server/src/shared/domain/language-options.enum.ts"],"names":[],"mappings":";;;AAAA,IAAY,eAGX;AAHD,WAAY,eAAe;IACzB,iCAAc,CAAA;IACd,iCAAc,CAAA;AAChB,CAAC,EAHW,eAAe,+BAAf,eAAe,QAG1B","sourcesContent":["export enum LanguageOptions {\n  ENGLISH = 'en',\n  SPANISH = 'es',\n}\n"]}

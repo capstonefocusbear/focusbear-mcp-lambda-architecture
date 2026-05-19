@@ -3,7 +3,7 @@ import { JSONEncryptionTransformer } from 'typeorm-encrypted';
 import { FieldTransformer } from '../src/shared/utils/helpers';
 import { Calendar } from '../src/modules/calendar/entities/calendar.entity';
 import { Notification } from '../src/modules/notification/entities/notification.entity';
-import { typeormEncryptionConfig } from '../src/config/typeorm-encryption.config';
+import { typeormEncryptionConfig } from '../../../libs/config/src/typeorm-encryption.config';
 
 export class EncryptCalendarFields1709036620789 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

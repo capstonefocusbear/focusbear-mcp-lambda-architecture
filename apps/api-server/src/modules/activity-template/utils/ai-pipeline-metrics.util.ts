@@ -4,7 +4,7 @@ import {
   DEFAULT_METRICS_SERVICE,
   DEFAULT_QUEUE_METRICS_NAMESPACE,
   MetricsConfig,
-} from '../../../config/metrics.config';
+} from '../../../../../../libs/config/src/metrics.config';
 
 const DEFAULT_METRICS_CONFIG: MetricsConfig = {
   emitQueueMetrics: true,

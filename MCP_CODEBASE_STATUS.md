@@ -1,5 +1,7 @@
 # MCP codebase status
 
+Planner Link: https://planner.cloud.microsoft/webui/v1/plan/ZWrjNSLeuUepoloDBteSqMgAANbR?tid=d1323671-cdbe-4417-b4d4-bdb24b51316b 
+
 **Audience:** project manager, current developers, and Cursor
 **Repository snapshot:** `auditing-branch` at `0c6a5ea0` (25 August 2026)
 **Assessment basis:** source, configuration, tracked artifacts, and Git history in this checkout. No live AWS environment was inspected.

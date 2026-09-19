@@ -1,99 +1,45 @@
-/*
-import { Injectable, MessageEvent } from '@nestjs/common';
-import { Observable, Subject } from 'rxjs';
-import { TasksService } from './services/tasks.service';
-
-@Injectable()
-export class McpService {
-  private connections = new Map<string, Subject<MessageEvent>>();
-
-  constructor(private readonly tasksService: TasksService) {}
-
-  initializeSseStream(userId: string): Observable<MessageEvent> {
-    const subject = new Subject<MessageEvent>();
-    this.connections.set(userId, subject);
-
-    setTimeout(() => {
-      subject.next({
-        data: { endpoint: '/mcp/messages' },
-        type: 'endpoint',
-      });
-    }, 100);
-
-    return subject.asObservable();
-  }
-
-  async handleIncomingMessage(userId: string, message: any) {
-    const { method, params, id } = message;
-
-    // Dev-mode: MCP server authenticates to api-server using a configured agent token.
-    // This keeps mcp-server thin (no DB) while api-server stays source-of-truth.
-    const mcpAgentToken = process.env.MCP_AGENT_TOKEN;
-
-    const stream = this.connections.get(userId);
-
-    let responsePayload: any;
-
-    try {
-      if (method === 'tools/list') {
-        responsePayload = {
-          id,
-          result: {
-            tools: [
-              {
-                name: 'list_tasks',
-                description: 'Fetch the active tasks assigned to this AI agent',
-                inputSchema: { type: 'object', properties: {} }, // Add query params here later
-              },
-              {
-                name: 'update_task_status',
-                description: 'Update the status of a specific task',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    taskId: { type: 'string', description: 'The UUID of the task' },
-                    status: { type: 'string', description: 'The new status' },
-                  },
-                  required: ['taskId', 'status'],
-                },
-              },
-            ],
-          },
-        };
-      } else if (method === 'tools/call') {
-        if (!mcpAgentToken) throw new Error('MCP_AGENT_TOKEN is not set');
-
-        if (params.name === 'list_tasks') {
-          const tasks = await this.tasksService.listTasks(mcpAgentToken, {});
-          responsePayload = { id, result: { content: [{ type: 'text', text: JSON.stringify(tasks) }] } };
-        } else if (params.name === 'update_task_status') {
-          const updatedTask = await this.tasksService.updateTaskStatus(mcpAgentToken, params.arguments.taskId, {
-            status: params.arguments.status,
-          });
-          responsePayload = { id, result: { content: [{ type: 'text', text: JSON.stringify(updatedTask) }] } };
-        } else {
-          responsePayload = { id, error: { code: -32601, message: `Tool ${params.name} not found` } };
-        }
-      } else {
-        responsePayload = { id, error: { code: -32601, message: 'Method not found' } };
-      }
-    } catch (error: any) {
-      responsePayload = { id, error: { code: -32000, message: error.message } };
-    }
-
-    // 2. PUSH THE DATA DOWN THE SSE TUNNEL!
-    if (stream) {
-      stream.next({ data: responsePayload } as MessageEvent);
-    } else {
-      console.warn(`No active SSE stream found for user ${userId}`);
-    }
-
-    // 3. Return a simple acknowledgment to the POST request
-    return { status: 'Accepted' };
-  }
-}*/
 import { Injectable, Logger } from '@nestjs/common';
 import { TasksService } from './services/tasks.service';
+
+// Newest first. If a client asks for a version we don't know, we reply with the first one.
+export const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+
+export const SERVER_INFO = { name: 'focusbear-mcp-server', version: '0.1.0' };
+
+// We only expose tools, and the tool list is static.
+export const SERVER_CAPABILITIES = { tools: { listChanged: false } };
+
+const TOOLS = [
+  {
+    name: 'list_tasks',
+    description: 'Fetch the active tasks assigned to this AI agent',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'update_task_status',
+    description: 'Update the status of a specific task',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string', description: 'The UUID of the task' },
+        status: { type: 'string', description: 'The new status' },
+      },
+      required: ['taskId', 'status'],
+    },
+  },
+];
+
+// A JSON-RPC notification has a method but no id. The server must not reply to it.
+export function isJsonRpcNotification(body: any): boolean {
+  return typeof body?.method === 'string' && body.id === undefined;
+}
+
+const rpcResult = (id: any, result: unknown) => ({ jsonrpc: '2.0', id, result });
+const rpcError = (id: any, code: number, message: string) => ({
+  jsonrpc: '2.0',
+  id: id ?? null,
+  error: { code, message },
+});
 
 @Injectable()
 export class McpService {
@@ -101,87 +47,19 @@ export class McpService {
 
   constructor(private readonly tasksService: TasksService) {}
 
-  // This replaces both initializeSseStream and handleIncomingMessage
-  async handleStreamRequest1111111(body: any, userJwt: string, responseStream: any) {
-    const { method, params, id } = body;
-    // const mcpAgentToken = process.env.MCP_AGENT_TOKEN;
-    const mcpAgentToken = '6537eff81cb66ec00f042aaa6a3ff4c6d4ea9e67b478132f39f66a51032aa2ad';
+  async handleStreamRequest(body: any, userJwt: string, responseStream: any): Promise<void> {
+    const { method, params, id } = body ?? {};
 
-    let responsePayload: any;
-
-    try {
-      this.logger.log(`Processing MCP method: ${method}`);
-
-      if (method === 'tools/list') {
-        responsePayload = {
-          id,
-          result: {
-            tools: [
-              {
-                name: 'list_tasks',
-                description: 'Fetch the active tasks assigned to this AI agent',
-                inputSchema: { type: 'object', properties: {} },
-              },
-              {
-                name: 'update_task_status',
-                description: 'Update the status of a specific task',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    taskId: { type: 'string', description: 'The UUID of the task' },
-                    status: { type: 'string', description: 'The new status' },
-                  },
-                  required: ['taskId', 'status'],
-                },
-              },
-            ],
-          },
-        };
-      } else if (method === 'tools/call') {
-        if (!mcpAgentToken) throw new Error('MCP_AGENT_TOKEN is not set');
-
-        if (params.name === 'list_tasks') {
-          const tasks = await this.tasksService.listTasks(mcpAgentToken, {});
-          responsePayload = { id, result: { content: [{ type: 'text', text: JSON.stringify(tasks) }] } };
-        } else if (params.name === 'update_task_status') {
-          const updatedTask = await this.tasksService.updateTaskStatus(mcpAgentToken, params.arguments.taskId, {
-            status: params.arguments.status,
-          });
-          responsePayload = { id, result: { content: [{ type: 'text', text: JSON.stringify(updatedTask) }] } };
-        } else {
-          responsePayload = { id, error: { code: -32601, message: `Tool ${params.name} not found` } };
-        }
-      } else {
-        responsePayload = { id, error: { code: -32601, message: 'Method not found' } };
-      }
-    } catch (error: any) {
-      this.logger.error(`Error processing MCP request: ${error.message}`);
-      responsePayload = { id, error: { code: -32000, message: error.message } };
+    // Notifications (e.g. notifications/initialized) get no response body at all.
+    if (isJsonRpcNotification(body)) {
+      this.logger.log(`Received MCP notification: ${method}`);
+      return;
     }
 
-    // PUSH THE DATA DOWN THE AWS SSE TUNNEL!
-    // Notice how we format it as 'data: {...}\n\n' which is the SSE standard
-    responseStream.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
-  }
-
-  // This replaces both initializeSseStream and handleIncomingMessage
-  async handleStreamRequest(body: any, userJwt: string, responseStream: any) {
-    const { method, params, id } = body;
-
-    // 1. EXTRAT AND VALIDATE THE TOKEN
-    // userJwt usually comes in as "Bearer 6dcc..." or just "Bearer "
     const actualToken = userJwt?.replace('Bearer ', '').trim();
-
-    // 2. THE BOUNCER LOGIC
     if (!actualToken) {
       this.logger.warn('Blocked MCP request: Missing Bearer token');
-      // Immediately return a 401 error and stop processing
-      responseStream.write(
-        `data: ${JSON.stringify({
-          id,
-          error: { code: 401, message: 'Unauthorized: Missing or invalid token' },
-        })}\n\n`,
-      );
+      this.send(responseStream, { id, error: { code: 401, message: 'Unauthorized: Missing or invalid token' } });
       return;
     }
 
@@ -190,53 +68,66 @@ export class McpService {
     try {
       this.logger.log(`Processing MCP method: ${method}`);
 
-      if (method === 'tools/list') {
-        responsePayload = {
-          id,
-          result: {
-            tools: [
-              {
-                name: 'list_tasks',
-                description: 'Fetch the active tasks assigned to this AI agent',
-                inputSchema: { type: 'object', properties: {} },
-              },
-              {
-                name: 'update_task_status',
-                description: 'Update the status of a specific task',
-                inputSchema: {
-                  type: 'object',
-                  properties: {
-                    taskId: { type: 'string', description: 'The UUID of the task' },
-                    status: { type: 'string', description: 'The new status' },
-                  },
-                  required: ['taskId', 'status'],
-                },
-              },
-            ],
-          },
-        };
-      } else if (method === 'tools/call') {
-        // 3. USE THE DYNAMIC TOKEN INSTEAD OF THE HARDCODED ONE
-        if (params.name === 'list_tasks') {
-          const tasks = await this.tasksService.listTasks(actualToken, {});
-          responsePayload = { id, result: { content: [{ type: 'text', text: JSON.stringify(tasks) }] } };
-        } else if (params.name === 'update_task_status') {
-          const updatedTask = await this.tasksService.updateTaskStatus(actualToken, params.arguments.taskId, {
-            status: params.arguments.status,
-          });
-          responsePayload = { id, result: { content: [{ type: 'text', text: JSON.stringify(updatedTask) }] } };
-        } else {
-          responsePayload = { id, error: { code: -32601, message: `Tool ${params.name} not found` } };
-        }
-      } else {
-        responsePayload = { id, error: { code: -32601, message: 'Method not found' } };
+      switch (method) {
+        case 'initialize':
+          responsePayload = rpcResult(id, this.handleInitialize(params));
+          break;
+        case 'ping':
+          responsePayload = rpcResult(id, {});
+          break;
+        case 'tools/list':
+          responsePayload = rpcResult(id, { tools: TOOLS });
+          break;
+        case 'tools/call':
+          responsePayload = await this.handleToolCall(id, params, actualToken);
+          break;
+        default:
+          responsePayload = rpcError(id, -32601, 'Method not found');
       }
     } catch (error: any) {
       this.logger.error(`Error processing MCP request: ${error.message}`);
-      responsePayload = { id, error: { code: -32000, message: error.message } };
+      responsePayload = rpcError(id, -32000, error.message);
     }
 
-    // PUSH THE DATA DOWN THE AWS SSE TUNNEL!
-    responseStream.write(`data: ${JSON.stringify(responsePayload)}\n\n`);
+    this.send(responseStream, responsePayload);
+  }
+
+  private handleInitialize(params: any) {
+    const requested = params?.protocolVersion;
+    const protocolVersion = SUPPORTED_PROTOCOL_VERSIONS.includes(requested)
+      ? requested
+      : SUPPORTED_PROTOCOL_VERSIONS[0];
+
+    this.logger.log(
+      `initialize: client=${
+        params?.clientInfo?.name ?? 'unknown'
+      } requested=${requested} negotiated=${protocolVersion}`,
+    );
+
+    return { protocolVersion, capabilities: SERVER_CAPABILITIES, serverInfo: SERVER_INFO };
+  }
+
+  private async handleToolCall(id: any, params: any, token: string) {
+    const name = params?.name;
+    const args = params?.arguments ?? {};
+
+    if (name === 'list_tasks') {
+      const tasks = await this.tasksService.listTasks(token, {});
+      return rpcResult(id, { content: [{ type: 'text', text: JSON.stringify(tasks) }] });
+    }
+
+    if (name === 'update_task_status') {
+      if (typeof args.taskId !== 'string' || typeof args.status !== 'string') {
+        return rpcError(id, -32602, 'Invalid params: taskId and status must be strings');
+      }
+      const updatedTask = await this.tasksService.updateTaskStatus(token, args.taskId, { status: args.status });
+      return rpcResult(id, { content: [{ type: 'text', text: JSON.stringify(updatedTask) }] });
+    }
+
+    return rpcError(id, -32601, `Tool ${name} not found`);
+  }
+
+  private send(responseStream: any, payload: unknown) {
+    responseStream.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
 }

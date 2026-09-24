@@ -35,7 +35,7 @@ The root `npm run build` does not build the MCP application, so the API and MCP 
 
 ## Step 2: fix authentication before touching AWS
 
-Start in [external-mcp-auth.controller.ts](apps/api-server/src/modules/external-mcp_fffff/controllers/external-mcp-auth.controller.ts).
+Start in [external-mcp-auth.controller.ts](apps/api-server/src/modules/external-mcp/controllers/external-mcp-auth.controller.ts).
 
 Make these changes:
 
@@ -55,7 +55,7 @@ Review these files:
 
 - [mcp.service.ts](apps/mcp-server/src/mcp/mcp.service.ts)
 - [tasks.service.ts](apps/mcp-server/src/mcp/services/tasks.service.ts)
-- [internal-service.guard.ts](apps/api-server/src/modules/external-mcp_fffff/guards/internal-service.guard.ts)
+- [internal-service.guard.ts](apps/api-server/src/modules/external-mcp/guards/internal-service.guard.ts)
 
 Required actions:
 
@@ -69,7 +69,7 @@ Do not copy actual token or secret values into pull requests, documentation, tes
 
 ## Step 4: add and run authorization tests
 
-Extend the existing tests under [apps/api-server/src/modules/external-mcp_fffff/guards](apps/api-server/src/modules/external-mcp_fffff/guards) and [apps/api-server/src/modules/external-mcp_fffff/services](apps/api-server/src/modules/external-mcp_fffff/services).
+Extend the existing tests under [apps/api-server/src/modules/external-mcp/guards](apps/api-server/src/modules/external-mcp/guards) and [apps/api-server/src/modules/external-mcp/services](apps/api-server/src/modules/external-mcp/services).
 
 The tests must prove:
 
@@ -84,8 +84,8 @@ Run the focused tests first, then the complete suite:
 
 ```bash
 npx jest --runInBand \
-  apps/api-server/src/modules/external-mcp_fffff/guards \
-  apps/api-server/src/modules/external-mcp_fffff/services
+  apps/api-server/src/modules/external-mcp/guards \
+  apps/api-server/src/modules/external-mcp/services
 
 npm test -- --runInBand
 ```
@@ -168,7 +168,7 @@ Do not treat committed [`dist-mcp`](dist-mcp) output as the source of truth. The
 Do this in a separate cleanup change after the protocol and tests are working:
 
 - Confirm the canonical implementation behind [external-mcp.module.ts](apps/api-server/src/modules/external-mcp/external-mcp.module.ts).
-- Decide whether the recovery-style `external-mcp_fffff` directory should be renamed.
+- Done (Task 14): the recovery-style `external-mcp_fffff` directory was merged into `external-mcp`; the duplicate directory no longer exists.
 - Remove or archive [main222.ts](apps/mcp-server/src/main222.ts).
 - Remove or archive [mcp.controller---fefef.ts](apps/mcp-server/src/mcp/mcp.controller---fefef.ts).
 - Remove or archive alternate service files such as `mcp.service.--fefefefts`.

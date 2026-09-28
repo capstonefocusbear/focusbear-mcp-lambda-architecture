@@ -3,23 +3,20 @@ export * from './services/auth0-authentication.service';
 export * from './services/auth0-management.service';
 export * from './interfaces';
 
-export * from './../../../apps/mcp-server/src/auth/guards/is-auth.guard';
-export * from './../../../apps/mcp-server/src/auth/domain/passport.model'
 // IsAuth
 // Fix this
-// export * from 'apps/api-server/src/modules/auth/guards/is-auth/is-auth.guard'; 
+// export * from 'apps/api-server/src/modules/auth/guards/is-auth/is-auth.guard';
 // export * from './guards/is-auth/is-auth.guard'
 
 // AuthContext
 // If AuthContext is a decorator in its own file:
 // export * from 'apps/api-server/src/shared/decorators/passport.decorator';
-//export * from './decorators/passport.decorator'; 
+//export * from './decorators/passport.decorator';
 
 // Passport
 // Export the model
 // export * from 'apps/api-server/src/modules/auth/domain/passport.model';
 // export * from './domain/passport.model'
-
 
 // TODO: This will be the new config file. all imports must be in the same folder directory
 // Put '*' if it is ok

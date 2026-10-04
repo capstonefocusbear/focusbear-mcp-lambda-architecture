@@ -1,0 +1,328 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Focus Bear MCP server (OAuth adapter in apps/mcp-server) on AWS Lambda,
+  behind an API Gateway HTTP API. Group 76, Planner Task 24.
+
+# Build first with `bash infra/mcp/build.sh`, then deploy from infra/mcp with
+# `sam deploy`. See infra/mcp/README.md for the full steps.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name. Only dev is in scope for the capstone.
+
+  ApiServerUrl:
+    Type: String
+    AllowedPattern: '^https://[^/]+/?$'
+    ConstraintDescription: Must be an HTTPS origin with no path, e.g. https://api.example.com
+    Description: Origin of the Focus Bear api-server this stage calls (API_SERVER_URL).
+
+  OAuthIssuer:
+    Type: String
+    AllowedPattern: '^https://.+$'
+    Description: Issuer URL of the OAuth authorization server (OAUTH_ISSUER).
+
+  OAuthJwksUrl:
+    Type: String
+    AllowedPattern: '^https://.+$'
+    Description: URL of the issuer's JWKS public keys (OAUTH_JWKS_URL).
+
+  McpResourceUrl:
+    Type: String
+    Default: https://example.invalid/mcp
+    AllowedPattern: '^https://[^/]+/mcp$'
+    ConstraintDescription: Must be an HTTPS URL that ends in /mcp
+    Description: >
+      Public URL of this stack's /mcp endpoint (MCP_RESOURCE_URL). It is only
+      known after the first deploy, so deploy once with the default, copy the
+      McpUrl output, and deploy again with that value.
+
+  McpAllowedOrigins:
+    Type: String
+    Default: ''
+    Description: Optional comma-separated browser origins allowed to call /mcp (MCP_ALLOWED_ORIGINS).
+
+  ReservedConcurrency:
+    Type: Number
+    Default: 20
+    MinValue: -1
+    Description: >
+      Maximum simultaneous Lambda executions (design doc section 10.2). AWS
+      keeps 100 unreserved, so the account limit must be at least this value
+      plus 100. Use -1 to skip the reservation on an account with a low limit.
+
+  ThrottleRate:
+    Type: Number
+    Default: 5
+    Description: API Gateway steady-state requests per second.
+
+  ThrottleBurst:
+    Type: Number
+    Default: 10
+    Description: API Gateway burst limit.
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365]
+    Description: Days to keep Lambda and API Gateway logs.
+
+  WebAdapterLayerVersion:
+    Type: Number
+    Default: 30
+    Description: Version of the AWS Lambda Web Adapter layer (LambdaAdapterLayerX86).
+
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: >
+      Email address for alarm and budget notifications. Leave empty to create
+      the alarms without notifications and to skip the budget.
+
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 10
+    Description: Monthly cost budget in USD. Alerts are sent at 50%, 80% and 100%.
+
+  BudgetScope:
+    Type: String
+    Default: account
+    AllowedValues: [account, project-tag]
+    Description: >
+      account = budget covers the whole AWS account (right for a dedicated
+      team account). project-tag = budget covers only resources tagged
+      project=focusbear-mcp (right for a shared account; the account owner
+      must first activate "project" as a cost allocation tag in Billing).
+
+Conditions:
+  HasReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, -1]]
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
+  BudgetByTag: !Equals [!Ref BudgetScope, project-tag]
+
+Resources:
+  # ---------------------------------------------------------------- API ---
+  McpHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Description: !Sub Focus Bear MCP endpoint (${Stage})
+      StageName: $default
+      DefaultRouteSettings:
+        ThrottlingRateLimit: !Ref ThrottleRate
+        ThrottlingBurstLimit: !Ref ThrottleBurst
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        # No headers are logged, so bearer tokens never reach the access log.
+        Format: '{"requestId":"$context.requestId","time":"$context.requestTime","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength","integrationLatencyMs":"$context.integrationLatency","integrationError":"$context.integrationErrorMessage"}'
+      Tags:
+        project: focusbear-mcp
+        stage: !Ref Stage
+
+  # ------------------------------------------------------------- Lambda ---
+  McpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub focusbear-mcp-${Stage}
+      Description: MCP Streamable HTTP adapter (apps/mcp-server) behind the Lambda Web Adapter.
+      CodeUri: build/
+      Handler: run.sh
+      Runtime: nodejs22.x
+      Architectures: [x86_64]
+      MemorySize: 512
+      Timeout: 15
+      Tracing: Active
+      ReservedConcurrentExecutions:
+        !If [HasReservedConcurrency, !Ref ReservedConcurrency, !Ref 'AWS::NoValue']
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:${WebAdapterLayerVersion}
+      LoggingConfig:
+        LogGroup: !Ref FunctionLogGroup
+      Environment:
+        Variables:
+          # Lambda Web Adapter: run.sh starts the Node server, the adapter
+          # forwards API Gateway events to it as ordinary HTTP requests.
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_PORT: '5039'
+          AWS_LWA_READINESS_CHECK_PATH: /.well-known/oauth-protected-resource
+          # apps/mcp-server/src/adapter/config.ts reads these. The first four
+          # are required; the server refuses to start if one is missing.
+          MCP_RESOURCE_URL: !Ref McpResourceUrl
+          API_SERVER_URL: !Ref ApiServerUrl
+          OAUTH_ISSUER: !Ref OAuthIssuer
+          OAUTH_JWKS_URL: !Ref OAuthJwksUrl
+          MCP_ALLOWED_ORIGINS: !Ref McpAllowedOrigins
+          MCP_PORT: '5039'
+          NODE_ENV: production
+      Events:
+        Mcp:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref McpHttpApi
+            Path: /mcp
+            Method: ANY
+        ProtectedResourceMetadata:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref McpHttpApi
+            Path: /.well-known/oauth-protected-resource
+            Method: GET
+      Tags:
+        project: focusbear-mcp
+        stage: !Ref Stage
+
+  # --------------------------------------------------------------- Logs ---
+  FunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/focusbear-mcp-${Stage}
+      RetentionInDays: !Ref LogRetentionDays
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/vendedlogs/apigateway/focusbear-mcp-${Stage}
+      RetentionInDays: !Ref LogRetentionDays
+
+  # ------------------------------------------------------------- Alarms ---
+  # Thresholds come from the Group 76 OAuth design doc, section 9.
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlertEmail
+    Properties:
+      TopicName: !Sub focusbear-mcp-${Stage}-alarms
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  ErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub focusbear-mcp-${Stage}-error-rate
+      AlarmDescription: Lambda error rate above 5 percent over five minutes.
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 5
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorRate
+          Label: Error rate (%)
+          Expression: IF(invocations > 0, 100 * errors / invocations, 0)
+          ReturnData: true
+        - Id: errors
+          ReturnData: false
+          MetricStat:
+            Period: 300
+            Stat: Sum
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref McpFunction
+        - Id: invocations
+          ReturnData: false
+          MetricStat:
+            Period: 300
+            Stat: Sum
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref McpFunction
+      AlarmActions: !If [HasAlertEmail, [!Ref AlarmTopic], !Ref 'AWS::NoValue']
+
+  DurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub focusbear-mcp-${Stage}-p95-duration
+      AlarmDescription: Lambda p95 duration above three seconds over five minutes.
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref McpFunction
+      ExtendedStatistic: p95
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlertEmail, [!Ref AlarmTopic], !Ref 'AWS::NoValue']
+
+  ThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub focusbear-mcp-${Stage}-throttles
+      AlarmDescription: Lambda throttled at least one request in five minutes.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref McpFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlertEmail, [!Ref AlarmTopic], !Ref 'AWS::NoValue']
+
+  # ------------------------------------------------------------- Budget ---
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Condition: HasAlertEmail
+    Properties:
+      Budget:
+        BudgetName: !Sub focusbear-mcp-${Stage}-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetUsd
+          Unit: USD
+        CostFilters: !If
+          - BudgetByTag
+          - TagKeyValue:
+              - user:project$focusbear-mcp
+          - !Ref 'AWS::NoValue'
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 50
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
+Outputs:
+  McpUrl:
+    Description: Public MCP endpoint. Use this as McpResourceUrl on the second deploy.
+    Value: !Sub https://${McpHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/mcp
+  MetadataUrl:
+    Description: OAuth protected-resource metadata. Should return HTTP 200.
+    Value: !Sub https://${McpHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/.well-known/oauth-protected-resource
+  FunctionName:
+    Description: Lambda function name.
+    Value: !Ref McpFunction
+  FunctionLogGroupName:
+    Description: CloudWatch log group for the Lambda.
+    Value: !Ref FunctionLogGroup

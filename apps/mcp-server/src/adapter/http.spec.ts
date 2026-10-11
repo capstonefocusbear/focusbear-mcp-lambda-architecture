@@ -3,6 +3,7 @@ import request = require('supertest');
 import { createAdapterHandler } from './http';
 import { AdapterConfig } from './config';
 import { BackendClient, BackendError } from './backend';
+import { silentLogger } from './logger';
 
 const config: AdapterConfig = {
   resourceUrl: 'http://localhost:5039/mcp',
@@ -28,7 +29,12 @@ function app(scopes = ['mcp.tasks.read', 'mcp.tasks.write'], backend?: BackendCl
     return item;
   });
   const server = createServer(
-    createAdapterHandler({ config, verifier, backend: backend || ({ request: call } as unknown as BackendClient) }),
+    createAdapterHandler({
+      config,
+      verifier,
+      backend: backend || ({ request: call } as unknown as BackendClient),
+      logger: silentLogger,
+    }),
   );
   const post = (body: object, token = 'valid') =>
     request(server)
@@ -169,7 +175,12 @@ describe('MCP OAuth adapter', () => {
       })),
     };
     const server = createServer(
-      createAdapterHandler({ config, verifier, backend: { request: call } as unknown as BackendClient }),
+      createAdapterHandler({
+        config,
+        verifier,
+        backend: { request: call } as unknown as BackendClient,
+        logger: silentLogger,
+      }),
     );
     const send = (token: string) =>
       request(server)

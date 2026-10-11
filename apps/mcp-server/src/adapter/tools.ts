@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
 import { BackendClient, BackendError } from './backend';
+import { describeError, Logger } from './logger';
 
 const uuid = z.string().uuid();
 const list = z
@@ -54,6 +55,7 @@ export interface ToolContext {
   subject: string;
   requestId: string;
   backend: BackendClient;
+  logger: Logger;
 }
 
 function task(value: unknown): Record<string, unknown> {
@@ -130,10 +132,21 @@ async function invoke(name: string, args: Record<string, any>, context: ToolCont
 
 function handler(name: string, context: ToolContext) {
   return async (args: Record<string, any>) => {
+    const started = Date.now();
+    // Arguments and results hold task content, so only the tool name, outcome, and timing are logged.
+    const fields = () => ({ request_id: context.requestId, tool: name, duration_ms: Date.now() - started });
     try {
-      return await invoke(name, args, context);
+      const result = await invoke(name, args, context);
+      context.logger.info('tool_call_completed', { ...fields(), outcome: 'ok' });
+      return result;
     } catch (error) {
       const code = error instanceof BackendError ? error.code : 'backend_unavailable';
+      context.logger.warn('tool_call_failed', {
+        ...fields(),
+        outcome: 'error',
+        error_code: code,
+        error_name: describeError(error).error_name,
+      });
       return {
         isError: true,
         content: [{ type: 'text' as const, text: JSON.stringify({ code, request_id: context.requestId }) }],

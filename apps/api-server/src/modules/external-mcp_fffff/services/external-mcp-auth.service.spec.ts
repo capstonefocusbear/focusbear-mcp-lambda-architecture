@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { GoneException, NotFoundException } from '@nestjs/common';
 import { ExternalMcpAuthService } from './external-mcp-auth.service';
 import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
-import { ScryptService } from '@app/crypto';
 
 describe('ExternalMcpAuthService', () => {
   let service: ExternalMcpAuthService;
@@ -17,16 +16,11 @@ describe('ExternalMcpAuthService', () => {
     deleteByUserIdAndId: jest.fn(),
   };
 
-  const scryptServiceMock = {
-    hash: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ExternalMcpAuthService,
         { provide: ExternalApiTokenRepository, useValue: externalApiTokenRepositoryMock },
-        { provide: ScryptService, useValue: scryptServiceMock },
       ],
     }).compile();
 
@@ -37,52 +31,9 @@ describe('ExternalMcpAuthService', () => {
     jest.clearAllMocks();
   });
 
-  describe('issueToken', () => {
-    it('should create and return a token response with raw token', async () => {
-      const dto: any = { scopes: ['tasks:read'], label: 'test', agent_name: 'Captain Codebeard' };
-
-      scryptServiceMock.hash.mockResolvedValueOnce('hashed-token');
-
-      const savedEntity = {
-        id: mockTokenId,
-        label: dto.label,
-        agent_name: dto.agent_name,
-        scopes: dto.scopes,
-        last_used_at: null,
-        expires_at: null,
-        created_at: new Date().toISOString(),
-      };
-
-      externalApiTokenRepositoryMock.create.mockResolvedValueOnce(savedEntity);
-
-      const result = await service.issueToken(mockUserId, dto);
-
-      expect(result).toHaveProperty('id', mockTokenId);
-      expect(result).toHaveProperty('token');
-      expect(result.token).toHaveLength(64);
-      expect(result).toHaveProperty('agent_name', 'Captain Codebeard');
-      expect(externalApiTokenRepositoryMock.create).toHaveBeenCalled();
-      expect(scryptServiceMock.hash).toHaveBeenCalled();
-    });
-
-    it('should create token without agent_name when not provided', async () => {
-      const dto: any = { scopes: ['tasks:read'], label: 'test' };
-      scryptServiceMock.hash.mockResolvedValueOnce('hashed-token');
-      const savedEntity = {
-        id: mockTokenId,
-        label: dto.label,
-        agent_name: undefined,
-        scopes: dto.scopes,
-        last_used_at: null,
-        expires_at: null,
-        created_at: new Date().toISOString(),
-      };
-      externalApiTokenRepositoryMock.create.mockResolvedValueOnce(savedEntity);
-
-      const result = await service.issueToken(mockUserId, dto);
-
-      expect(result.agent_name).toBeUndefined();
-    });
+  it('rejects legacy issuance without creating a credential', async () => {
+    await expect(service.issueToken(mockUserId, { scopes: ['tasks:read'] } as any)).rejects.toThrow(GoneException);
+    expect(externalApiTokenRepositoryMock.create).not.toHaveBeenCalled();
   });
 
   describe('listTokens', () => {

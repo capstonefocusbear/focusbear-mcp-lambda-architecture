@@ -17,7 +17,13 @@ function app(scopes = ['mcp.tasks.read', 'mcp.tasks.write'], backend?: BackendCl
   const verifier = {
     verify: jest.fn(async (token: string) => {
       if (token !== 'valid') throw new Error('invalid_token');
-      return { subject: 'user-1', scopes: new Set(scopes) };
+      return {
+        subject: 'user-1',
+        grantId: 'grant-1',
+        clientId: 'public-client',
+        expiresAt: 9999999999,
+        scopes: new Set(scopes),
+      };
     }),
   };
   const call = jest.fn(async (_method: string, path: string) => {
@@ -99,9 +105,17 @@ describe('MCP OAuth adapter', () => {
       params: { name: 'focusware_list_assigned_tasks', arguments: { page: 1 } },
     });
     expect(response.status).toBe(200);
-    expect(call).toHaveBeenCalledWith('GET', '/mcp/tasks', 'valid', 'user-1', expect.any(String), undefined, {
-      page: 1,
-    });
+    expect(call).toHaveBeenCalledWith(
+      'GET',
+      '/mcp/tasks',
+      'valid',
+      expect.objectContaining({ subject: 'user-1', grantId: 'grant-1' }),
+      expect.any(String),
+      undefined,
+      {
+        page: 1,
+      },
+    );
     expect(response.text).not.toContain('assigned_mcp_token_id');
   });
 
@@ -135,7 +149,13 @@ describe('MCP OAuth adapter', () => {
     const response = await post({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name, arguments: args } });
     expect(response.status).toBe(200);
     expect(response.body.result.isError).toBeUndefined();
-    expect(call.mock.calls[0].slice(0, 5)).toEqual([method, path, 'valid', 'user-1', expect.any(String)]);
+    expect(call.mock.calls[0].slice(0, 5)).toEqual([
+      method,
+      path,
+      'valid',
+      expect.objectContaining({ subject: 'user-1', grantId: 'grant-1' }),
+      expect.any(String),
+    ]);
   });
 
   it('redacts backend errors and keeps users isolated', async () => {
@@ -158,13 +178,16 @@ describe('MCP OAuth adapter', () => {
   });
 
   it('keeps concurrent request identities separate', async () => {
-    const call = jest.fn(async (_method: string, _path: string, _token: string, _subject: string) => ({
+    const call = jest.fn(async (_method: string, _path: string, _token: string, _context: any) => ({
       data: [],
       meta: {},
     }));
     const verifier = {
       verify: jest.fn(async (token: string) => ({
         subject: token === 'alice-token' ? 'alice' : 'bob',
+        grantId: 'grant-1',
+        clientId: 'public-client',
+        expiresAt: 9999999999,
         scopes: new Set(['mcp.tasks.read']),
       })),
     };
@@ -187,8 +210,8 @@ describe('MCP OAuth adapter', () => {
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
     expect(call.mock.calls.map((args: unknown[]) => args.slice(2, 4))).toEqual(
       expect.arrayContaining([
-        ['alice-token', 'alice'],
-        ['bob-token', 'bob'],
+        ['alice-token', expect.objectContaining({ subject: 'alice', grantId: 'grant-1' })],
+        ['bob-token', expect.objectContaining({ subject: 'bob', grantId: 'grant-1' })],
       ]),
     );
   });

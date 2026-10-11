@@ -155,7 +155,7 @@ export function createAdapterHandler({ config, verifier, backend }: AdapterDepen
         return;
       }
     }
-    const server = createToolServer({ clientToken: match[1], subject: verified.subject, requestId, backend });
+    const server = createToolServer({ clientToken: match[1], verifiedToken: verified, requestId, backend });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     try {
       await server.connect(transport);

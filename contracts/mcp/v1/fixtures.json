@@ -1,0 +1,1072 @@
+{
+  "contract_version": "1.0.0",
+  "status": "proposed",
+  "now": 1801526410,
+  "profile": {
+    "issuer": "http://127.0.0.1:5038/",
+    "jwks_url": "http://127.0.0.1:5038/.well-known/jwks.json",
+    "authorization_server_metadata_url": "http://127.0.0.1:5038/.well-known/oauth-authorization-server",
+    "authorization_endpoint": "http://127.0.0.1:5038/oauth/authorize",
+    "token_endpoint": "http://127.0.0.1:5038/oauth/token",
+    "mcp_resource": "http://127.0.0.1:5039/mcp",
+    "protected_resource_metadata_url": "http://127.0.0.1:5039/.well-known/oauth-protected-resource",
+    "api_origin": "http://127.0.0.1:5038/",
+    "api_resource": "http://127.0.0.1:5038/mcp/tasks",
+    "allow_local_http": true
+  },
+  "client_registration": {
+    "client_id": "focusbear-inspector-local",
+    "client_name": "Focus Bear MCP Inspector v2 CLI",
+    "redirect_uris": ["http://127.0.0.1:6276/oauth/callback"],
+    "grant_types": ["authorization_code"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none",
+    "scope": "mcp.tasks.read mcp.tasks.write",
+    "registration_applied": false
+  },
+  "protected_resource_metadata": {
+    "resource": "http://127.0.0.1:5039/mcp",
+    "authorization_servers": ["http://127.0.0.1:5038/"],
+    "scopes_supported": ["mcp.tasks.read", "mcp.tasks.write"],
+    "bearer_methods_supported": ["header"]
+  },
+  "jwt_header": {
+    "alg": "RS256",
+    "typ": "at+jwt",
+    "kid": "generated-test-key"
+  },
+  "tokens": {
+    "mcp": {
+      "iss": "http://127.0.0.1:5038/",
+      "aud": "http://127.0.0.1:5039/mcp",
+      "sub": "11111111-1111-4111-8111-111111111111",
+      "client_id": "focusbear-inspector-local",
+      "grant_id": "22222222-2222-4222-8222-222222222222",
+      "scope": "mcp.tasks.read mcp.tasks.write",
+      "iat": 1801526400,
+      "exp": 1801526700,
+      "jti": "mcp-token-1"
+    },
+    "api": {
+      "iss": "http://127.0.0.1:5038/",
+      "aud": "http://127.0.0.1:5038/mcp/tasks",
+      "sub": "11111111-1111-4111-8111-111111111111",
+      "client_id": "focusbear-mcp-adapter",
+      "grant_id": "22222222-2222-4222-8222-222222222222",
+      "scope": "mcp.tasks.read mcp.tasks.write",
+      "iat": 1801526410,
+      "exp": 1801526470,
+      "jti": "api-token-1",
+      "act": {
+        "sub": "focusbear-mcp-adapter"
+      }
+    }
+  },
+  "context": {
+    "user_exists": true,
+    "grant_store_available": true,
+    "grant": {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "user_id": "11111111-1111-4111-8111-111111111111",
+      "client_id": "focusbear-inspector-local",
+      "scopes": ["mcp.tasks.read", "mcp.tasks.write"],
+      "revoked": false
+    },
+    "task": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "user_id": "11111111-1111-4111-8111-111111111111",
+      "assigned_mcp_grant_id": "22222222-2222-4222-8222-222222222222",
+      "project_id": "44444444-4444-4444-8444-444444444444",
+      "custom_status_id": null
+    },
+    "project": {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "is_owner_or_accepted_member": true,
+      "has_assigned_task": true,
+      "statuses": [
+        {
+          "id": "default-done",
+          "should_complete_task": true
+        }
+      ]
+    },
+    "operation": "get"
+  },
+  "exchange": {
+    "content_type": "application/x-www-form-urlencoded",
+    "form": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+      "subject_token": "<mcp-access-token>",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+      "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+      "resource": "http://127.0.0.1:5038/mcp/tasks",
+      "scope": "mcp.tasks.read",
+      "client_id": "focusbear-mcp-adapter",
+      "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+      "client_assertion": "<signed-service-assertion>"
+    },
+    "response": {
+      "access_token": "<separate-api-access-token>",
+      "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+      "token_type": "Bearer",
+      "expires_in": 60,
+      "scope": "mcp.tasks.read"
+    },
+    "result_claims_patch": {
+      "scope": "mcp.tasks.read"
+    },
+    "reject": [
+      {
+        "id": "scope-escalation",
+        "subject_scope": "mcp.tasks.read",
+        "requested_scope": "mcp.tasks.write",
+        "status": 400,
+        "error": "invalid_scope"
+      },
+      {
+        "id": "wrong-resource",
+        "resource": "http://127.0.0.1:5039/mcp",
+        "status": 400,
+        "error": "invalid_target"
+      },
+      {
+        "id": "public-client-exchange",
+        "client_id": "focusbear-inspector-local",
+        "status": 401,
+        "error": "invalid_client"
+      },
+      {
+        "id": "replayed-service-assertion",
+        "assertion_jti_already_used": true,
+        "status": 401,
+        "error": "invalid_client"
+      }
+    ]
+  },
+  "login_rejections": [
+    {
+      "id": "alternate-host",
+      "redirect_uri": "http://localhost:6276/oauth/callback",
+      "expected": "reject_without_redirect"
+    },
+    {
+      "id": "trailing-slash",
+      "redirect_uri": "http://127.0.0.1:6276/oauth/callback/",
+      "expected": "reject_without_redirect"
+    },
+    {
+      "id": "wrong-port",
+      "redirect_uri": "http://127.0.0.1:6277/oauth/callback",
+      "expected": "reject_without_redirect"
+    },
+    {
+      "id": "redirect-query",
+      "redirect_uri": "http://127.0.0.1:6276/oauth/callback?next=https://evil.example",
+      "expected": "reject_without_redirect"
+    },
+    {
+      "id": "plain-pkce",
+      "code_challenge_method": "plain",
+      "expected": "invalid_request"
+    },
+    {
+      "id": "wrong-verifier",
+      "verifier_matches": false,
+      "expected": "invalid_grant"
+    },
+    {
+      "id": "reused-code",
+      "code_already_used": true,
+      "expected": "invalid_grant"
+    },
+    {
+      "id": "expired-code",
+      "code_age_seconds": 61,
+      "expected": "invalid_grant"
+    }
+  ],
+  "routes": [
+    {
+      "tool": "focusware_list_assigned_tasks",
+      "required_scope": "mcp.tasks.read",
+      "arguments": {
+        "page": 1,
+        "take": 10
+      },
+      "request": {
+        "method": "GET",
+        "path": "/mcp/tasks",
+        "headers": {
+          "authorization": "Bearer <separate-api-access-token>",
+          "x-request-id": "55555555-5555-4555-8555-555555555555"
+        },
+        "query": {
+          "page": "1",
+          "take": "10"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "title": "Review integration contract",
+              "status": "NOT_STARTED",
+              "details": null,
+              "objective": null,
+              "custom_status_id": null,
+              "project_id": "44444444-4444-4444-8444-444444444444",
+              "due_date": null,
+              "created_at": "2027-02-02T00:00:00.000Z",
+              "updated_at": "2027-02-02T00:00:00.000Z"
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "take": 10,
+            "itemCount": 1,
+            "pageCount": 1,
+            "hasPreviousPage": false,
+            "hasNextPage": false
+          }
+        }
+      }
+    },
+    {
+      "tool": "focusware_get_assigned_task",
+      "required_scope": "mcp.tasks.read",
+      "arguments": {
+        "task_id": "33333333-3333-4333-8333-333333333333"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/mcp/tasks/33333333-3333-4333-8333-333333333333",
+        "headers": {
+          "authorization": "Bearer <separate-api-access-token>",
+          "x-request-id": "55555555-5555-4555-8555-555555555555"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "title": "Review integration contract",
+          "status": "NOT_STARTED",
+          "details": null,
+          "objective": null,
+          "custom_status_id": null,
+          "project_id": "44444444-4444-4444-8444-444444444444",
+          "due_date": null,
+          "created_at": "2027-02-02T00:00:00.000Z",
+          "updated_at": "2027-02-02T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "tool": "focusware_update_assigned_task_status",
+      "required_scope": "mcp.tasks.write",
+      "arguments": {
+        "task_id": "33333333-3333-4333-8333-333333333333",
+        "status": "IN_PROGRESS"
+      },
+      "request": {
+        "method": "PATCH",
+        "path": "/mcp/tasks/33333333-3333-4333-8333-333333333333/status",
+        "headers": {
+          "authorization": "Bearer <separate-api-access-token>",
+          "x-request-id": "55555555-5555-4555-8555-555555555555"
+        },
+        "body": {
+          "status": "IN_PROGRESS"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "title": "Review integration contract",
+          "status": "IN_PROGRESS",
+          "details": null,
+          "objective": null,
+          "custom_status_id": null,
+          "project_id": "44444444-4444-4444-8444-444444444444",
+          "due_date": null,
+          "created_at": "2027-02-02T00:00:00.000Z",
+          "updated_at": "2027-02-02T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "tool": "focusware_add_assigned_task_note",
+      "required_scope": "mcp.tasks.write",
+      "arguments": {
+        "task_id": "33333333-3333-4333-8333-333333333333",
+        "content": "Ready for review."
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp/tasks/33333333-3333-4333-8333-333333333333/notes",
+        "headers": {
+          "authorization": "Bearer <separate-api-access-token>",
+          "x-request-id": "55555555-5555-4555-8555-555555555555"
+        },
+        "body": {
+          "content": "Ready for review."
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "task_id": "33333333-3333-4333-8333-333333333333",
+          "content": "Ready for review.",
+          "created_at": "2027-02-02T00:00:00.000Z"
+        }
+      }
+    },
+    {
+      "tool": "focusware_ensure_project_status",
+      "required_scope": "mcp.tasks.write",
+      "arguments": {
+        "project_id": "44444444-4444-4444-8444-444444444444",
+        "label": "Ready for review",
+        "color": "#F59E0B",
+        "should_complete_task": false
+      },
+      "request": {
+        "method": "POST",
+        "path": "/mcp/tasks/project-statuses",
+        "headers": {
+          "authorization": "Bearer <separate-api-access-token>",
+          "x-request-id": "55555555-5555-4555-8555-555555555555"
+        },
+        "body": {
+          "project_id": "44444444-4444-4444-8444-444444444444",
+          "label": "Ready for review",
+          "color": "#F59E0B",
+          "should_complete_task": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "77777777-7777-4777-8777-777777777777",
+          "label": "Ready for review",
+          "color": "#F59E0B",
+          "order": 3,
+          "should_complete_task": false,
+          "already_existed": false
+        }
+      }
+    }
+  ],
+  "authorization_cases": [
+    {
+      "id": "accepted-mcp",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {},
+      "expected": {
+        "accepted": true
+      }
+    },
+    {
+      "id": "accepted-api",
+      "stage": "api",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "accepted": true
+      }
+    },
+    {
+      "id": "wrong-issuer",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "iss": "https://untrusted.example/"
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "issuer-slash-mismatch",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "iss": "http://127.0.0.1:5038"
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "wrong-audience",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "aud": "http://127.0.0.1:5038/mcp/tasks"
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "dual-audience",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "aud": ["http://127.0.0.1:5039/mcp", "http://127.0.0.1:5038/mcp/tasks"]
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "expired",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "exp": 1801526410
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "future-not-before",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "nbf": 1801526420
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "future-issued-at",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "iat": 1801526420
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "excessive-lifetime",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "exp": 1801526701
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "legacy-scope",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "scope": "tasks:read"
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "scope-array",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "scope": ["mcp.tasks.read"]
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "raw-auth0-subject",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {
+        "sub": "auth0|test-user"
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "unknown-grant",
+      "stage": "exchange",
+      "base_token": "mcp",
+      "claims_patch": {
+        "grant_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+      },
+      "expected": {
+        "http_status": 400,
+        "code": "invalid_grant",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "missing-grant",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      },
+      "remove_claims": ["grant_id"]
+    },
+    {
+      "id": "missing-expiry",
+      "stage": "mcp",
+      "base_token": "mcp",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      },
+      "remove_claims": ["exp"]
+    },
+    {
+      "id": "grant-user-mismatch",
+      "stage": "exchange",
+      "base_token": "mcp",
+      "claims_patch": {
+        "sub": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+      },
+      "expected": {
+        "http_status": 400,
+        "code": "invalid_grant",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "grant-client-mismatch",
+      "stage": "exchange",
+      "base_token": "mcp",
+      "claims_patch": {
+        "client_id": "other-client"
+      },
+      "expected": {
+        "http_status": 400,
+        "code": "invalid_grant",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "revoked-grant-at-exchange",
+      "stage": "exchange",
+      "base_token": "mcp",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 400,
+        "code": "invalid_grant",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "grant": {
+          "revoked": true
+        }
+      }
+    },
+    {
+      "id": "mcp-token-at-api",
+      "stage": "api",
+      "base_token": "mcp",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "api-token-at-mcp",
+      "stage": "mcp",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "api-actor-mismatch",
+      "stage": "api",
+      "base_token": "api",
+      "claims_patch": {
+        "act": {
+          "sub": "other-service"
+        }
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "api-grant-user-mismatch",
+      "stage": "api",
+      "base_token": "api",
+      "claims_patch": {
+        "sub": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+      },
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      }
+    },
+    {
+      "id": "unknown-user",
+      "stage": "api",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "user_exists": false
+      }
+    },
+    {
+      "id": "revoked-grant-at-api",
+      "stage": "api",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 401,
+        "code": "invalid_token",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "grant": {
+          "revoked": true
+        }
+      }
+    },
+    {
+      "id": "grant-store-outage",
+      "stage": "api",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 503,
+        "code": "unavailable",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "grant_store_available": false
+      }
+    },
+    {
+      "id": "read-only-cannot-write",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {
+        "scope": "mcp.tasks.read"
+      },
+      "expected": {
+        "http_status": 403,
+        "code": "insufficient_scope",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "operation": "update-status"
+      }
+    },
+    {
+      "id": "write-only-cannot-read",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {
+        "scope": "mcp.tasks.write"
+      },
+      "expected": {
+        "http_status": 403,
+        "code": "insufficient_scope",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "operation": "get"
+      }
+    },
+    {
+      "id": "cross-user-task",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "task": {
+          "user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "id": "cross-grant-task",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "task": {
+          "assigned_mcp_grant_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        }
+      }
+    },
+    {
+      "id": "missing-task",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "task": null
+      }
+    },
+    {
+      "id": "unassigned-task",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "task": {
+          "assigned_mcp_grant_id": null
+        }
+      }
+    },
+    {
+      "id": "list-excludes-other-grants",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 200,
+        "data_ids": ["33333333-3333-4333-8333-333333333333"],
+        "itemCount": 1
+      },
+      "context_patch": {
+        "operation": "list",
+        "additional_tasks": [
+          {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "user_id": "11111111-1111-4111-8111-111111111111",
+            "assigned_mcp_grant_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+          }
+        ]
+      }
+    },
+    {
+      "id": "project-membership-without-assignment",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "operation": "ensure-project-status",
+        "project": {
+          "has_assigned_task": false
+        }
+      }
+    },
+    {
+      "id": "project-assignment-without-membership",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "operation": "ensure-project-status",
+        "project": {
+          "is_owner_or_accepted_member": false
+        }
+      }
+    },
+    {
+      "id": "status-from-another-project",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 400,
+        "code": "bad_request",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "operation": "update-status",
+        "body": {
+          "custom_status_id": "foreign-status"
+        }
+      }
+    },
+    {
+      "id": "completing-custom-status-conflict",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 400,
+        "code": "bad_request",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "operation": "update-status",
+        "body": {
+          "custom_status_id": "default-done",
+          "status": "IN_PROGRESS"
+        }
+      }
+    },
+    {
+      "id": "completing-custom-status",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 200,
+        "status": "COMPLETED",
+        "custom_status_id": "default-done"
+      },
+      "context_patch": {
+        "operation": "update-status",
+        "body": {
+          "custom_status_id": "default-done"
+        }
+      }
+    },
+    {
+      "id": "core-status-clears-custom",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 200,
+        "status": "IN_PROGRESS",
+        "custom_status_id": null
+      },
+      "context_patch": {
+        "operation": "update-status",
+        "body": {
+          "status": "IN_PROGRESS"
+        },
+        "task": {
+          "custom_status_id": "default-done"
+        }
+      }
+    },
+    {
+      "id": "token-rotation-keeps-assignment",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {
+        "jti": "api-token-2"
+      },
+      "expected": {
+        "http_status": 200,
+        "task_id": "33333333-3333-4333-8333-333333333333"
+      },
+      "context_patch": {
+        "operation": "get"
+      }
+    },
+    {
+      "id": "new-grant-after-revocation-needs-assignment",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {
+        "grant_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+      },
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "grant": {
+          "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "user_id": "11111111-1111-4111-8111-111111111111",
+          "client_id": "focusbear-inspector-local",
+          "scopes": ["mcp.tasks.read", "mcp.tasks.write"],
+          "revoked": false
+        }
+      }
+    },
+    {
+      "id": "reassignment-before-write",
+      "stage": "task",
+      "base_token": "api",
+      "claims_patch": {},
+      "expected": {
+        "http_status": 404,
+        "code": "not_found",
+        "side_effects_allowed": false
+      },
+      "context_patch": {
+        "operation": "update-status",
+        "assignment_at_transaction": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "body": {
+          "status": "IN_PROGRESS"
+        }
+      }
+    }
+  ],
+  "argument_rejections": [
+    {
+      "tool": "focusware_update_assigned_task_status",
+      "arguments": {
+        "task_id": "33333333-3333-4333-8333-333333333333"
+      },
+      "status": 400
+    },
+    {
+      "tool": "focusware_get_assigned_task",
+      "arguments": {
+        "task_id": "33333333-3333-4333-8333-333333333333",
+        "user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+      },
+      "status": 400
+    },
+    {
+      "tool": "focusware_add_assigned_task_note",
+      "arguments": {
+        "task_id": "33333333-3333-4333-8333-333333333333",
+        "content": ""
+      },
+      "status": 400
+    },
+    {
+      "tool": "focusware_list_assigned_tasks",
+      "arguments": {
+        "take": 51
+      },
+      "status": 400
+    },
+    {
+      "tool": "focusware_ensure_project_status",
+      "arguments": {
+        "project_id": "44444444-4444-4444-8444-444444444444",
+        "label": "",
+        "color": "#F59E0B",
+        "should_complete_task": false
+      },
+      "status": 400
+    }
+  ],
+  "migration_cases": [
+    {
+      "id": "owner-confirmed-mapping",
+      "legacy_user_id": "11111111-1111-4111-8111-111111111111",
+      "task_user_id": "11111111-1111-4111-8111-111111111111",
+      "grant_user_id": "11111111-1111-4111-8111-111111111111",
+      "consent_confirmed": true,
+      "expected": "copy_assignment"
+    },
+    {
+      "id": "cross-user-mapping",
+      "legacy_user_id": "11111111-1111-4111-8111-111111111111",
+      "task_user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "grant_user_id": "11111111-1111-4111-8111-111111111111",
+      "consent_confirmed": true,
+      "expected": "reject_mapping"
+    },
+    {
+      "id": "no-consent",
+      "consent_confirmed": false,
+      "expected": "leave_unmapped"
+    },
+    {
+      "id": "expired-legacy-record",
+      "legacy_expired": true,
+      "expected": "leave_unmapped"
+    },
+    {
+      "id": "deleted-legacy-record",
+      "legacy_missing": true,
+      "expected": "leave_unmapped"
+    },
+    {
+      "id": "rerun-after-reassignment",
+      "assigned_mcp_grant_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "expected": "preserve_current_assignment"
+    }
+  ],
+  "safe_error": {
+    "status": 404,
+    "body": {
+      "code": "not_found",
+      "request_id": "55555555-5555-4555-8555-555555555555"
+    },
+    "mcp_result": {
+      "isError": true,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"code\":\"not_found\",\"request_id\":\"55555555-5555-4555-8555-555555555555\"}"
+        }
+      ]
+    }
+  }
+}

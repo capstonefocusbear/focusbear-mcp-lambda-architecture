@@ -2,7 +2,8 @@ import { createServer } from 'node:http';
 import { createAdapterHandler } from './adapter/http';
 import { loadAdapterConfig } from './adapter/config';
 import { createTokenVerifier } from './adapter/auth';
-import { BackendClient, unavailableBackendCredentials } from './adapter/backend';
+import { createExchangeProvider } from './adapter/exchange';
+import { BackendClient } from './adapter/backend';
 
 // AWS packaging can mount this same request handler behind its web adapter.
 export function createLocalHandler() {
@@ -10,7 +11,7 @@ export function createLocalHandler() {
   return createAdapterHandler({
     config,
     verifier: createTokenVerifier(config),
-    backend: new BackendClient(config, unavailableBackendCredentials),
+    backend: new BackendClient(config, createExchangeProvider(config)),
   });
 }
 

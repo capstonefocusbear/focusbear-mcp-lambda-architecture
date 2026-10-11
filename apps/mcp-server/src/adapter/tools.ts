@@ -1,3 +1,4 @@
+import { VerifiedToken } from './auth';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as z from 'zod/v4';
 import { BackendClient, BackendError } from './backend';
@@ -51,7 +52,7 @@ export function validateToolCall(name: string, args: unknown): boolean {
 
 export interface ToolContext {
   clientToken: string;
-  subject: string;
+  verifiedToken: VerifiedToken;
   requestId: string;
   backend: BackendClient;
 }
@@ -109,22 +110,23 @@ function shape(name: string, value: unknown): unknown {
 }
 
 async function invoke(name: string, args: Record<string, any>, context: ToolContext) {
-  const { backend, clientToken, subject, requestId } = context;
+  const { backend, clientToken, verifiedToken, requestId } = context;
   let value: unknown;
   if (name === 'focusware_list_assigned_tasks')
-    value = await backend.request('GET', '/mcp/tasks', clientToken, subject, requestId, undefined, args);
+    value = await backend.request('GET', '/mcp/tasks', clientToken, verifiedToken, requestId, undefined, args);
   else if (name === 'focusware_get_assigned_task')
-    value = await backend.request('GET', `/mcp/tasks/${args.task_id}`, clientToken, subject, requestId);
+    value = await backend.request('GET', `/mcp/tasks/${args.task_id}`, clientToken, verifiedToken, requestId);
   else if (name === 'focusware_update_assigned_task_status')
-    value = await backend.request('PATCH', `/mcp/tasks/${args.task_id}/status`, clientToken, subject, requestId, {
+    value = await backend.request('PATCH', `/mcp/tasks/${args.task_id}/status`, clientToken, verifiedToken, requestId, {
       status: args.status,
       custom_status_id: args.custom_status_id,
     });
   else if (name === 'focusware_add_assigned_task_note')
-    value = await backend.request('POST', `/mcp/tasks/${args.task_id}/notes`, clientToken, subject, requestId, {
+    value = await backend.request('POST', `/mcp/tasks/${args.task_id}/notes`, clientToken, verifiedToken, requestId, {
       content: args.content,
     });
-  else value = await backend.request('POST', '/mcp/tasks/project-statuses', clientToken, subject, requestId, args);
+  else
+    value = await backend.request('POST', '/mcp/tasks/project-statuses', clientToken, verifiedToken, requestId, args);
   return { content: [{ type: 'text' as const, text: JSON.stringify(shape(name, value)) }] };
 }
 

@@ -1,3 +1,4 @@
+import { VerifiedToken } from './auth';
 import { AdapterConfig } from './config';
 
 export interface BackendCredentials {
@@ -5,7 +6,7 @@ export interface BackendCredentials {
 }
 
 export interface BackendCredentialProvider {
-  getToken(clientToken: string, subject: string): Promise<BackendCredentials>;
+  getToken(clientToken: string, context: VerifiedToken): Promise<BackendCredentials>;
 }
 
 // The API server must implement token exchange or equivalent delegation before production use.
@@ -28,14 +29,14 @@ export class BackendClient {
     method: 'GET' | 'PATCH' | 'POST',
     path: string,
     clientToken: string,
-    subject: string,
+    context: VerifiedToken,
     requestId: string,
     body?: unknown,
     query?: Record<string, string | number>,
   ): Promise<unknown> {
     if (!/^\/mcp\/tasks(?:\/[a-zA-Z0-9-]+(?:\/status|\/notes)?)?$/.test(path))
       throw new BackendError('invalid_route', 500);
-    const backendToken = (await this.credentials.getToken(clientToken, subject)).token;
+    const backendToken = (await this.credentials.getToken(clientToken, context)).token;
     if (!backendToken || backendToken === clientToken) throw new BackendError('backend_delegation_unavailable', 503);
     const url = new URL(path, this.config.backendUrl);
     for (const [key, value] of Object.entries(query || {})) url.searchParams.set(key, String(value));

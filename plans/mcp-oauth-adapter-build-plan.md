@@ -23,10 +23,16 @@ This plan is a handoff for an implementation agent. First inspect the repository
 
 ## Contracts to agree before wiring production traffic
 
+The current proposal and shared acceptance fixtures are in
+[`contracts/mcp/v1/`](../contracts/mcp/v1/README.md). They supersede this plan's
+original token-forwarding instructions: task calls must use a separate exchanged
+API-audience credential. This plan is historical adapter build guidance; v1 is
+the target for the login, delegation, and task authorization workstreams.
+
 Record these in a shared contract or test fixture with the backend owner:
 
 1. **Issuer and discovery:** exact `api-server` issuer URL, authorization-server metadata URL, JWKS URL, authorization and token endpoints, and the public MCP resource URL. Match values per environment.
-2. **Token claims:** signing algorithms, `iss`, `aud`, `sub`, `exp`, optional `nbf`, scope claim format, client/grant identifier, and any revocation policy. The adapter must verify its MCP resource audience; the backend must independently verify the audience it accepts. Confirm how the chosen token is valid for both resources without weakening audience checks.
+2. **Token claims:** signing algorithms, `iss`, `aud`, `sub`, `exp`, optional `nbf`, scope claim format, client/grant identifier, and any revocation policy. The adapter verifies the MCP resource audience; the backend independently verifies a separate exchanged API-audience token under contract v1. A single token must not be valid for both resources.
 3. **Scopes:** agree exact names and tool permissions. The design proposes `mcp.tasks.read`, `mcp.tasks.write`, and `mcp.summary.read`; only the first two are needed for the five task tools. Existing backend scopes are `tasks:read` and `tasks:write` and must be migrated or mapped explicitly.
 4. **Agent assignment:** define how a validated OAuth grant maps to a durable agent ID that replaces or safely maps to `assigned_mcp_token_id`. The backend must derive this from trusted token/grant data. Never accept an agent ID, user ID, URL, backend path, method, or arbitrary header from tool arguments.
 5. **Backend routes and DTOs:** confirm whether the five existing `/mcp/tasks` routes will be changed to accept delegated OAuth tokens or new routes will be introduced. Agree pagination/filter inputs, status enum, result fields, and safe error codes.
@@ -56,19 +62,19 @@ Create a per-request verifier for access tokens using the issuer's JWKS. Verify 
 
 Implement and validate these exact names, unless the backend contract explicitly changes them:
 
-| MCP tool | Scope | Fixed backend call |
-| --- | --- | --- |
-| `focusware_list_assigned_tasks` | `mcp.tasks.read` | `GET /mcp/tasks` |
-| `focusware_get_assigned_task` | `mcp.tasks.read` | `GET /mcp/tasks/:id` |
-| `focusware_update_assigned_task_status` | `mcp.tasks.write` | `PATCH /mcp/tasks/:id/status` |
-| `focusware_add_assigned_task_note` | `mcp.tasks.write` | `POST /mcp/tasks/:id/notes` |
-| `focusware_ensure_project_status` | `mcp.tasks.write` | `POST /mcp/tasks/project-statuses` |
+| MCP tool                                | Scope             | Fixed backend call                 |
+| --------------------------------------- | ----------------- | ---------------------------------- |
+| `focusware_list_assigned_tasks`         | `mcp.tasks.read`  | `GET /mcp/tasks`                   |
+| `focusware_get_assigned_task`           | `mcp.tasks.read`  | `GET /mcp/tasks/:id`               |
+| `focusware_update_assigned_task_status` | `mcp.tasks.write` | `PATCH /mcp/tasks/:id/status`      |
+| `focusware_add_assigned_task_note`      | `mcp.tasks.write` | `POST /mcp/tasks/:id/notes`        |
+| `focusware_ensure_project_status`       | `mcp.tasks.write` | `POST /mcp/tasks/project-statuses` |
 
 Tool descriptions must say that access is limited to tasks assigned to the authorized MCP agent. Validate UUIDs, pagination bounds, status values, string lengths, and the required status-or-custom-status rule against the agreed API DTOs. Reject extra fields. Use a compiled, fixed route map; never build a backend URL from a caller-supplied path.
 
 ### 5. Call the backend and shape results
 
-Forward the original user Bearer token and a request ID over HTTPS to the configured Focus Bear API origin. Under the supplied OAuth design, do **not** send `x-user-id` or `X-Internal-Service-Key`. Set a short outbound timeout and cancellation. Retry an idempotent read at most once for a transient transport failure; never automatically retry status updates or notes. Return bounded, necessary task fields as MCP content and omit tokens, internal headers, stack traces, and database internals.
+Exchange the MCP user token for a separate API-audience credential under contract v1 and send that credential and a request ID over HTTPS to the configured Focus Bear API origin. Do **not** forward the original MCP token or send `x-user-id` or `X-Internal-Service-Key`. Set a short outbound timeout and cancellation. Retry an idempotent read at most once for a transient transport failure; never automatically retry status updates or notes. Return bounded, necessary task fields as MCP content and omit tokens, internal headers, stack traces, and database internals.
 
 Map backend `401`, `403`, `404`, `400`/`409`, `429`, timeout, and `5xx` outcomes to consistent HTTP/MCP errors. Preserve the backend's `404` treatment for missing or unassigned tasks. Avoid echoing unreviewed backend messages. Include a request ID for support without exposing sensitive details.
 
@@ -81,7 +87,7 @@ Add focused tests for metadata/challenge, valid and invalid JWT claims, scope de
 ## Acceptance criteria
 
 - An approved MCP client discovers the authorization server, completes OAuth with the backend test implementation, and can initialize and list tools.
-- The five tools call only their fixed backend routes with validated inputs and the original delegated token.
+- The five tools call only their fixed backend routes with validated inputs and a separate exchanged API-audience token.
 - Invalid issuer, signature, audience, expiry, not-before, or scope is rejected before any backend request.
 - A token or grant for one agent cannot access another agent's assigned task; the backend contract test proves this.
 - Missing/invalid credentials cause a usable OAuth challenge; authorized backend failures produce safe MCP errors.

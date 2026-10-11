@@ -1,52 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import * as crypto from 'crypto';
-import { ScryptService } from '@app/crypto';
+import { Injectable, NotFoundException, GoneException } from '@nestjs/common';
 import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
-import { ExternalApiToken } from '../entities/external-api-token.entity';
 import { CreateExternalApiTokenDto } from '../dto/create-external-api-token.dto';
 import { ExternalApiTokenIssuedResponseDto, ExternalApiTokenResponseDto } from '../dto/external-api-token-response.dto';
 import { McpAgentResponseDto } from '../dto/mcp-agent-response.dto';
 
 @Injectable()
 export class ExternalMcpAuthService {
-  constructor(
-    private readonly externalApiTokenRepository: ExternalApiTokenRepository,
-    private readonly scryptService: ScryptService,
-  ) {}
+  constructor(private readonly externalApiTokenRepository: ExternalApiTokenRepository) {}
 
-  async issueToken(userId: string, dto: CreateExternalApiTokenDto): Promise<ExternalApiTokenIssuedResponseDto> {
-    // Generate a cryptographically random 64-char hex token
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    // Use SHA-256 hash of the token (not the raw prefix) to avoid leaking actual token bytes
-    const tokenPrefix = crypto.createHash('sha256').update(rawToken).digest('hex').substring(0, 16);
-    const tokenHash = await this.scryptService.hash(rawToken);
-
-    const entity = new ExternalApiToken(
-      {
-        user_id: userId,
-        token_hash: tokenHash,
-        token_prefix: tokenPrefix,
-        scopes: dto.scopes,
-        label: dto.label,
-        agent_name: dto.agent_name,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { generateId: true },
-    );
-
-    const saved = await this.externalApiTokenRepository.create(entity);
-
-    return {
-      id: saved.id,
-      token: rawToken, // Raw token returned ONCE only — never stored in plaintext
-      label: saved.label,
-      agent_name: saved.agent_name,
-      scopes: saved.scopes,
-      last_used_at: saved.last_used_at,
-      expires_at: saved.expires_at,
-      created_at: saved.created_at,
-    };
+  async issueToken(_userId: string, _dto: CreateExternalApiTokenDto): Promise<ExternalApiTokenIssuedResponseDto> {
+    throw new GoneException('Use /oauth/authorize');
   }
 
   async listTokens(userId: string): Promise<ExternalApiTokenResponseDto[]> {

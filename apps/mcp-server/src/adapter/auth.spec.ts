@@ -32,23 +32,28 @@ describe('OAuth JWT verifier', () => {
   });
 
   function token(overrides: Record<string, unknown> = {}) {
-    return jwt.sign(
-      {
-        sub: 'user-1',
-        scope: 'mcp.tasks.read',
-        iss: config.issuer,
-        aud: config.resourceUrl,
-        exp: Math.floor(Date.now() / 1000) + 300,
-        ...overrides,
-      },
-      keys.privateKey,
-      { algorithm: 'RS256', keyid: 'test-key' },
-    );
+    const claims = {
+      sub: '11111111-1111-4111-8111-111111111111',
+      grant_id: '22222222-2222-4222-8222-222222222222',
+      client_id: 'public-client',
+      jti: 'test-token',
+      scope: 'mcp.tasks.read',
+      iss: config.issuer,
+      aud: config.resourceUrl,
+      exp: Math.floor(Date.now() / 1000) + 300,
+      ...overrides,
+    };
+    for (const key of Object.keys(claims)) if (claims[key] === undefined) delete claims[key];
+    return jwt.sign(claims, keys.privateKey, {
+      algorithm: 'RS256',
+      keyid: 'test-key',
+      header: { alg: 'RS256', typ: 'at+jwt' },
+    });
   }
 
   it('accepts a signed token for this issuer and resource', async () => {
     const result = await createTokenVerifier(config).verify(token());
-    expect(result.subject).toBe('user-1');
+    expect(result.subject).toBe('11111111-1111-4111-8111-111111111111');
     expect(result.scopes.has('mcp.tasks.read')).toBe(true);
   });
 
@@ -62,15 +67,34 @@ describe('OAuth JWT verifier', () => {
     const otherKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
     const badSignature = jwt.sign(
       {
-        sub: 'user-1',
+        sub: '11111111-1111-4111-8111-111111111111',
+        grant_id: '22222222-2222-4222-8222-222222222222',
+        client_id: 'public-client',
+        jti: 'test-token',
         scope: 'mcp.tasks.read',
         iss: config.issuer,
         aud: config.resourceUrl,
         exp: Math.floor(Date.now() / 1000) + 300,
       },
       otherKeys.privateKey,
-      { algorithm: 'RS256', keyid: 'test-key' },
+      { algorithm: 'RS256', keyid: 'test-key', header: { alg: 'RS256', typ: 'at+jwt' } },
     );
     await expect(verifier.verify(badSignature)).rejects.toThrow();
+  });
+  it.each([
+    { aud: ['http://localhost:5039/mcp', 'https://api.example/mcp/tasks'] },
+    { sub: 'auth0|user' },
+    { grant_id: undefined },
+    { client_id: undefined },
+    { jti: undefined },
+    { exp: undefined },
+    { scope: 'tasks:read' },
+    { scope: 'mcp.tasks.read  mcp.tasks.write' },
+    { iat: Math.floor(Date.now() / 1000) + 10 },
+    { exp: Math.floor(Date.now() / 1000) + 400 },
+    { nbf: 1.5 },
+    { act: { sub: 'focusbear-mcp-adapter' } },
+  ])('rejects malformed MCP claims %j', async (patch) => {
+    await expect(createTokenVerifier(config).verify(token(patch))).rejects.toThrow();
   });
 });

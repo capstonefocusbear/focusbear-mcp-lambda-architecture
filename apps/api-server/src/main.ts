@@ -9,6 +9,7 @@ import { Logger as Pino, LoggerErrorInterceptor } from 'nestjs-pino';
 import fastifyMultiPart from '@fastify/multipart';
 import helmet from '@fastify/helmet';
 import cors from '@fastify/cors';
+import { registerOAuthFormParser } from './modules/mcp-oauth/oauth.form';
 import { AppModule } from './app.module';
 import { TypeOrmExceptionFilter } from './shared/exceptions/type-orm-exception.filter';
 import { AppDataSource } from '../ormconfig';
@@ -29,6 +30,7 @@ async function bootstrap(): Promise<void> {
   const fastifyAdapter: FastifyAdapter = new FastifyAdapter();
 
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, fastifyAdapter, { rawBody: true });
+  registerOAuthFormParser(fastifyAdapter);
   type RegisterParams = Parameters<typeof app.register>;
 
   const configService: ConfigService = app.get(ConfigService);

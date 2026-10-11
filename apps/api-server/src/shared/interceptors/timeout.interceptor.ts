@@ -40,7 +40,7 @@ export class TimeoutInterceptor implements NestInterceptor {
             event: 'RequestTimeoutException',
             requestId: request?.id || request?.headers?.['x-request-id'],
             method: request?.method,
-            path: request?.url,
+            path: request?.url?.split('?')[0],
             elapsedMs,
           };
 

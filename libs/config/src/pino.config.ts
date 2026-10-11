@@ -31,8 +31,8 @@ export const pinoConfig = registerAs('pino', () => ({
         return {
           id: req.id,
           method: req.method,
-          url: req.url,
-          path: req.raw?.url,
+          url: req.url?.split('?')[0],
+          path: req.raw?.url?.split('?')[0],
           headers: req.headers,
         };
       },

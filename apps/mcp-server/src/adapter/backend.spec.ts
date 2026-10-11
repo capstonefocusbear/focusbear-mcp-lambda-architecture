@@ -1,6 +1,14 @@
 import { AdapterConfig } from './config';
 import { BackendClient, BackendCredentialProvider } from './backend';
 
+const context = {
+  subject: 'user-1',
+  grantId: 'grant-1',
+  clientId: 'public-client',
+  expiresAt: 9999999999,
+  scopes: new Set(['mcp.tasks.read']),
+};
+
 const config: AdapterConfig = {
   resourceUrl: 'https://mcp.example/mcp',
   issuer: 'https://issuer.example',
@@ -26,7 +34,7 @@ describe('backend client', () => {
       'GET',
       '/mcp/tasks',
       'client-token',
-      'user-1',
+      context,
       'request-1',
       undefined,
       { page: 1 },
@@ -43,7 +51,7 @@ describe('backend client', () => {
     const fetchMock = jest.fn().mockRejectedValue(new Error('network'));
     global.fetch = fetchMock as unknown as typeof fetch;
     await expect(
-      new BackendClient(config, credentials).request('GET', '/mcp/tasks', 'client-token', 'user-1', 'request-1'),
+      new BackendClient(config, credentials).request('GET', '/mcp/tasks', 'client-token', context, 'request-1'),
     ).rejects.toThrow();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     fetchMock.mockClear();
@@ -52,7 +60,7 @@ describe('backend client', () => {
         'POST',
         '/mcp/tasks/project-statuses',
         'client-token',
-        'user-1',
+        context,
         'request-2',
         {},
       ),
@@ -62,14 +70,14 @@ describe('backend client', () => {
 
   it('rejects caller-selected backend paths', async () => {
     await expect(
-      new BackendClient(config, credentials).request('GET', '/admin/users', 'client-token', 'user-1', 'request-1'),
+      new BackendClient(config, credentials).request('GET', '/admin/users', 'client-token', context, 'request-1'),
     ).rejects.toThrow('invalid_route');
   });
 
   it('refuses to pass through the client token', async () => {
     const unsafe: BackendCredentialProvider = { getToken: async () => ({ token: 'client-token' }) };
     await expect(
-      new BackendClient(config, unsafe).request('GET', '/mcp/tasks', 'client-token', 'user-1', 'request-1'),
+      new BackendClient(config, unsafe).request('GET', '/mcp/tasks', 'client-token', context, 'request-1'),
     ).rejects.toThrow('backend_delegation_unavailable');
   });
 });

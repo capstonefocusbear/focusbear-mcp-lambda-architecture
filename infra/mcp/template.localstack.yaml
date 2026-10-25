@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  LOCAL ONLY (Task 33). LocalStack variant of template.yaml. Uses a REST API
+  (as in the architecture proposal) instead of an HTTP API, replaces the Lambda
+  Web Adapter layer with lambda-local.js (LocalStack's free plan has no layers),
+  and grants read access to the internal-service secret. Do not deploy to AWS.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: local
+  ApiServerUrl:
+    Type: String
+  OAuthIssuer:
+    Type: String
+  OAuthJwksUrl:
+    Type: String
+  McpResourceUrl:
+    Type: String
+    Default: https://example.invalid/mcp
+  InternalServiceSecretName:
+    Type: String
+    Default: focusbear-mcp/dev/internal-service-key
+  SigningKeySecretName:
+    Type: String
+    Default: focusbear-mcp/local/adapter-signing-key
+    Description: Secret holding {"kid", "privateKey"} for the adapter's token-exchange signing key.
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+
+Resources:
+  McpRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub focusbear-mcp-${Stage}
+      StageName: !Ref Stage
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          ThrottlingRateLimit: 5
+          ThrottlingBurstLimit: 10
+
+  McpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub focusbear-mcp-${Stage}
+      Description: MCP Streamable HTTP adapter (apps/mcp-server), local LocalStack build.
+      CodeUri: build/
+      Handler: lambda-local.handler
+      Runtime: nodejs22.x
+      Architectures: [x86_64]
+      MemorySize: 512
+      Timeout: 15
+      LoggingConfig:
+        LogGroup: !Ref FunctionLogGroup
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${InternalServiceSecretName}-*
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${SigningKeySecretName}-*
+      Environment:
+        Variables:
+          MCP_RESOURCE_URL: !Ref McpResourceUrl
+          API_SERVER_URL: !Ref ApiServerUrl
+          OAUTH_ISSUER: !Ref OAuthIssuer
+          OAUTH_JWKS_URL: !Ref OAuthJwksUrl
+          MCP_PORT: '5039'
+          NODE_ENV: production
+          INTERNAL_SERVICE_SECRET_NAME: !Ref InternalServiceSecretName
+          SIGNING_KEY_SECRET_NAME: !Ref SigningKeySecretName
+      Events:
+        Mcp:
+          Type: Api
+          Properties:
+            RestApiId: !Ref McpRestApi
+            Path: /mcp
+            Method: ANY
+        ProtectedResourceMetadata:
+          Type: Api
+          Properties:
+            RestApiId: !Ref McpRestApi
+            Path: /.well-known/oauth-protected-resource
+            Method: GET
+
+  FunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/focusbear-mcp-${Stage}
+      RetentionInDays: !Ref LogRetentionDays
+
+  ErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub focusbear-mcp-${Stage}-errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref McpFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  ThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub focusbear-mcp-${Stage}-throttles
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref McpFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  McpUrl:
+    Value: !Sub https://${McpRestApi}.execute-api.localhost.localstack.cloud:4566/${Stage}/mcp
+  MetadataUrl:
+    Value: !Sub https://${McpRestApi}.execute-api.localhost.localstack.cloud:4566/${Stage}/.well-known/oauth-protected-resource
+  FunctionName:
+    Value: !Ref McpFunction

@@ -1,0 +1,34 @@
+# AWS SAM settings for the MCP Lambda dev stack. Run `sam deploy` from infra/mcp.
+#
+# Values marked REPLACE are placeholders. The ".invalid" hostnames never
+# resolve, so a stack deployed with them starts up and rejects every token
+# (fails closed) until real values are supplied.
+version = 0.1
+
+[default.global.parameters]
+stack_name = "focusbear-mcp-dev"
+# Region is the team's recommendation; Jeremy still has to confirm it matches
+# Focus Bear production (Task 24 checklist item 2).
+region = "ap-southeast-2"
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+tags = "project=\"focusbear-mcp\" stage=\"dev\""
+parameter_overrides = [
+  "Stage=dev",
+  # REPLACE: the Focus Bear API origin for dev, from Jeremy (checklist item 8).
+  "ApiServerUrl=https://replace-me.invalid",
+  # REPLACE: api-server's OAuth issuer and JWKS URL, once those routes exist.
+  "OAuthIssuer=https://replace-me.invalid",
+  "OAuthJwksUrl=https://replace-me.invalid/oauth/jwks",
+  # REPLACE after the first deploy with the McpUrl stack output.
+  "McpResourceUrl=https://example.invalid/mcp",
+  # Agreed with Nikolas on 4 Oct 2026: 14-day logs, US$10/month budget.
+  "LogRetentionDays=14",
+  "MonthlyBudgetUsd=10",
+  # To receive alarm and budget emails, add a line like the one below.
+  # Without it, alarms are created without notifications and no budget is made.
+  # "AlertEmail=someone@example.com",
+]

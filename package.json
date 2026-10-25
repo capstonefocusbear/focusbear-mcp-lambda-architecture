@@ -99,7 +99,7 @@
     "fastify": "5.8.2",
     "fastify-raw-body": "^5.0.0",
     "googleapis": "^105.0.0",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.10",
     "html-to-text": "^9.0.4",
     "i18next": "^23.2.0",
     "ioredis": "^5.3.2",
@@ -217,7 +217,11 @@
     },
     "editorconfig": {
       "minimatch": "10.2.4"
-    }
+    },
+    "handlebars": "$handlebars",
+    "protobufjs": "7.6.6",
+    "proxy-addr": "2.0.8",
+    "simple-git": "4.0.2"
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",

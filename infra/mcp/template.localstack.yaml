@@ -1,10 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  LOCAL ONLY (Task 33). LocalStack variant of template.yaml. Uses a REST API
-  (as in the architecture proposal) instead of an HTTP API, replaces the Lambda
-  Web Adapter layer with lambda-local.js (LocalStack's free plan has no layers),
-  and grants read access to the internal-service secret. Do not deploy to AWS.
+  LOCAL ONLY (Task 33). LocalStack variant of template.yaml, aligned where
+  possible with Practical Architectural Design v2.0 (21 Oct 2026): regional REST
+  API, reserved concurrency 10, one-month logs, error-rate and p95 alarms.
+  Known gaps vs v2.0: SAM instead of CDK, zip + lambda-local.js instead of the
+  Web Adapter container image, and a signing-key secret that the current adapter
+  code still requires (v2.0 moves signing to Auth0). Do not deploy to AWS.
 
 Parameters:
   Stage:
@@ -28,7 +30,12 @@ Parameters:
     Description: Secret holding {"kid", "privateKey"} for the adapter's token-exchange signing key.
   LogRetentionDays:
     Type: Number
-    Default: 14
+    Default: 30
+    Description: v2.0 section 9 - keep application logs for one month.
+  ReservedConcurrency:
+    Type: Number
+    Default: 10
+    Description: v2.0 sections 10 and 11 - backend has one task and a DB pool of 10.
 
 Resources:
   McpRestApi:
@@ -53,6 +60,7 @@ Resources:
       Architectures: [x86_64]
       MemorySize: 512
       Timeout: 15
+      ReservedConcurrentExecutions: !Ref ReservedConcurrency
       LoggingConfig:
         LogGroup: !Ref FunctionLogGroup
       Policies:
@@ -90,26 +98,68 @@ Resources:
       LogGroupName: !Sub /aws/lambda/focusbear-mcp-${Stage}
       RetentionInDays: !Ref LogRetentionDays
 
-  ErrorsAlarm:
+  # v2.0 section 9: Lambda error rate above 5% over five minutes.
+  ErrorRateAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub focusbear-mcp-${Stage}-errors
+      AlarmName: !Sub focusbear-mcp-${Stage}-error-rate
+      AlarmDescription: Lambda error rate above 5 percent over five minutes.
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 5
+      EvaluationPeriods: 1
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: errorRate
+          Label: Error rate (%)
+          Expression: IF(invocations > 0, 100 * errors / invocations, 0)
+          ReturnData: true
+        - Id: errors
+          ReturnData: false
+          MetricStat:
+            Period: 300
+            Stat: Sum
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref McpFunction
+        - Id: invocations
+          ReturnData: false
+          MetricStat:
+            Period: 300
+            Stat: Sum
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref McpFunction
+
+  # v2.0 section 9: p95 latency above three seconds.
+  DurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub focusbear-mcp-${Stage}-p95-duration
+      AlarmDescription: Lambda p95 duration above three seconds over five minutes.
       Namespace: AWS/Lambda
-      MetricName: Errors
+      MetricName: Duration
       Dimensions:
         - Name: FunctionName
           Value: !Ref McpFunction
-      Statistic: Sum
+      ExtendedStatistic: p95
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 0
+      Threshold: 3000
       ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
 
+  # v2.0 section 9: unexpected throttles.
   ThrottleAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       AlarmName: !Sub focusbear-mcp-${Stage}-throttles
+      AlarmDescription: Lambda throttled at least one request in five minutes.
       Namespace: AWS/Lambda
       MetricName: Throttles
       Dimensions:

@@ -1,0 +1,46 @@
+name: MCP v2 boundary and migration tests
+on:
+  pull_request:
+    paths:
+      - 'apps/mcp-server/**'
+      - 'apps/api-server/**'
+      - 'libs/jwt/**'
+      - 'libs/auth0/**'
+      - 'infra/mcp/**'
+      - '.github/workflows/mcp-v2-tests.yml'
+  workflow_dispatch:
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: mcp_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MCP_DATABASE_TEST_URL: postgresql://postgres:disposable-test-only@127.0.0.1:5432/mcp_test
+      NODE_ENV: test
+      MCP_AUTH0_ENABLED: 'false'
+      TYPEORM_ENCRYPTION_KEY: '00000000000000000000000000000000'
+      FIELD_TRANSFORMER_ENCRYPTION_KEY: '00000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run mcp:build
+      - run: npm run mcp:check
+      - run: npm run mcp:test:login-client
+      - run: npm test -- --runInBand --forceExit --config jest.mcp.config.cjs libs/jwt/src/mcp-auth0.spec.ts apps/mcp-server/src/adapter apps/api-server/src/modules/external-mcp_fffff
+      - run: npm run test:e2e -- --runInBand --forceExit mcp-agents-db
+      - run: npm ci
+        working-directory: infra/mcp/cdk
+      - run: npm test
+        working-directory: infra/mcp/cdk

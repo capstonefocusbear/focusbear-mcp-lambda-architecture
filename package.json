@@ -8,7 +8,7 @@
   "scripts": {
     "mcp:start": "ts-node apps/mcp-server/src/main.ts",
     "mcp:build": "nest build mcp-server",
-    "mcp:test": "jest --runInBand apps/mcp-server/src/adapter",
+    "mcp:test": "jest --runInBand --config jest.mcp.config.cjs apps/mcp-server/src/adapter libs/jwt/src/mcp-auth0.spec.ts",
     "prebuild": "rimraf dist",
     "build": "nest build api-server && npm run build:cron && npm run build:cron-support && npm run build:assets",
     "build:cron": "tsc -p tsconfig.cron.json",
@@ -51,7 +51,12 @@
     "data:migration:run": "ts-node apps/api-server/data_migrations/1710000000000-DataTransferWithEncryption.ts",
     "render:deploy": "node ./.github/workflows/deploy.js",
     "seed": "ts-node apps/api-server/src/seeding/seed.ts",
-    "smoke-test": "bash scripts/smoke-test.sh"
+    "smoke-test": "bash scripts/smoke-test.sh",
+    "mcp:test:backend": "jest --runInBand --config jest.mcp.config.cjs apps/api-server/src/modules/external-mcp_fffff libs/auth0/src/services/auth0-authentication.service.spec.ts apps/api-server/src/modules/auth/middlewares/passport.middleware.spec.ts",
+    "mcp:check": "tsc --noEmit --incremental false -p apps/mcp-server/tsconfig.app.json && tsc --noEmit --incremental false -p apps/api-server/tsconfig.app.json",
+    "mcp:local": "bash scripts/mcp-local.sh",
+    "mcp:test:login-client": "node --test scripts/mcp-auth0-login.test.cjs",
+    "mcp:test:db": "jest --config apps/api-server/test/jest-e2e.json --runInBand mcp-agents-db"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.931.0",
@@ -99,7 +104,7 @@
     "fastify": "5.8.2",
     "fastify-raw-body": "^5.0.0",
     "googleapis": "^105.0.0",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.10",
     "html-to-text": "^9.0.4",
     "i18next": "^23.2.0",
     "ioredis": "^5.3.2",
@@ -217,7 +222,9 @@
     },
     "editorconfig": {
       "minimatch": "10.2.4"
-    }
+    },
+    "protobufjs": "^7.6.6",
+    "proxy-addr": "^2.0.8"
   },
   "resolutions": {
     "html-minifier": "npm:html-minifier-next@^1.2.1",

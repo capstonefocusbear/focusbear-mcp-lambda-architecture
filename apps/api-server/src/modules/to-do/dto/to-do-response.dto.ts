@@ -48,4 +48,6 @@ export class ToDoResponse extends ToDo {
     required: false,
   })
   assigned_mcp_token_id?: string;
+
+  assigned_mcp_agent_id?: string;
 }

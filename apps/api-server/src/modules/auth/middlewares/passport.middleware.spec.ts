@@ -83,4 +83,24 @@ describe('PassportMiddleware', () => {
       expect(next).toHaveBeenCalledWith(exception);
     });
   });
+  it('rejects an MCP audience before normal authentication even with a normal audience also present', async () => {
+    const previous = process.env.MCP_RESOURCE_URL;
+    process.env.MCP_RESOURCE_URL = 'https://mcp.example/mcp';
+    const authenticate = jest.fn();
+    const instance = new PassportMiddleware({ authenticate } as any, {} as any);
+    const token = [
+      'eyJhbGciOiJSUzI1NiJ9',
+      Buffer.from(JSON.stringify({ aud: ['normal-api', process.env.MCP_RESOURCE_URL] })).toString('base64url'),
+      'signature',
+    ].join('.');
+    const next = jest.fn();
+    try {
+      await instance.use({ headers: { authorization: `Bearer ${token}` } }, {}, next);
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedException));
+      expect(authenticate).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.MCP_RESOURCE_URL;
+      else process.env.MCP_RESOURCE_URL = previous;
+    }
+  });
 });

@@ -4,6 +4,10 @@ export class McpAgentResponseDto {
   @ApiProperty({ description: 'Token ID — use this as assigned_mcp_token_id when assigning tasks to this agent' })
   id: string;
 
+  assigned_mcp_agent_id?: string;
+  status?: string;
+  revocation_status?: string;
+
   @ApiProperty({ description: 'Agent name', required: false })
   agent_name?: string;
 

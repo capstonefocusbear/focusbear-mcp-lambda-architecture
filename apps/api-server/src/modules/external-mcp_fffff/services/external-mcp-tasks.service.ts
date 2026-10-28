@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { TaskCommentRepository } from '../../to-do/repositories/task-comment.repository';
 import { GetToDosQueryDto } from '../../to-do/dto/get-to-dos-query.dto';
@@ -28,7 +28,9 @@ export class ExternalMcpTasksService {
     query: GetToDosQueryDto,
   ): Promise<PaginationDto<ToDoResponse>> {
     this.requireScope(scopes, McpScope.TASKS_READ);
-    const [items, total] = await this.toDoRepository.getAgentAssignedToDos(userId, tokenId, query);
+    const [items, total] = scopes.some((s) => s.startsWith('mcp.'))
+      ? await this.toDoRepository.getAgentAssignedToDos(userId, tokenId, query, true)
+      : await this.toDoRepository.getAgentAssignedToDos(userId, tokenId, query);
     return new PaginationDto(
       items as unknown as ToDoResponse[],
       new PaginationMetaDto({ paginationOptionsDto: query, itemCount: total }),
@@ -39,7 +41,7 @@ export class ExternalMcpTasksService {
     this.requireScope(scopes, McpScope.TASKS_READ);
 
     const task = await this.toDoRepository.orm.findOne({
-      where: { id: taskId, user_id: userId, assigned_mcp_token_id: tokenId },
+      where: { id: taskId, user_id: userId, ...this.assignment(scopes, tokenId) },
     });
 
     if (!task) {
@@ -63,7 +65,7 @@ export class ExternalMcpTasksService {
     }
 
     const task = await this.toDoRepository.orm.findOne({
-      where: { id: taskId, user_id: userId, assigned_mcp_token_id: tokenId },
+      where: { id: taskId, user_id: userId, ...this.assignment(scopes, tokenId) },
     });
 
     if (!task) {
@@ -91,7 +93,7 @@ export class ExternalMcpTasksService {
     this.requireScope(scopes, McpScope.TASKS_WRITE);
 
     const task = await this.toDoRepository.orm.findOne({
-      where: { id: taskId, user_id: userId, assigned_mcp_token_id: tokenId },
+      where: { id: taskId, user_id: userId, ...this.assignment(scopes, tokenId) },
     });
 
     if (!task) {
@@ -150,9 +152,30 @@ export class ExternalMcpTasksService {
     );
   }
 
+  async summary(userId: string, agentId: string, scopes: string[]) {
+    if (!scopes.includes('mcp.summary.read')) throw new ForbiddenException('Missing summary scope');
+    const [row] = await this.toDoRepository.orm.query(
+      `SELECT COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE status='NOT_STARTED')::int AS not_started,
+      COUNT(*) FILTER (WHERE status='IN_PROGRESS')::int AS in_progress,
+      COUNT(*) FILTER (WHERE status='COMPLETED')::int AS completed,
+      COUNT(*) FILTER (WHERE due_date < now() AND status <> 'COMPLETED')::int AS overdue
+      FROM to_do WHERE user_id=$1 AND assigned_mcp_agent_id=$2`,
+      [userId, agentId],
+    );
+    return row;
+  }
+
+  private assignment(scopes: string[], id: string) {
+    return scopes.some((s) => s.startsWith('mcp.')) ? { assigned_mcp_agent_id: id } : { assigned_mcp_token_id: id };
+  }
+
   private requireScope(scopes: string[], required: McpScope): void {
-    if (!scopes.includes(required)) {
-      throw new UnauthorizedException(`Token missing required scope: ${required}`);
+    if (
+      !scopes.includes(required) &&
+      !scopes.includes(required === McpScope.TASKS_READ ? 'mcp.tasks.read' : 'mcp.tasks.write')
+    ) {
+      throw new ForbiddenException(`Token missing required scope: ${required}`);
     }
   }
 }

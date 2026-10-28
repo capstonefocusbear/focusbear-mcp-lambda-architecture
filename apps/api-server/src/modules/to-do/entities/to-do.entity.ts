@@ -60,6 +60,10 @@ export class ToDo extends BaseEntity {
   assigned_mcp_token_id?: string;
 
   @Index()
+  @Column({ type: 'uuid', nullable: true })
+  assigned_mcp_agent_id?: string;
+
+  @Index()
   @Column({
     type: 'varchar',
     length: 100,

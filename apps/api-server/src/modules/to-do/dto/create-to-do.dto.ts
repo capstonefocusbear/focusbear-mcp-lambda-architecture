@@ -88,6 +88,10 @@ export class CreateToDoDto {
   assigned_mcp_token_id?: string;
 
   @IsOptional()
+  @IsUUID()
+  assigned_mcp_agent_id?: string;
+
+  @IsOptional()
   @IsString()
   custom_status_id?: string;
 }

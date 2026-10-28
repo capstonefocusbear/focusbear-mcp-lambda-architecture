@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ExternalMcpTasksService } from './external-mcp-tasks.service';
 import { ToDoRepository } from '../../to-do/repositories/to-do.repository';
 import { TaskCommentRepository } from '../../to-do/repositories/task-comment.repository';
@@ -19,6 +19,7 @@ describe('ExternalMcpTasksService', () => {
     getAgentAssignedToDos: jest.fn(),
     orm: {
       findOne: jest.fn(),
+      query: jest.fn(),
     },
     update: jest.fn(),
   };
@@ -90,14 +91,14 @@ describe('ExternalMcpTasksService', () => {
       expect(result.data[0]).toEqual(expect.objectContaining({ status: ToDoStatus.COMPLETED }));
     });
 
-    it('should throw UnauthorizedException when tasks:read scope is missing', async () => {
+    it('should throw ForbiddenException when tasks:read scope is missing', async () => {
       await expect(service.listTasks(mockUserId, mockTokenId, [McpScope.TASKS_WRITE], query)).rejects.toThrow(
-        UnauthorizedException,
+        ForbiddenException,
       );
       expect(mockToDoRepository.getAgentAssignedToDos).not.toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedException when scopes array is empty', async () => {
+    it('should throw ForbiddenException when scopes array is empty', async () => {
       await expect(service.listTasks(mockUserId, mockTokenId, [], query)).rejects.toThrow(
         `Token missing required scope: ${McpScope.TASKS_READ}`,
       );
@@ -127,8 +128,8 @@ describe('ExternalMcpTasksService', () => {
       );
     });
 
-    it('should throw UnauthorizedException when tasks:read scope is missing', async () => {
-      await expect(service.getTask(mockUserId, mockTokenId, [], mockTaskId)).rejects.toThrow(UnauthorizedException);
+    it('should throw ForbiddenException when tasks:read scope is missing', async () => {
+      await expect(service.getTask(mockUserId, mockTokenId, [], mockTaskId)).rejects.toThrow(ForbiddenException);
       expect(mockToDoRepository.orm.findOne).not.toHaveBeenCalled();
     });
   });
@@ -172,12 +173,12 @@ describe('ExternalMcpTasksService', () => {
       expect(mockToDoRepository.orm.findOne).not.toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedException when tasks:write scope is missing', async () => {
+    it('should throw ForbiddenException when tasks:write scope is missing', async () => {
       await expect(
         service.updateTaskStatus(mockUserId, mockTokenId, [McpScope.TASKS_READ], mockTaskId, {
           status: ToDoStatus.IN_PROGRESS,
         }),
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toThrow(ForbiddenException);
       expect(mockToDoRepository.orm.findOne).not.toHaveBeenCalled();
     });
 
@@ -223,9 +224,9 @@ describe('ExternalMcpTasksService', () => {
       expect(mockTaskCommentRepository.orm.save).toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedException when tasks:write scope is missing', async () => {
+    it('should throw ForbiddenException when tasks:write scope is missing', async () => {
       await expect(service.addNote(mockUserId, mockTokenId, [McpScope.TASKS_READ], mockTaskId, dto)).rejects.toThrow(
-        UnauthorizedException,
+        ForbiddenException,
       );
       expect(mockToDoRepository.orm.findOne).not.toHaveBeenCalled();
     });
@@ -319,11 +320,51 @@ describe('ExternalMcpTasksService', () => {
       );
     });
 
-    it('should throw UnauthorizedException when tasks:write scope is missing', async () => {
+    it('should throw ForbiddenException when tasks:write scope is missing', async () => {
       await expect(service.ensureProjectStatus(mockUserId, [McpScope.TASKS_READ], dto)).rejects.toThrow(
-        UnauthorizedException,
+        ForbiddenException,
       );
       expect(mockProjectRepository.getProjectById).not.toHaveBeenCalled();
+    });
+  });
+  describe('Auth0 scope and assignment boundary', () => {
+    it('uses durable agent ownership, never legacy token assignment, for read and write', async () => {
+      mockToDoRepository.orm.findOne.mockResolvedValueOnce(null);
+      await expect(service.getTask(mockUserId, mockTokenId, ['mcp.tasks.read'], mockTaskId)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockToDoRepository.orm.findOne).toHaveBeenCalledWith({
+        where: { id: mockTaskId, user_id: mockUserId, assigned_mcp_agent_id: mockTokenId },
+      });
+      mockToDoRepository.orm.findOne.mockResolvedValueOnce(null);
+      await expect(
+        service.updateTaskStatus(mockUserId, mockTokenId, ['mcp.tasks.write'], mockTaskId, {
+          status: ToDoStatus.COMPLETED,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockToDoRepository.update).not.toHaveBeenCalled();
+    });
+    it('requires write scope for writes even with read and summary scopes', async () => {
+      await expect(
+        service.addNote(mockUserId, mockTokenId, ['mcp.tasks.read', 'mcp.summary.read'], mockTaskId, {
+          content: 'note',
+        } as any),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockToDoRepository.orm.findOne).not.toHaveBeenCalled();
+    });
+    it('returns summary only for the verified user and assigned durable agent', async () => {
+      const counts = { total: 5, not_started: 2, in_progress: 1, completed: 2, overdue: 1 };
+      mockToDoRepository.orm.query.mockResolvedValueOnce([counts]);
+      await expect(service.summary(mockUserId, mockTokenId, ['mcp.summary.read'])).resolves.toEqual(counts);
+      expect(mockToDoRepository.orm.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE user_id=$1 AND assigned_mcp_agent_id=$2'),
+        [mockUserId, mockTokenId],
+      );
+      expect(mockToDoRepository.orm.query.mock.calls[0][0]).toContain("status <> 'COMPLETED'");
+    });
+    it('does not disclose summary under task read scope alone', async () => {
+      await expect(service.summary(mockUserId, mockTokenId, ['mcp.tasks.read'])).rejects.toThrow(ForbiddenException);
+      expect(mockToDoRepository.orm.query).not.toHaveBeenCalled();
     });
   });
 });

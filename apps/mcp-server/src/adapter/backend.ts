@@ -1,29 +1,21 @@
 import { VerifiedToken } from './auth';
 import { AdapterConfig } from './config';
 
-export interface BackendCredentials {
-  token: string;
-}
-
-export interface BackendCredentialProvider {
-  getToken(clientToken: string, context: VerifiedToken): Promise<BackendCredentials>;
-}
-
-// The API server must implement token exchange or equivalent delegation before production use.
-export const unavailableBackendCredentials: BackendCredentialProvider = {
-  async getToken(): Promise<BackendCredentials> {
-    throw new BackendError('backend_delegation_unavailable', 503);
-  },
-};
-
 export class BackendError extends Error {
   constructor(public readonly code: string, public readonly status: number) {
     super(code);
   }
 }
 
+export interface BackendTelemetry {
+  request_id: string;
+  backend_status: number;
+  duration_ms: number;
+  method: string;
+}
+
 export class BackendClient {
-  constructor(private readonly config: AdapterConfig, private readonly credentials: BackendCredentialProvider) {}
+  constructor(private readonly config: AdapterConfig, private readonly telemetry?: (event: BackendTelemetry) => void) {}
 
   async request(
     method: 'GET' | 'PATCH' | 'POST',
@@ -34,10 +26,24 @@ export class BackendClient {
     body?: unknown,
     query?: Record<string, string | number>,
   ): Promise<unknown> {
-    if (!/^\/mcp\/tasks(?:\/[a-zA-Z0-9-]+(?:\/status|\/notes)?)?$/.test(path))
-      throw new BackendError('invalid_route', 500);
-    const backendToken = (await this.credentials.getToken(clientToken, context)).token;
-    if (!backendToken || backendToken === clientToken) throw new BackendError('backend_delegation_unavailable', 503);
+    const uuid = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+    const allowed =
+      (method === 'GET' &&
+        (path === '/mcp/tasks' || path === '/mcp/tasks/summary' || new RegExp(`^/mcp/tasks/${uuid}$`).test(path))) ||
+      (method === 'PATCH' && new RegExp(`^/mcp/tasks/${uuid}/status$`).test(path)) ||
+      (method === 'POST' &&
+        (path === '/mcp/tasks/project-statuses' || new RegExp(`^/mcp/tasks/${uuid}/notes$`).test(path)));
+    if (!allowed) throw new BackendError('invalid_route', 500);
+    if (!clientToken || context.expiresAt * 1000 <= Date.now()) throw new BackendError('backend_unauthorized', 401);
+    const start = Date.now();
+    const deadline = start + 8000;
+    const report = (status: number) => {
+      try {
+        this.telemetry?.({ request_id: requestId, backend_status: status, duration_ms: Date.now() - start, method });
+      } catch {
+        /* Telemetry failures cannot change the request result. */
+      }
+    };
     const url = new URL(path, this.config.backendUrl);
     for (const [key, value] of Object.entries(query || {})) url.searchParams.set(key, String(value));
     const attempt = async (): Promise<unknown> => {
@@ -46,9 +52,9 @@ export class BackendClient {
         response = await fetch(url, {
           method,
           redirect: 'error',
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(Math.max(1, Math.min(5000, deadline - Date.now()))),
           headers: {
-            authorization: `Bearer ${backendToken}`,
+            authorization: `Bearer ${clientToken}`,
             'content-type': 'application/json',
             'x-request-id': requestId,
           },
@@ -59,6 +65,7 @@ export class BackendClient {
       }
       if (!response.ok) {
         const status = response.status;
+        await response.body?.cancel();
         const code =
           status === 401
             ? 'backend_unauthorized'
@@ -97,10 +104,23 @@ export class BackendClient {
       }
     };
     try {
-      return await attempt();
+      let result: unknown;
+      try {
+        result = await attempt();
+      } catch (error) {
+        if (
+          method !== 'GET' ||
+          !(error instanceof BackendError) ||
+          error.code !== 'backend_transport_error' ||
+          Date.now() >= deadline
+        )
+          throw error;
+        result = await attempt();
+      }
+      report(200);
+      return result;
     } catch (error) {
-      if (method === 'GET' && error instanceof BackendError && error.code === 'backend_transport_error')
-        return attempt();
+      report(error instanceof BackendError ? error.status : 503);
       throw error;
     }
   }

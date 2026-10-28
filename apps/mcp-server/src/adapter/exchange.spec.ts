@@ -1,11 +1,10 @@
 import { createPublicKey, generateKeyPairSync, randomUUID } from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { createExchangeProvider } from './exchange';
-import { AdapterConfig } from './config';
-import { VerifiedToken } from './auth';
+import { LegacyExchangeConfig, LegacyExchangeIdentity } from './exchange';
 
 const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
-const config: AdapterConfig = {
+const config: LegacyExchangeConfig = {
   resourceUrl: 'https://mcp.example/mcp',
   issuer: 'https://issuer.example/',
   jwksUrl: 'https://issuer.example/jwks',
@@ -14,7 +13,7 @@ const config: AdapterConfig = {
   allowLocalHttp: false,
 };
 const now = () => Math.floor(Date.now() / 1000);
-const context: VerifiedToken = {
+const context: LegacyExchangeIdentity = {
   subject: '11111111-1111-4111-8111-111111111111',
   grantId: '22222222-2222-4222-8222-222222222222',
   clientId: 'public-client',

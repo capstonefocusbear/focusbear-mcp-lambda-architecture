@@ -1,3 +1,5 @@
+import { McpConnectionsService } from './services/mcp-connections.service';
+import { McpAuth0Service } from './services/mcp-auth0.service';
 import { Module } from '@nestjs/common';
 import { CryptoModule } from '@app/crypto';
 import { ExternalMcpAuthController } from './controllers/external-mcp-auth.controller';
@@ -12,7 +14,14 @@ import { ProjectModule } from '../project/project.module';
 @Module({
   imports: [CryptoModule, ToDoModule, ProjectModule],
   controllers: [ExternalMcpAuthController, ExternalMcpTasksController],
-  providers: [ExternalMcpAuthService, ExternalMcpTasksService, ExternalApiTokenRepository, ExternalApiTokenGuard],
+  providers: [
+    McpConnectionsService,
+    McpAuth0Service,
+    ExternalMcpAuthService,
+    ExternalMcpTasksService,
+    ExternalApiTokenRepository,
+    ExternalApiTokenGuard,
+  ],
   exports: [ExternalMcpAuthService, ExternalApiTokenRepository],
 })
 export class ExternalMcpModule {}

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ExternalMcpTasksService } from '../services/external-mcp-tasks.service';
 import { ExternalApiTokenGuard, McpUser, McpScopes, McpTokenId } from '../guards/external-api-token.guard';
 import { GetToDosQueryDto } from '../../to-do/dto/get-to-dos-query.dto';
@@ -16,7 +16,7 @@ import { InternalServiceGuard } from '../guards/internal-service.guard';
 @ApiTags('mcp-tasks')
 @UseGuards(InternalServiceGuard, ExternalApiTokenGuard)
 @ApiSecurity('McpBearerToken')
-@Throttle({ default: { limit: 60, ttl: 60000 } })
+@SkipThrottle()
 export class ExternalMcpTasksController {
   constructor(private readonly externalMcpTasksService: ExternalMcpTasksService) {}
 
@@ -33,6 +33,12 @@ export class ExternalMcpTasksController {
     @Query() query: GetToDosQueryDto,
   ): Promise<PaginationDto<ToDoResponse>> {
     return this.externalMcpTasksService.listTasks(userId, tokenId, scopes, query);
+  }
+
+  @Get('summary')
+  @ApiOperation({ summary: 'Summarize tasks assigned to this agent' })
+  async summary(@McpUser() userId: string, @McpTokenId() agentId: string, @McpScopes() scopes: string[]) {
+    return this.externalMcpTasksService.summary(userId, agentId, scopes);
   }
 
   @Get(':id')

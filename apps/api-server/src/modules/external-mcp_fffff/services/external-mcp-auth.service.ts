@@ -1,3 +1,5 @@
+import { Optional } from '@nestjs/common';
+import { McpConnectionsService } from './mcp-connections.service';
 import { Injectable, NotFoundException, GoneException } from '@nestjs/common';
 import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
 import { CreateExternalApiTokenDto } from '../dto/create-external-api-token.dto';
@@ -6,10 +8,13 @@ import { McpAgentResponseDto } from '../dto/mcp-agent-response.dto';
 
 @Injectable()
 export class ExternalMcpAuthService {
-  constructor(private readonly externalApiTokenRepository: ExternalApiTokenRepository) {}
+  constructor(
+    private readonly externalApiTokenRepository: ExternalApiTokenRepository,
+    @Optional() private readonly connections?: McpConnectionsService,
+  ) {}
 
   async issueToken(_userId: string, _dto: CreateExternalApiTokenDto): Promise<ExternalApiTokenIssuedResponseDto> {
-    throw new GoneException('Use /oauth/authorize');
+    throw new GoneException('Connect through the configured Auth0 authorization server');
   }
 
   async listTokens(userId: string): Promise<ExternalApiTokenResponseDto[]> {
@@ -28,7 +33,7 @@ export class ExternalMcpAuthService {
   async listAgents(userId: string): Promise<McpAgentResponseDto[]> {
     const tokens = await this.externalApiTokenRepository.findByUserId(userId);
     // Return only tokens that have an agent_name and are not expired — these represent active AI agents
-    return tokens
+    const legacy = tokens
       .filter((t) => t.agent_name && (!t.expires_at || new Date(t.expires_at) > new Date()))
       .map((t) => ({
         id: t.id,
@@ -37,6 +42,7 @@ export class ExternalMcpAuthService {
         scopes: t.scopes,
         created_at: t.created_at,
       }));
+    return [...legacy, ...(this.connections ? await this.connections.list(userId) : [])];
   }
 
   async revokeToken(userId: string, tokenId: string): Promise<void> {

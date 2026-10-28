@@ -31,6 +31,7 @@ const projectStatus = z
   .strict();
 
 export const toolScopes: Record<string, string> = {
+  focusware_get_assigned_tasks_summary: 'mcp.summary.read',
   focusware_list_assigned_tasks: 'mcp.tasks.read',
   focusware_get_assigned_task: 'mcp.tasks.read',
   focusware_update_assigned_task_status: 'mcp.tasks.write',
@@ -39,6 +40,7 @@ export const toolScopes: Record<string, string> = {
 };
 
 const toolSchemas: Record<string, z.ZodTypeAny> = {
+  focusware_get_assigned_tasks_summary: z.object({}).strict(),
   focusware_list_assigned_tasks: list,
   focusware_get_assigned_task: get,
   focusware_update_assigned_task_status: update,
@@ -80,6 +82,17 @@ function task(value: unknown): Record<string, unknown> {
 }
 
 function shape(name: string, value: unknown): unknown {
+  if (name === 'focusware_get_assigned_tasks_summary') {
+    if (!value || typeof value !== 'object') throw new BackendError('bad_backend_response', 502);
+    const raw = value as Record<string, unknown>;
+    const safe: Record<string, number> = {};
+    for (const field of ['total', 'not_started', 'in_progress', 'completed', 'overdue']) {
+      if (typeof raw[field] !== 'number' || !Number.isSafeInteger(raw[field]) || (raw[field] as number) < 0)
+        throw new BackendError('bad_backend_response', 502);
+      safe[field] = raw[field] as number;
+    }
+    return safe;
+  }
   if (name === 'focusware_list_assigned_tasks') {
     if (!value || typeof value !== 'object' || !Array.isArray((value as any).data))
       throw new BackendError('bad_backend_response', 502);
@@ -112,7 +125,9 @@ function shape(name: string, value: unknown): unknown {
 async function invoke(name: string, args: Record<string, any>, context: ToolContext) {
   const { backend, clientToken, verifiedToken, requestId } = context;
   let value: unknown;
-  if (name === 'focusware_list_assigned_tasks')
+  if (name === 'focusware_get_assigned_tasks_summary')
+    value = await backend.request('GET', '/mcp/tasks/summary', clientToken, verifiedToken, requestId);
+  else if (name === 'focusware_list_assigned_tasks')
     value = await backend.request('GET', '/mcp/tasks', clientToken, verifiedToken, requestId, undefined, args);
   else if (name === 'focusware_get_assigned_task')
     value = await backend.request('GET', `/mcp/tasks/${args.task_id}`, clientToken, verifiedToken, requestId);
@@ -146,6 +161,11 @@ function handler(name: string, context: ToolContext) {
 
 export function createToolServer(context: ToolContext): McpServer {
   const server = new McpServer({ name: 'focusware-mcp', version: '1.0.0' });
+  server.registerTool(
+    'focusware_get_assigned_tasks_summary',
+    { description: 'Read counts of tasks assigned to this authorized MCP agent.', inputSchema: {} },
+    handler('focusware_get_assigned_tasks_summary', context),
+  );
   const description = 'Only accesses tasks assigned to the authorized MCP agent.';
   server.registerTool(
     'focusware_list_assigned_tasks',

@@ -1,40 +1,40 @@
-# Focusware MCP OAuth adapter
+# Focusware MCP Auth0 resource adapter (v2)
 
-This application serves a stateless MCP Streamable HTTP endpoint at `/mcp` and OAuth protected-resource metadata at `/.well-known/oauth-protected-resource`. It exposes five task tools and verifies user access tokens against the configured API server issuer and JWKS. The local runner uses the same HTTP handler that the AWS owner can mount in Lambda.
+The adapter serves `/mcp` as a stateless MCP 2026-07-28 resource. Auth0 issues one access token for the canonical MCP resource audience; the adapter and dedicated API-server MCP routes independently verify that same token. The adapter has no database connection, OAuth signing key or token exchange in its active runtime. `adapter/exchange.ts` remains only for legacy v1 regression tests.
 
-## Local run
+## Configuration and local run
 
-Set `MCP_RESOURCE_URL`, `OAUTH_ISSUER`, `OAUTH_JWKS_URL`, and `API_SERVER_URL`. Use HTTPS in deployed environments. For a loopback test issuer and backend, set `MCP_ALLOW_LOCAL_HTTP=true` and use loopback URLs. Optional settings are `MCP_PORT` (default `5039`), `MCP_BIND_HOST` (default `127.0.0.1`), and comma-separated `MCP_ALLOWED_ORIGINS`. Then run `npm run mcp:start`, `npm run mcp:build`, and `npm run mcp:test`.
+Required settings are `MCP_RESOURCE_URL` (canonical HTTPS URL ending in `/mcp`), `OAUTH_ISSUER` (canonical Auth0 issuer with trailing slash), `MCP_ALLOWED_CLIENT_IDS` (comma-separated approved public client IDs), and `API_SERVER_URL` (backend origin). `OAUTH_JWKS_URL` defaults to the issuer's `/.well-known/jwks.json` and must use that issuer's origin. MCP and normal API audiences must differ.
 
-For protocol checks, configure MCP Inspector against the local `/mcp` URL. The adapter returns a Bearer challenge with the resource metadata URL and supports JSON responses for `initialize`, `tools/list`, and `tools/call`. `GET /mcp` returns 405 after authentication because this adapter has no standalone server event stream.
+The default `MCP_TOKEN_PROFILE=auth0` requires RS256 `typ=JWT` access tokens with `azp`. Explicit `rfc9068` mode requires `typ=at+jwt`, `client_id` and `jti`. Both profiles require a single exact audience, issuer, approved client, user subject, integer issue/expiry times, and space-separated scopes; client-credentials tokens and delegated `act` claims are rejected. `MCP_MAX_TOKEN_LIFETIME_SECONDS` defaults to 900 and accepts 60–3600.
 
-## API server contract
+For local fixtures only, `MCP_ALLOW_LOCAL_HTTP=true` permits the explicitly supported local hostnames; production refuses this switch. Optional settings are `MCP_PORT=5039`, `MCP_BIND_HOST=127.0.0.1`, and `MCP_ALLOWED_ORIGINS` (comma-separated browser origins). The default Host check uses the canonical resource host. A web adapter that replaces Host may use `MCP_TRUSTED_INTERNAL_HOSTS`, an explicit comma-separated allowlist of loopback host/port values such as `127.0.0.1:8080`; forwarded Host headers never establish trust. The deployment owner must ensure the edge accepts only the canonical public hostname.
 
-The shared target is [OAuth and task authorization contract v1](../../contracts/mcp/v1/README.md)
-with [accepted/rejected fixtures](../../contracts/mcp/v1/fixtures.json), prepared for
-issue #4. It selects API-server issuance after Auth0 login, separate MCP/API
-audiences, authenticated token exchange, and durable `grant_id` assignments.
-The contract is a proposal awaiting API/MCP owner review. Task 39 enforces the
-login, token-exchange, and adapter JWT claims; API task rules remain pending. The fixture's local registration has not been
-applied to a running authorization server. Login and delegation are implemented in Task 39; API task authorization and
-assignment migration remain tracked in #7.
+Run `npm run mcp:start` or build with `npm run mcp:build`. Run adapter and shared JWT tests with `npm run mcp:test`; this uses isolated transpilation to keep runtime tests within the available heap. Run `npm run mcp:check` separately to typecheck both applications.
 
-The adapter now exchanges the MCP access token at the API server’s `/oauth/token`
-using RFC 8693 and `private_key_jwt`. Configure `MCP_ADAPTER_SIGNING_KID` and
-`MCP_ADAPTER_SIGNING_PRIVATE_KEY` in the adapter process and register its public
-JWK under `OAUTH_ADAPTER_PUBLIC_JWKS` in the API. Apply both OAuth migrations.
-The startup fails closed without adapter signing credentials. The provider returns
-a **separate**, verified API-audience token; it never forwards the client’s MCP
-resource token to task routes. Production task access still requires #7’s API
-JWT authorization and grant assignment migration. This follows the MCP [access token privilege restriction](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#access-token-privilege-restriction), which forbids passing the client's token through to an upstream API.
+## Protocol contract
 
-The API server provides issuer metadata and JWKS. MCP RS256 access tokens require
-`typ=at+jwt`, a registered `kid`, exact `iss`, a single string `aud` equal to the
-MCP resource URL, UUID `sub` and `grant_id`, `client_id`, integer `iat`/`exp`, fresh
-`jti`, and explicit space-delimited scopes. Multi-audience and malformed claims
-are rejected. The adapter requires `mcp.tasks.read` for task reads and `mcp.tasks.write` for updates, notes, and project status creation. The separate backend token must identify the user and a durable agent or grant so the API server can authorize assignments independently. Backend routes are `GET /mcp/tasks`, `GET /mcp/tasks/:id`, `PATCH /mcp/tasks/:id/status`, `POST /mcp/tasks/:id/notes`, and `POST /mcp/tasks/project-statuses`.
+Public protected-resource metadata is available at both `/.well-known/oauth-protected-resource` and `/.well-known/oauth-protected-resource/mcp`. Challenges point to the path-specific document and advertise all three scopes. Missing or invalid bearer tokens fail closed. Origins and hosts are checked before dispatch; explicitly allowed browser origins receive CORS headers exposing `WWW-Authenticate` and `X-Request-Id`. Malformed request targets return safe 400 errors; the outer handler contains unexpected failures so Node HTTP listeners cannot leave rejected promises unhandled.
 
-The current API server routes still use opaque tokens, `tasks:read` / `tasks:write`, an internal service key, and `assigned_mcp_token_id`. Task 39 implements OAuth login, PKCE, consent, static client registration and token
-exchange. Task #7 still owns the task-route OAuth guards and grant assignment
-migration; AWS deployment and live Inspector validation remain separate. Full
-task authorization requires those integrations.
+Each JSON-RPC POST requires `Accept: application/json, text/event-stream`, JSON content type, `MCP-Protocol-Version: 2026-07-28`, and `Mcp-Method` matching the body method. Body `params._meta` must contain `io.modelcontextprotocol/protocolVersion` and an object `io.modelcontextprotocol/clientCapabilities`. Named calls also require `Mcp-Name` matching the tool name (or the protocol's Base64 encoded-header form). Mismatches fail before backend access.
+
+`server/discover`, `tools/list`, `tools/call`, and `ping` work without `initialize`, sessions, or persisted transport state. Successful responses include `resultType: complete` and server metadata. Unsupported versions return the supported version. Authenticated GET `/mcp` returns 405 because there is no standalone event stream.
+
+The pinned SDK 1.27.1 supplies tool registration, schema validation and dispatch. Its older HTTP/session transport is deliberately replaced by `adapter/transport.ts`, which implements the 2026 request envelope. This is adapter compatibility, not a claim that SDK 1.27.1 natively implements 2026. Use a client supporting the 2026 contract for acceptance; older Inspector clients may send `initialize` and cannot validate it.
+
+## Tools and backend routes
+
+| Tool                                    | Required scope     | Backend route                      |
+| --------------------------------------- | ------------------ | ---------------------------------- |
+| `focusware_get_assigned_tasks_summary`  | `mcp.summary.read` | GET `/mcp/tasks/summary`           |
+| `focusware_list_assigned_tasks`         | `mcp.tasks.read`   | GET `/mcp/tasks`                   |
+| `focusware_get_assigned_task`           | `mcp.tasks.read`   | GET `/mcp/tasks/:id`               |
+| `focusware_update_assigned_task_status` | `mcp.tasks.write`  | PATCH `/mcp/tasks/:id/status`      |
+| `focusware_add_assigned_task_note`      | `mcp.tasks.write`  | POST `/mcp/tasks/:id/notes`        |
+| `focusware_ensure_project_status`       | `mcp.tasks.write`  | POST `/mcp/tasks/project-statuses` |
+
+Only these method/path pairs can receive the original bearer token; redirects are refused. The backend owns the durable agent connection, disabled state, user rate limit and assignment checks. The adapter never accepts user or agent identity overrides. Summary output contains numeric `total`, `not_started`, `in_progress`, `completed` and `overdue` counts. Other output is filtered to documented task, note, status and pagination fields.
+
+Request bodies and backend responses are limited to 1 MiB. Request body reading has a one-second deadline, JWKS fetching a three-second timeout, backend reads at most one transport retry within an eight-second budget, and SDK dispatch a nine-second deadline. Writes are never retried. Telemetry contains only generated request ID, status, duration and allowlisted method/tool name; token, user, arguments, task data and upstream error messages are excluded. Backend failures return safe codes plus the generated request ID.
+
+Real Auth0 configuration, external `aws-infra` deployment integration and live end-to-end acceptance require operator-owned environments. Local signed JWT/JWKS fixtures exercise the Auth0 claim profile without contacting or modifying a real tenant.

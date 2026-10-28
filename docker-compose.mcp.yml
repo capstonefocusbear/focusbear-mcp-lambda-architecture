@@ -1,0 +1,80 @@
+# Standalone local integration environment. Run via scripts/mcp-local.sh.
+name: focusbear-mcp
+services:
+  api-server:
+    build:
+      context: .
+      dockerfile: apps/api-server/Dockerfile.api
+      target: builder
+    command: ['npx', 'nest', 'start', 'api-server', '--watch']
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      PORT: '4000'
+      SERVER_PORT: '4000'
+      POSTGRES_HOST: db
+      POSTGRES_PORT: '5432'
+      POSTGRES_USERNAME: test_user
+      POSTGRES_PASSWORD: testpass1122
+      POSTGRES_DB: test
+      REDIS_HOSTNAME: redis
+      REDIS_PORT: '6379'
+      MCP_AUTH0_ENABLED: 'true'
+      MCP_ALLOW_LOCAL_HTTP: 'true'
+      OAUTH_ISSUER: ${OAUTH_ISSUER:?Set real Auth0 development tenant issuer}
+      OAUTH_JWKS_URL: ${OAUTH_JWKS_URL:?Set issuer JWKS URL}
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://localhost:5039/mcp}
+      MCP_ALLOWED_CLIENT_IDS: ${MCP_ALLOWED_CLIENT_IDS:?Set approved development client IDs}
+      MCP_TOKEN_PROFILE: ${MCP_TOKEN_PROFILE:-auth0}
+      MCP_MAX_TOKEN_LIFETIME_SECONDS: '900'
+    ports: ['127.0.0.1:4000:4000']
+    depends_on: [db, redis]
+    networks: [mcp]
+  db:
+    image: pgvector/pgvector:pg16-trixie
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: testpass1122
+    volumes: [mcp-db:/var/lib/postgresql/data]
+    networks: [mcp]
+  redis:
+    image: redis:6.2.19-alpine
+    networks: [mcp]
+  localstack:
+    image: localstack/localstack:4.9.2
+    ports: ['127.0.0.1:4566:4566']
+    environment:
+      SERVICES: cloudformation,apigateway,lambda,ecr,iam,logs,cloudwatch,sts,s3
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      LAMBDA_DOCKER_NETWORK: focusbear-mcp
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+    volumes: ['/var/run/docker.sock:/var/run/docker.sock']
+    networks: [mcp]
+  # Direct container mode validates the exact image used by Lambda.
+  mcp-adapter:
+    profiles: [direct]
+    image: focusbear-mcp:local
+    build:
+      context: .
+      dockerfile: apps/mcp-server/Dockerfile.mcp
+    environment:
+      NODE_ENV: development
+      MCP_ALLOW_LOCAL_HTTP: 'true'
+      OAUTH_ISSUER: ${OAUTH_ISSUER:?Set issuer}
+      OAUTH_JWKS_URL: ${OAUTH_JWKS_URL:?Set JWKS}
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://localhost:5039/mcp}
+      MCP_ALLOWED_CLIENT_IDS: ${MCP_ALLOWED_CLIENT_IDS:?Set client IDs}
+      MCP_TOKEN_PROFILE: ${MCP_TOKEN_PROFILE:-auth0}
+      MCP_MAX_TOKEN_LIFETIME_SECONDS: '900'
+      API_SERVER_URL: http://api-server:4000
+    ports: ['127.0.0.1:5039:5039']
+    networks: [mcp]
+    depends_on: [api-server]
+networks:
+  mcp:
+    name: focusbear-mcp
+volumes:
+  mcp-db:

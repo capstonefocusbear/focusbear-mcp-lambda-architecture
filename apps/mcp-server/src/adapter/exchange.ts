@@ -8,7 +8,23 @@ import {
   validateMcpClaims,
 } from '../../../../libs/jwt/src/mcp-claims';
 import { AdapterConfig } from './config';
-import { BackendCredentialProvider, BackendError } from './backend';
+import { BackendError } from './backend';
+
+// Legacy v1 compatibility only. The active v2 handler never imports this module.
+export type LegacyExchangeConfig = Pick<
+  AdapterConfig,
+  'issuer' | 'resourceUrl' | 'jwksUrl' | 'backendUrl' | 'allowedOrigins' | 'allowLocalHttp'
+>;
+export interface LegacyExchangeIdentity {
+  subject: string;
+  grantId: string;
+  clientId: string;
+  expiresAt: number;
+  scopes: Set<string>;
+}
+interface BackendCredentialProvider {
+  getToken(token: string, identity: LegacyExchangeIdentity): Promise<{ token: string }>;
+}
 
 async function boundedJson(response: Response): Promise<any> {
   const reader = response.body?.getReader();
@@ -30,7 +46,7 @@ async function boundedJson(response: Response): Promise<any> {
   }
 }
 
-export function createExchangeProvider(config: AdapterConfig, env = process.env): BackendCredentialProvider {
+export function createExchangeProvider(config: LegacyExchangeConfig, env = process.env): BackendCredentialProvider {
   if (!env.MCP_ADAPTER_SIGNING_PRIVATE_KEY || !env.MCP_ADAPTER_SIGNING_KID)
     throw new Error('MCP adapter signing credentials are required');
   const privateKey = createPrivateKey(env.MCP_ADAPTER_SIGNING_PRIVATE_KEY.replace(/\\n/g, '\n'));

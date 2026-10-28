@@ -1,3 +1,5 @@
+> **Archived v1 implementation.** The main API no longer mounts these custom OAuth endpoints. Auth0 owns OAuth under [contract v2](../../../../../contracts/mcp/v2/README.md). Do not use the signing-key or token-exchange setup below for the active MCP resource. Retained source/tests are historical regression coverage.
+
 # Focus Bear MCP OAuth endpoints and token exchange (Task 39)
 
 Implements the proposed [v1 contract](../../../../../contracts/mcp/v1/README.md).

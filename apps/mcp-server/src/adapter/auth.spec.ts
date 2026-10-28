@@ -24,6 +24,8 @@ describe('OAuth JWT verifier', () => {
       jwksUrl: `http://127.0.0.1:${port}/jwks`,
       backendUrl: 'https://api.example',
       allowedOrigins: [],
+      allowedClients: ['public-client'],
+      tokenProfile: 'auth0',
       allowLocalHttp: true,
     };
   });
@@ -33,9 +35,9 @@ describe('OAuth JWT verifier', () => {
 
   function token(overrides: Record<string, unknown> = {}) {
     const claims = {
-      sub: '11111111-1111-4111-8111-111111111111',
-      grant_id: '22222222-2222-4222-8222-222222222222',
-      client_id: 'public-client',
+      sub: 'auth0|user',
+
+      azp: 'public-client',
       jti: 'test-token',
       scope: 'mcp.tasks.read',
       iss: config.issuer,
@@ -47,14 +49,21 @@ describe('OAuth JWT verifier', () => {
     return jwt.sign(claims, keys.privateKey, {
       algorithm: 'RS256',
       keyid: 'test-key',
-      header: { alg: 'RS256', typ: 'at+jwt' },
+      header: { alg: 'RS256', typ: 'JWT' },
     });
   }
 
   it('accepts a signed token for this issuer and resource', async () => {
     const result = await createTokenVerifier(config).verify(token());
-    expect(result.subject).toBe('11111111-1111-4111-8111-111111111111');
+    expect(result.subject).toBe('auth0|user');
     expect(result.scopes.has('mcp.tasks.read')).toBe(true);
+  });
+
+  it('honors the configured maximum token lifetime', async () => {
+    await expect(createTokenVerifier({ ...config, maxTokenLifetimeSeconds: 60 }).verify(token())).rejects.toThrow();
+    await expect(
+      createTokenVerifier({ ...config, maxTokenLifetimeSeconds: 600 }).verify(token()),
+    ).resolves.toBeDefined();
   });
 
   it('rejects a wrong audience, expired token, and malformed token', async () => {
@@ -67,9 +76,9 @@ describe('OAuth JWT verifier', () => {
     const otherKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
     const badSignature = jwt.sign(
       {
-        sub: '11111111-1111-4111-8111-111111111111',
-        grant_id: '22222222-2222-4222-8222-222222222222',
-        client_id: 'public-client',
+        sub: 'auth0|user',
+
+        azp: 'public-client',
         jti: 'test-token',
         scope: 'mcp.tasks.read',
         iss: config.issuer,
@@ -77,21 +86,19 @@ describe('OAuth JWT verifier', () => {
         exp: Math.floor(Date.now() / 1000) + 300,
       },
       otherKeys.privateKey,
-      { algorithm: 'RS256', keyid: 'test-key', header: { alg: 'RS256', typ: 'at+jwt' } },
+      { algorithm: 'RS256', keyid: 'test-key', header: { alg: 'RS256', typ: 'JWT' } },
     );
     await expect(verifier.verify(badSignature)).rejects.toThrow();
   });
   it.each([
     { aud: ['http://localhost:5039/mcp', 'https://api.example/mcp/tasks'] },
-    { sub: 'auth0|user' },
-    { grant_id: undefined },
-    { client_id: undefined },
-    { jti: undefined },
+    { sub: 'client@clients' },
+    { azp: undefined },
+    { azp: 'unapproved' },
     { exp: undefined },
-    { scope: 'tasks:read' },
     { scope: 'mcp.tasks.read  mcp.tasks.write' },
     { iat: Math.floor(Date.now() / 1000) + 10 },
-    { exp: Math.floor(Date.now() / 1000) + 400 },
+    { exp: Math.floor(Date.now() / 1000) + 3600 },
     { nbf: 1.5 },
     { act: { sub: 'focusbear-mcp-adapter' } },
   ])('rejects malformed MCP claims %j', async (patch) => {

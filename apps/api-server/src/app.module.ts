@@ -53,7 +53,6 @@ import { AnnouncementsModule } from './modules/announcements/announcements.modul
 import { AppVersionsModule } from './modules/app-versions/app-versions.module';
 import { NoteModule } from './modules/note/note.module';
 import { GeofenceModule } from './modules/geofence/geofence.module';
-import { OAuthModule } from './modules/mcp-oauth/oauth.module';
 import { ExternalMcpModule } from './modules/external-mcp/external-mcp.module';
 
 @Module({
@@ -132,7 +131,6 @@ import { ExternalMcpModule } from './modules/external-mcp/external-mcp.module';
     NoteModule,
     GeofenceModule,
     ExternalMcpModule,
-    OAuthModule,
   ],
   controllers: [AppController],
   providers: [
@@ -151,9 +149,8 @@ export class AppModule implements NestModule {
     consumer
       .apply(PassportMiddleware)
       .exclude(
-        { path: 'oauth/{*path}', method: RequestMethod.ALL },
-        { path: '.well-known/oauth-authorization-server', method: RequestMethod.GET },
-        { path: '.well-known/jwks.json', method: RequestMethod.GET },
+        { path: 'mcp/tasks', method: RequestMethod.ALL },
+        { path: 'mcp/tasks/{*path}', method: RequestMethod.ALL },
       )
       .forRoutes('*');
     consumer.apply(ServiceAccountPassportMiddleware).forRoutes('/service-account/*');

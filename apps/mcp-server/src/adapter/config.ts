@@ -1,3 +1,5 @@
+import { checkedMcpUrl, loadMcpAuthConfig } from '../../../../libs/jwt/src/mcp-auth0';
+
 export interface AdapterConfig {
   resourceUrl: string;
   issuer: string;
@@ -5,6 +7,10 @@ export interface AdapterConfig {
   backendUrl: string;
   allowedOrigins: string[];
   allowLocalHttp: boolean;
+  allowedClients: string[];
+  tokenProfile: 'auth0' | 'rfc9068';
+  maxTokenLifetimeSeconds?: number;
+  trustedInternalHosts?: string[];
 }
 
 function required(name: string): string {
@@ -14,23 +20,13 @@ function required(name: string): string {
 }
 
 function checkedUrl(value: string, name: string, allowLocalHttp: boolean): string {
-  const url = new URL(value);
-  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname);
-  if (
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash ||
-    (url.protocol !== 'https:' && !(allowLocalHttp && local && url.protocol === 'http:'))
-  ) {
-    throw new Error(`${name} must be an HTTPS URL without credentials, query, or fragment`);
-  }
-  return url.toString();
+  return checkedMcpUrl(value, name, allowLocalHttp).toString();
 }
 
 export function loadAdapterConfig(): AdapterConfig {
-  const allowLocalHttp = process.env.MCP_ALLOW_LOCAL_HTTP === 'true' && process.env.NODE_ENV !== 'production';
-  const resourceUrl = checkedUrl(required('MCP_RESOURCE_URL'), 'MCP_RESOURCE_URL', allowLocalHttp);
+  const auth = loadMcpAuthConfig();
+  const allowLocalHttp = auth.allowLocalHttp;
+  const resourceUrl = checkedUrl(auth.audience, 'MCP_RESOURCE_URL', allowLocalHttp);
   if (new URL(resourceUrl).pathname !== '/mcp') throw new Error('MCP_RESOURCE_URL must end in /mcp');
   const backendUrl = checkedUrl(required('API_SERVER_URL'), 'API_SERVER_URL', allowLocalHttp);
   if (new URL(backendUrl).pathname !== '/') throw new Error('API_SERVER_URL must be an origin');
@@ -41,10 +37,27 @@ export function loadAdapterConfig(): AdapterConfig {
     .map((s) => checkedUrl(s, 'MCP_ALLOWED_ORIGINS', allowLocalHttp));
   if (allowedOrigins.some((origin) => new URL(origin).origin + '/' !== origin))
     throw new Error('MCP_ALLOWED_ORIGINS must contain origins only');
+  const trustedInternalHosts = (process.env.MCP_TRUSTED_INTERNAL_HOSTS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (
+    trustedInternalHosts.some(
+      (host) =>
+        !/^(?:127\.0\.0\.1|localhost|\[::1\]):[0-9]{1,5}$/.test(host) ||
+        Number(host.slice(host.lastIndexOf(':') + 1)) < 1 ||
+        Number(host.slice(host.lastIndexOf(':') + 1)) > 65535,
+    )
+  )
+    throw new Error('MCP_TRUSTED_INTERNAL_HOSTS must contain explicit loopback host:port values');
   return {
     resourceUrl,
-    issuer: checkedUrl(required('OAUTH_ISSUER'), 'OAUTH_ISSUER', allowLocalHttp),
-    jwksUrl: checkedUrl(required('OAUTH_JWKS_URL'), 'OAUTH_JWKS_URL', allowLocalHttp),
+    issuer: auth.issuer,
+    jwksUrl: auth.jwksUrl,
+    allowedClients: auth.allowedClients,
+    tokenProfile: auth.tokenProfile,
+    maxTokenLifetimeSeconds: auth.maxTokenLifetimeSeconds,
+    trustedInternalHosts,
     backendUrl,
     allowedOrigins: allowedOrigins.map((origin) => new URL(origin).origin),
     allowLocalHttp,
@@ -52,5 +65,5 @@ export function loadAdapterConfig(): AdapterConfig {
 }
 
 export function metadataUrl(config: AdapterConfig): string {
-  return new URL('/.well-known/oauth-protected-resource', config.resourceUrl).toString();
+  return new URL('/.well-known/oauth-protected-resource/mcp', config.resourceUrl).toString();
 }

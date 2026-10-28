@@ -1,5 +1,4 @@
 import { createExchangeProvider } from '../../../../mcp-server/src/adapter/exchange';
-import { BackendClient } from '../../../../mcp-server/src/adapter/backend';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
@@ -563,17 +562,12 @@ describe('MCP OAuth login through HTTP', () => {
     expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 401]);
   });
 
-  it('runs the configured adapter through real token and JWKS routes before a backend call', async () => {
+  it('preserves legacy exchange revocation semantics through real token and JWKS routes', async () => {
     const credential = (await exchange(await authorize())).json().access_token;
     const claims = jwt.decode(credential) as jwt.JwtPayload;
     const savedFetch = global.fetch;
-    const backendCalls: any[] = [];
     global.fetch = jest.fn(async (url: any, options: any = {}) => {
       const parsed = new URL(String(url));
-      if (parsed.pathname === '/mcp/tasks') {
-        backendCalls.push(options);
-        return new Response(JSON.stringify({ data: [] }));
-      }
       const response = await inject({
         method: options.method || 'GET',
         url: parsed.pathname,
@@ -602,9 +596,8 @@ describe('MCP OAuth login through HTTP', () => {
         expiresAt: claims.exp,
         scopes: new Set<string>(claims.scope.split(' ')),
       };
-      const backend = new BackendClient(config, provider);
-      expect(await backend.request('GET', '/mcp/tasks', credential, context, randomUUID())).toEqual({ data: [] });
-      const sentToken = backendCalls[0].headers.authorization.slice(7);
+      // Archived v1 exchange remains tested independently; the active v2 backend forwards the original JWT.
+      const { token: sentToken } = await provider.getToken(credential, context);
       expect(sentToken).not.toBe(credential);
       expect(jwt.verify(sentToken, keys.publicKey, { audience: fixtures.profile.api_resource })).toMatchObject({
         sub: userId,
@@ -612,10 +605,7 @@ describe('MCP OAuth login through HTTP', () => {
         act: { sub: 'focusbear-mcp-adapter' },
       });
       store.records.get(claims.grant_id).revoked_at = 'revoked';
-      await expect(backend.request('GET', '/mcp/tasks', credential, context, randomUUID())).rejects.toThrow(
-        'backend_unauthorized',
-      );
-      expect(backendCalls).toHaveLength(1);
+      await expect(provider.getToken(credential, context)).rejects.toThrow('backend_unauthorized');
     } finally {
       global.fetch = savedFetch;
     }

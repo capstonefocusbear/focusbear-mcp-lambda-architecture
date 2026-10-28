@@ -1,3 +1,5 @@
+> **Superseded:** active implementation follows `docs/superpowers/plans/2026-10-25-mcp-auth0-v2.md` and `contracts/mcp/v2/README.md`. The custom issuer/exchange plan below is historical.
+
 # MCP OAuth Adapter Build Plan
 
 ## Purpose

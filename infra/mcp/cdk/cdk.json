@@ -1,0 +1,1 @@
+{ "app": "node dist/src/app.js", "context": { "@aws-cdk/aws-apigateway:requestValidatorUniqueId": true } }

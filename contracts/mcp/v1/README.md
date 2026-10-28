@@ -1,3 +1,5 @@
+> **Historical contract:** superseded by [Auth0 resource contract v2](../v2/README.md). The custom issuer/exchange is no longer mounted in the application. Fixtures remain for archived code regression tests.
+
 # OAuth and task authorization contract v1
 
 Prepared for [issue #4](https://github.com/albertnovellenabe/focusbear-mcp-lambda-architecture/issues/4).

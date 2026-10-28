@@ -7,3 +7,12 @@ tmp
 
 .dbdata
 localstack_data
+# Local credentials and nested build/runtime caches must never enter images.
+.env
+.env.*
+!.env.example
+!.env.mcp.example
+**/node_modules
+**/cdk.out
+dist-mcp
+.superpowers

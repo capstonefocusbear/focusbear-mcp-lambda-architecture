@@ -1,4 +1,12 @@
-import { CanActivate, createParamDecorator, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { McpAuth0Service } from '../services/mcp-auth0.service';
+import {
+  CanActivate,
+  createParamDecorator,
+  ExecutionContext,
+  Injectable,
+  Optional,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ExternalApiTokenRepository } from '../repositories/external-api-token.repository';
 
@@ -36,6 +44,7 @@ export class ExternalApiTokenGuard implements CanActivate {
   constructor(
     private readonly externalApiTokenRepository: ExternalApiTokenRepository,
     private readonly reflector: Reflector,
+    @Optional() private readonly oauth?: McpAuth0Service,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -50,6 +59,17 @@ export class ExternalApiTokenGuard implements CanActivate {
 
     if (!rawToken) {
       throw new UnauthorizedException('Missing bearer token');
+    }
+
+    // A dotted bearer token is always JWT mode, including malformed JWTs. Never retry as opaque.
+    if (rawToken.includes('.')) {
+      if (!this.oauth) throw new UnauthorizedException('Auth0 MCP is disabled');
+      await this.oauth.authenticate(request, rawToken);
+      const requiredScope = this.reflector.get<string>(MCP_SCOPE_KEY, context.getHandler());
+      if (requiredScope && !request.mcpScopes.includes(requiredScope)) {
+        throw new UnauthorizedException(`Token missing required scope: ${requiredScope}`);
+      }
+      return true;
     }
 
     const token = await this.externalApiTokenRepository.findByRawToken(rawToken);

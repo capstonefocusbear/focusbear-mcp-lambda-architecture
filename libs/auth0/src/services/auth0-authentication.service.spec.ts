@@ -76,7 +76,11 @@ describe('Auth0AuthenticationService', () => {
       expect(result).toEqual([true, { payload: mockDecodedToken.payload }]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key', {
+        algorithms: ['RS256'],
+        issuer: 'https://test.auth0.com/',
+        audience: ['test-identifier'],
+      });
     });
 
     it('negative: should return false when token is missing or corrupted', async () => {
@@ -123,7 +127,11 @@ describe('Auth0AuthenticationService', () => {
       expect(result).toEqual([false, { declineReason: 'invalid signature' }]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key', {
+        algorithms: ['RS256'],
+        issuer: 'https://test.auth0.com/',
+        audience: ['test-identifier'],
+      });
     });
 
     it('negative: should return false when token is expired', async () => {
@@ -145,7 +153,11 @@ describe('Auth0AuthenticationService', () => {
       expect(result).toEqual([false, { declineReason: 'jwt expired' }]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key', {
+        algorithms: ['RS256'],
+        issuer: 'https://test.auth0.com/',
+        audience: ['test-identifier'],
+      });
     });
 
     it('negative: should return false when unable to fetch signing key', async () => {
@@ -236,7 +248,11 @@ describe('Auth0AuthenticationService', () => {
       expect(result).toEqual([true, { payload: mockDecodedToken.payload }]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key', {
+        algorithms: ['RS256'],
+        issuer: 'https://test.auth0.com/',
+        audience: ['https://focusbear.io/team-management'],
+      });
     });
 
     it('negative: should return false when service account token has wrong audience', async () => {
@@ -283,7 +299,11 @@ describe('Auth0AuthenticationService', () => {
       expect(result).toEqual([false, { declineReason: 'invalid signature' }]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key', {
+        algorithms: ['RS256'],
+        issuer: 'https://test.auth0.com/',
+        audience: ['https://focusbear.io/team-management'],
+      });
     });
   });
 
@@ -312,7 +332,11 @@ describe('Auth0AuthenticationService', () => {
       expect(result).toEqual([true, { payload: mockDecodedToken.payload }]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key', {
+        algorithms: ['RS256'],
+        issuer: 'https://test.auth0.com/',
+        audience: customAudiences,
+      });
     });
 
     it('positive: should validate token with single allowed audience', async () => {
@@ -401,7 +425,11 @@ describe('Auth0AuthenticationService', () => {
       expect(result).toEqual([false, { declineReason: 'verification failed' }]);
       expect(jwt.decode).toHaveBeenCalledWith(mockToken, { complete: true });
       expect(mockJwksClient.getSigningKey).toHaveBeenCalledWith('test-kid');
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, 'mock-public-key', {
+        algorithms: ['RS256'],
+        issuer: 'https://test.auth0.com/',
+        audience: allowedAudiences,
+      });
     });
   });
 
@@ -486,5 +514,23 @@ describe('Auth0AuthenticationService', () => {
         { declineReason: 'Token audience not allowed. Expected one of: test-identifier' },
       ]);
     });
+  });
+  it('rejects a mixed normal/MCP audience before key lookup', async () => {
+    const previous = process.env.MCP_RESOURCE_URL;
+    process.env.MCP_RESOURCE_URL = 'https://mcp.example/mcp';
+    try {
+      (jwt.decode as jest.Mock).mockReturnValue({
+        header: { kid: 'key' },
+        payload: { aud: ['test-identifier', process.env.MCP_RESOURCE_URL] },
+      });
+      await expect(service.validateAccessToken('jwt')).resolves.toEqual([
+        false,
+        { declineReason: 'MCP audience cannot access normal API' },
+      ]);
+      expect(mockJwksClient.getSigningKey).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.MCP_RESOURCE_URL;
+      else process.env.MCP_RESOURCE_URL = previous;
+    }
   });
 });

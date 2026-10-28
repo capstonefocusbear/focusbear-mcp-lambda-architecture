@@ -266,6 +266,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       synced_project_id,
       sort_mode,
     }: GetToDosQueryDto,
+    stableAgent = false,
   ): Promise<[ToDo[], number]> {
     const query = this.orm
       .createQueryBuilder('to_do')
@@ -285,6 +286,7 @@ export class ToDoRepository extends BaseRepository<ToDo> {
         'to_do.objective',
         'to_do.subtasks',
         'to_do.assigned_mcp_token_id',
+        'to_do.assigned_mcp_agent_id',
         'to_do.custom_status_id',
         'to_do.project_id',
         'tags.id',
@@ -300,7 +302,9 @@ export class ToDoRepository extends BaseRepository<ToDo> {
       .addSelect(`(${ToDoRepository.TOP_SCORE_SQL})`, 'top_score')
       .take(take)
       .skip(skip)
-      .where('to_do.assigned_mcp_token_id = :token_id', { token_id: tokenId })
+      .where(`to_do.${stableAgent ? 'assigned_mcp_agent_id' : 'assigned_mcp_token_id'} = :token_id`, {
+        token_id: tokenId,
+      })
       .andWhere('to_do.user_id = :user_id', { user_id: userId });
 
     const orderBy = order === PageOrder.ASC ? 'ASC' : 'DESC';

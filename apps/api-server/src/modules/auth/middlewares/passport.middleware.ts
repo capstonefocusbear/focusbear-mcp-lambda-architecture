@@ -1,3 +1,4 @@
+import { decode } from 'jsonwebtoken';
 import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
 import { HelperCommonService } from '../../helper/services/helper-common/helper-common.service';
 import { Passport } from '../domain/passport.model';
@@ -14,6 +15,17 @@ export class PassportMiddleware implements NestMiddleware {
    */
   async use(req, res, next) {
     try {
+      const token = req.headers?.authorization?.split(' ')[1];
+      const claims = token ? decode(token) : null;
+      const mcpAudience = process.env.MCP_RESOURCE_URL;
+      if (
+        mcpAudience &&
+        claims &&
+        typeof claims === 'object' &&
+        (claims.aud === mcpAudience || (Array.isArray(claims.aud) && claims.aud.includes(mcpAudience)))
+      ) {
+        throw new UnauthorizedException('MCP tokens cannot access general API routes');
+      }
       const passport = await this.authService.authenticate(req.headers);
       const immutablePassport = this.commonHelperService.deepFreezeObject<Passport>(passport);
       const propertyDescriptor = { value: immutablePassport, writable: false, configurable: false };

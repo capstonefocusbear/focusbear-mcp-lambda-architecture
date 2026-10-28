@@ -718,3 +718,9 @@ backend/
    ```
 
 7. **Fill Out PR Template Completely (On GitHub)** - don't skip any checklist items!
+
+## MCP Auth0 resource (architecture v2)
+
+The active MCP implementation uses Auth0-issued tokens shared only between the stateless adapter and dedicated backend MCP routes. Start with the [resource contract](contracts/mcp/v2/README.md), [adapter](apps/mcp-server/README.md), and [local/production operations](docs/mcp-operations.md). The custom backend OAuth issuer and SAM deployment are historical; the portable CDK package awaits integration in Focus Bear's separate infrastructure repository.
+
+Run `npm run mcp:check`, `npm run mcp:test`, `npm run mcp:test:backend`, and `npm --prefix infra/mcp/cdk test`. Use `npm run mcp:local -- up` with the documented disposable local profile. Real Auth0/client and production canary checks remain explicit operator acceptance gates.

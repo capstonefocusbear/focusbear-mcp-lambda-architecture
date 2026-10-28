@@ -44,6 +44,10 @@ export class Auth0AuthenticationService extends AuthenticationClient implements 
       const tokenAudience = (payload as jwt.JwtPayload)?.aud;
       const hasValidAudience = this.hasValidAudience(tokenAudience, allowedAudiences);
 
+      const audiences = Array.isArray(tokenAudience) ? tokenAudience : [tokenAudience];
+      if (process.env.MCP_RESOURCE_URL && audiences.includes(process.env.MCP_RESOURCE_URL)) {
+        return [false, { declineReason: 'MCP audience cannot access normal API' }];
+      }
       if (!hasValidAudience) {
         return [
           false,
@@ -53,7 +57,11 @@ export class Auth0AuthenticationService extends AuthenticationClient implements 
 
       const signingKey = await this.jwksClient.getSigningKey(header?.kid);
       const publicKey = signingKey.getPublicKey();
-      const validToken = await jwt.verify(token, publicKey);
+      const validToken = await jwt.verify(token, publicKey, {
+        algorithms: ['RS256'],
+        issuer: `https://${this.Auth0Options.domain}/`,
+        audience: allowedAudiences as [string, ...string[]],
+      });
       const isValid = Boolean(validToken);
 
       return [isValid, { payload }];
